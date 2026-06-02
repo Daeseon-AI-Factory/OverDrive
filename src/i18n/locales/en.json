@@ -1,0 +1,184 @@
+{
+  "tabs": {
+    "today": "Today",
+    "power": "Power",
+    "history": "History",
+    "settings": "Settings"
+  },
+  "today": {
+    "combatPowerLabel": "COMBAT POWER",
+    "restDayHint": "Rest day 💤 — still want to log? Tap a body region.",
+    "cardioSheetTitle": "Cardio / Conditioning"
+  },
+  "power": {
+    "disclaimer": "For-fun original formula · not a scientific metric",
+    "section": {
+      "breakdown": "Breakdown",
+      "verified": "Verified data"
+    },
+    "empty": "No data yet. Log a set on the Today tab and your Combat Power appears.",
+    "verifiedExplainer": "Verified {pct}% — watch/import/sensor data adds a bonus to Combat Power. In Phase 1 everything is self-reported, so the bonus is 0. (Self-reported data is never penalized.)"
+  },
+  "history": {
+    "title": "History",
+    "empty": "No records yet. Log your first set on the Today tab.",
+    "repsOnly": "{reps} reps",
+    "weightTimesReps": "{weight}kg × {reps}",
+    "rirSuffix": " · RIR {rir}",
+    "prBadge": "PR ⚡"
+  },
+  "settings": {
+    "title": "Settings",
+    "juice": {
+      "section": "JUICE intensity",
+      "full": "Full",
+      "mid": "Mid",
+      "minimal": "Minimal",
+      "explainer": "Minimal turns off on-screen FX and keeps haptics only (silent-gym mode). No effect on logging speed."
+    },
+    "sound": {
+      "section": "Sound",
+      "label": "SFX / callouts"
+    },
+    "weightStep": {
+      "section": "Weight increment",
+      "pill": "{step}kg",
+      "explainer": "How much the +/- buttons change the weight per tap in the set logger."
+    },
+    "footer": "OVERDRIVE · Phase 1 local MVP. Combat Power is a for-fun original formula."
+  },
+  "boot": {
+    "brand": "OVERDRIVE"
+  },
+  "character": {
+    "toggle": {
+      "front": "Front",
+      "back": "Back"
+    },
+    "cardioChip": "🏃 Cardio / Conditioning",
+    "hint": "Tap a body region to pick an exercise. As your Combat Power rises, the aura grows stronger."
+  },
+  "region": {
+    "chest": "Chest",
+    "shoulders": "Shoulders",
+    "back": "Back",
+    "arms": "Arms",
+    "core": "Core",
+    "legs": "Legs"
+  },
+  "grade": {
+    "ordinary": "Ordinary",
+    "rookie": "Rookie",
+    "fighter": "Fighter",
+    "warrior": "Warrior",
+    "beast": "Beast",
+    "monster": "Monster",
+    "ascendant": "Ascendant"
+  },
+  "logger": {
+    "lastSet": "Last: {set}",
+    "lastSetWeight": "{weight}kg × ",
+    "lastSetRir": " (RIR {rir})",
+    "firstSet": "First set!",
+    "sessionSetCount": "   ·   {count} sets this session ✓",
+    "field": {
+      "weight": "Weight",
+      "repsOrTime": "Reps / sec",
+      "reps": "Reps",
+      "weightUnit": "kg"
+    },
+    "rirLabel": "RIR (optional)",
+    "rirMaxPill": "4+",
+    "repeatLast": "Repeat last set ⚡",
+    "logSet": "Log ⚡",
+    "close": "Close",
+    "exerciseMeta": {
+      "bodyweightPrefix": "Bodyweight · ",
+      "repRange": "{low}–{high} reps"
+    },
+    "exerciseListEmpty": "No exercises."
+  },
+  "stepper": {
+    "minus": "−",
+    "plus": "+"
+  },
+  "juice": {
+    "callout": {
+      "overdrive": "OVERDRIVE!",
+      "redline": "REDLINE!",
+      "maxPower": "MAX POWER!"
+    },
+    "tier3": {
+      "label": "OVERDRIVE"
+    }
+  },
+  "program": {
+    "upperA": {
+      "title": "Upper A",
+      "focus": "Bench + pull-up focus"
+    },
+    "lowerA": {
+      "title": "Lower A",
+      "focus": "Squat focus"
+    },
+    "intervals": {
+      "title": "Intervals",
+      "focus": "HIIT conditioning"
+    },
+    "upperB": {
+      "title": "Upper B",
+      "focus": "Overhead + row focus"
+    },
+    "lowerB": {
+      "title": "Lower B",
+      "focus": "Deadlift focus"
+    },
+    "intervalsZone2": {
+      "title": "Intervals / Zone 2",
+      "focus": "Cardio"
+    },
+    "rest": {
+      "title": "Rest",
+      "focus": "Recovery — protein/sleep"
+    }
+  },
+  "cp": {
+    "component": {
+      "strengthVolume": "Strength volume",
+      "sessions": "Weekly sessions",
+      "conditioning": "Conditioning",
+      "streak": "Streak",
+      "discipline": "Discipline (protein/rest)",
+      "recomp": "Recomp",
+      "fitnessMarkers": "Fitness markers"
+    }
+  },
+  "exercise": {
+    "barbell_bench_press": "Barbell Bench Press",
+    "incline_db_press": "Incline Dumbbell Press",
+    "overhead_press": "Overhead Press",
+    "lateral_raise": "Side Lateral Raise",
+    "pull_up": "Pull-Up",
+    "barbell_row": "Barbell Row",
+    "lat_pulldown": "Lat Pulldown",
+    "db_curl": "Dumbbell Curl",
+    "triceps_pushdown": "Triceps Pushdown",
+    "barbell_back_squat": "Barbell Back Squat",
+    "deadlift": "Deadlift",
+    "romanian_deadlift": "Romanian Deadlift",
+    "leg_press": "Leg Press",
+    "leg_curl": "Leg Curl",
+    "bulgarian_split_squat": "Bulgarian Split Squat",
+    "standing_calf_raise": "Standing Calf Raise",
+    "hanging_leg_raise": "Hanging Leg Raise",
+    "plank": "Plank",
+    "cable_fly": "Cable Fly",
+    "dips": "Dips",
+    "face_pull": "Face Pull",
+    "hammer_curl": "Hammer Curl",
+    "hip_thrust": "Hip Thrust",
+    "cable_crunch": "Cable Crunch",
+    "hiit_intervals": "HIIT Intervals",
+    "zone2_run": "Zone 2 Run"
+  }
+}

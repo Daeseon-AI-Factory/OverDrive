@@ -1,0 +1,184 @@
+{
+  "tabs": {
+    "today": "Hoy",
+    "power": "Poder",
+    "history": "Historial",
+    "settings": "Ajustes"
+  },
+  "today": {
+    "combatPowerLabel": "PODER DE COMBATE",
+    "restDayHint": "Día de descanso 💤 — ¿igual quieres registrar? Toca una zona del cuerpo.",
+    "cardioSheetTitle": "Cardio / Acondicionamiento"
+  },
+  "power": {
+    "disclaimer": "Fórmula original por diversión · no es una métrica científica",
+    "section": {
+      "breakdown": "Desglose",
+      "verified": "Datos verificados"
+    },
+    "empty": "Aún no hay datos. Registra una serie en la pestaña Hoy y aparecerá tu Poder de Combate.",
+    "verifiedExplainer": "Verificado {pct}% — los datos del reloj/importados/sensores suman un bonus al Poder de Combate. En la Fase 1 todo es autorreportado, así que el bonus es 0. (Los datos autorreportados nunca se penalizan.)"
+  },
+  "history": {
+    "title": "Historial",
+    "empty": "Aún no hay registros. Registra tu primera serie en la pestaña Hoy.",
+    "repsOnly": "{reps} reps",
+    "weightTimesReps": "{weight}kg × {reps}",
+    "rirSuffix": " · RIR {rir}",
+    "prBadge": "PR ⚡"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "juice": {
+      "section": "Intensidad de JUICE",
+      "full": "Total",
+      "mid": "Media",
+      "minimal": "Mínima",
+      "explainer": "Mínima desactiva los efectos en pantalla y deja solo la vibración (modo gimnasio silencioso). No afecta a la velocidad de registro."
+    },
+    "sound": {
+      "section": "Sonido",
+      "label": "Efectos / gritos"
+    },
+    "weightStep": {
+      "section": "Incremento de peso",
+      "pill": "{step}kg",
+      "explainer": "Cuánto cambian el peso los botones +/- en cada toque dentro del registro de series."
+    },
+    "footer": "OVERDRIVE · MVP local de la Fase 1. El Poder de Combate es una fórmula original por diversión."
+  },
+  "boot": {
+    "brand": "OVERDRIVE"
+  },
+  "character": {
+    "toggle": {
+      "front": "Frente",
+      "back": "Espalda"
+    },
+    "cardioChip": "🏃 Cardio / Acondicionamiento",
+    "hint": "Toca una zona del cuerpo para elegir un ejercicio. A medida que sube tu Poder de Combate, el aura se vuelve más fuerte."
+  },
+  "region": {
+    "chest": "Pecho",
+    "shoulders": "Hombros",
+    "back": "Espalda",
+    "arms": "Brazos",
+    "core": "Core",
+    "legs": "Piernas"
+  },
+  "grade": {
+    "ordinary": "Común",
+    "rookie": "Novato",
+    "fighter": "Luchador",
+    "warrior": "Guerrero",
+    "beast": "Bestia",
+    "monster": "Monstruo",
+    "ascendant": "Ascendido"
+  },
+  "logger": {
+    "lastSet": "Última: {set}",
+    "lastSetWeight": "{weight}kg × ",
+    "lastSetRir": " (RIR {rir})",
+    "firstSet": "¡Primera serie!",
+    "sessionSetCount": "   ·   {count} series en esta sesión ✓",
+    "field": {
+      "weight": "Peso",
+      "repsOrTime": "Reps / seg",
+      "reps": "Reps",
+      "weightUnit": "kg"
+    },
+    "rirLabel": "RIR (opcional)",
+    "rirMaxPill": "4+",
+    "repeatLast": "Repetir última serie ⚡",
+    "logSet": "Registrar ⚡",
+    "close": "Cerrar",
+    "exerciseMeta": {
+      "bodyweightPrefix": "Peso corporal · ",
+      "repRange": "{low}–{high} reps"
+    },
+    "exerciseListEmpty": "Sin ejercicios."
+  },
+  "stepper": {
+    "minus": "−",
+    "plus": "+"
+  },
+  "juice": {
+    "callout": {
+      "overdrive": "¡SOBREMARCHA!",
+      "redline": "¡AL LÍMITE!",
+      "maxPower": "¡PODER MÁXIMO!"
+    },
+    "tier3": {
+      "label": "SOBREMARCHA"
+    }
+  },
+  "program": {
+    "upperA": {
+      "title": "Superior A",
+      "focus": "Enfoque press de banca + dominadas"
+    },
+    "lowerA": {
+      "title": "Inferior A",
+      "focus": "Enfoque sentadilla"
+    },
+    "intervals": {
+      "title": "Intervalos",
+      "focus": "Acondicionamiento HIIT"
+    },
+    "upperB": {
+      "title": "Superior B",
+      "focus": "Enfoque press militar + remo"
+    },
+    "lowerB": {
+      "title": "Inferior B",
+      "focus": "Enfoque peso muerto"
+    },
+    "intervalsZone2": {
+      "title": "Intervalos / Zona 2",
+      "focus": "Cardio"
+    },
+    "rest": {
+      "title": "Descanso",
+      "focus": "Recuperación — proteína/sueño"
+    }
+  },
+  "cp": {
+    "component": {
+      "strengthVolume": "Volumen de fuerza",
+      "sessions": "Sesiones semanales",
+      "conditioning": "Acondicionamiento",
+      "streak": "Racha",
+      "discipline": "Disciplina (proteína/descanso)",
+      "recomp": "Recomposición",
+      "fitnessMarkers": "Marcadores de forma física"
+    }
+  },
+  "exercise": {
+    "barbell_bench_press": "Press de banca con barra",
+    "incline_db_press": "Press inclinado con mancuernas",
+    "overhead_press": "Press militar",
+    "lateral_raise": "Elevaciones laterales",
+    "pull_up": "Dominada",
+    "barbell_row": "Remo con barra",
+    "lat_pulldown": "Jalón al pecho",
+    "db_curl": "Curl con mancuernas",
+    "triceps_pushdown": "Extensión de tríceps en polea",
+    "barbell_back_squat": "Sentadilla trasera con barra",
+    "deadlift": "Peso muerto",
+    "romanian_deadlift": "Peso muerto rumano",
+    "leg_press": "Prensa de piernas",
+    "leg_curl": "Curl femoral",
+    "bulgarian_split_squat": "Sentadilla búlgara",
+    "standing_calf_raise": "Elevación de gemelos de pie",
+    "hanging_leg_raise": "Elevación de piernas colgado",
+    "plank": "Plancha",
+    "cable_fly": "Aperturas en polea",
+    "dips": "Fondos",
+    "face_pull": "Face pull",
+    "hammer_curl": "Curl martillo",
+    "hip_thrust": "Empuje de cadera",
+    "cable_crunch": "Crunch en polea",
+    "hiit_intervals": "Intervalos HIIT",
+    "zone2_run": "Carrera Zona 2"
+  }
+}

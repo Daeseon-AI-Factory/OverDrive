@@ -1,0 +1,184 @@
+{
+  "tabs": {
+    "today": "今日",
+    "power": "战力",
+    "history": "记录",
+    "settings": "设置"
+  },
+  "today": {
+    "combatPowerLabel": "战斗力",
+    "restDayHint": "休息日 💤 — 还想记录？点选一个身体部位。",
+    "cardioSheetTitle": "有氧 / 体能"
+  },
+  "power": {
+    "disclaimer": "趣味原创算法 · 非科学指标",
+    "section": {
+      "breakdown": "明细",
+      "verified": "已验证数据"
+    },
+    "empty": "暂无数据。在「今日」记录一组，战斗力随即显现。",
+    "verifiedExplainer": "已验证 {pct}% — 手表/导入/传感器数据会为战斗力加成。Phase 1 全部为自填数据，故加成为 0。（自填数据绝不扣分。）"
+  },
+  "history": {
+    "title": "记录",
+    "empty": "暂无记录。在「今日」记录你的第一组。",
+    "repsOnly": "{reps} 次",
+    "weightTimesReps": "{weight}kg × {reps}",
+    "rirSuffix": " · RIR {rir}",
+    "prBadge": "PR ⚡"
+  },
+  "settings": {
+    "title": "设置",
+    "juice": {
+      "section": "JUICE 强度",
+      "full": "全开",
+      "mid": "中等",
+      "minimal": "极简",
+      "explainer": "极简模式关闭屏幕特效，仅保留震动（静音健身房模式）。不影响记录速度。"
+    },
+    "sound": {
+      "section": "音效",
+      "label": "音效 / 喊话"
+    },
+    "weightStep": {
+      "section": "重量增量",
+      "pill": "{step}kg",
+      "explainer": "记录组数时，每点一次 +/- 按钮改变的重量值。"
+    },
+    "footer": "OVERDRIVE · Phase 1 本地 MVP。战斗力为趣味原创算法。"
+  },
+  "boot": {
+    "brand": "OVERDRIVE"
+  },
+  "character": {
+    "toggle": {
+      "front": "正面",
+      "back": "背面"
+    },
+    "cardioChip": "🏃 有氧 / 体能",
+    "hint": "点选身体部位选择动作。战斗力越高，气场越强。"
+  },
+  "region": {
+    "chest": "胸",
+    "shoulders": "肩",
+    "back": "背",
+    "arms": "手臂",
+    "core": "核心",
+    "legs": "腿"
+  },
+  "grade": {
+    "ordinary": "凡人",
+    "rookie": "新秀",
+    "fighter": "斗者",
+    "warrior": "战士",
+    "beast": "猛兽",
+    "monster": "魔神",
+    "ascendant": "超凡"
+  },
+  "logger": {
+    "lastSet": "上一组：{set}",
+    "lastSetWeight": "{weight}kg × ",
+    "lastSetRir": "（RIR {rir}）",
+    "firstSet": "第一组！",
+    "sessionSetCount": "   ·   本次已完成 {count} 组 ✓",
+    "field": {
+      "weight": "重量",
+      "repsOrTime": "次数 / 秒",
+      "reps": "次数",
+      "weightUnit": "kg"
+    },
+    "rirLabel": "RIR（可选）",
+    "rirMaxPill": "4+",
+    "repeatLast": "重复上一组 ⚡",
+    "logSet": "记录 ⚡",
+    "close": "关闭",
+    "exerciseMeta": {
+      "bodyweightPrefix": "自重 · ",
+      "repRange": "{low}–{high} 次"
+    },
+    "exerciseListEmpty": "暂无动作。"
+  },
+  "stepper": {
+    "minus": "−",
+    "plus": "+"
+  },
+  "juice": {
+    "callout": {
+      "overdrive": "超载爆发！",
+      "redline": "突破红线！",
+      "maxPower": "全力满输出！"
+    },
+    "tier3": {
+      "label": "超载爆发"
+    }
+  },
+  "program": {
+    "upperA": {
+      "title": "上肢 A",
+      "focus": "卧推 + 引体主练"
+    },
+    "lowerA": {
+      "title": "下肢 A",
+      "focus": "深蹲主练"
+    },
+    "intervals": {
+      "title": "间歇",
+      "focus": "HIIT 体能"
+    },
+    "upperB": {
+      "title": "上肢 B",
+      "focus": "推举 + 划船主练"
+    },
+    "lowerB": {
+      "title": "下肢 B",
+      "focus": "硬拉主练"
+    },
+    "intervalsZone2": {
+      "title": "间歇 / Zone 2",
+      "focus": "有氧"
+    },
+    "rest": {
+      "title": "休息",
+      "focus": "恢复 — 蛋白/睡眠"
+    }
+  },
+  "cp": {
+    "component": {
+      "strengthVolume": "力量训练量",
+      "sessions": "每周训练次数",
+      "conditioning": "体能",
+      "streak": "连续天数",
+      "discipline": "自律（蛋白/休息）",
+      "recomp": "体态重塑",
+      "fitnessMarkers": "体能指标"
+    }
+  },
+  "exercise": {
+    "barbell_bench_press": "杠铃卧推",
+    "incline_db_press": "上斜哑铃推举",
+    "overhead_press": "站姿推举",
+    "lateral_raise": "侧平举",
+    "pull_up": "引体向上",
+    "barbell_row": "杠铃划船",
+    "lat_pulldown": "高位下拉",
+    "db_curl": "哑铃弯举",
+    "triceps_pushdown": "三头下压",
+    "barbell_back_squat": "杠铃深蹲",
+    "deadlift": "硬拉",
+    "romanian_deadlift": "罗马尼亚硬拉",
+    "leg_press": "腿举",
+    "leg_curl": "腿弯举",
+    "bulgarian_split_squat": "保加利亚分腿蹲",
+    "standing_calf_raise": "站姿提踵",
+    "hanging_leg_raise": "悬垂举腿",
+    "plank": "平板支撑",
+    "cable_fly": "绳索夹胸",
+    "dips": "双杠臂屈伸",
+    "face_pull": "面拉",
+    "hammer_curl": "锤式弯举",
+    "hip_thrust": "臀冲",
+    "cable_crunch": "绳索卷腹",
+    "hiit_intervals": "HIIT 间歇",
+    "zone2_run": "Zone 2 慢跑"
+  }
+}

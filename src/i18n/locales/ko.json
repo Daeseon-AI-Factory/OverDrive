@@ -1,0 +1,184 @@
+{
+  "tabs": {
+    "today": "오늘",
+    "power": "전투력",
+    "history": "기록",
+    "settings": "설정"
+  },
+  "today": {
+    "combatPowerLabel": "전투력",
+    "restDayHint": "오늘은 휴식 💤 — 그래도 기록하고 싶으면 부위를 터치해.",
+    "cardioSheetTitle": "유산소 / 컨디셔닝"
+  },
+  "power": {
+    "disclaimer": "재미용 자체 산식 · 과학적 지표 아님",
+    "section": {
+      "breakdown": "구성 (breakdown)",
+      "verified": "검증 데이터"
+    },
+    "empty": "아직 데이터가 없어. 오늘 탭에서 세트를 기록하면 전투력이 나타난다.",
+    "verifiedExplainer": "검증 비율 {pct}% — 워치/임포트/센서 데이터는 전투력에 가중(보너스)된다. Phase 1은 전부 자기보고라 보너스 0. (자기보고도 절대 깎이지 않음.)"
+  },
+  "history": {
+    "title": "기록",
+    "empty": "아직 기록이 없어. 오늘 탭에서 첫 세트를 남겨봐.",
+    "repsOnly": "{reps}회",
+    "weightTimesReps": "{weight}kg × {reps}",
+    "rirSuffix": " · RIR {rir}",
+    "prBadge": "PR ⚡"
+  },
+  "settings": {
+    "title": "설정",
+    "juice": {
+      "section": "JUICE 강도",
+      "full": "풀",
+      "mid": "중",
+      "minimal": "미니멀",
+      "explainer": "미니멀은 화면 연출을 끄고 햅틱만 남긴다(헬스장 무음용). 로깅 속도엔 영향 없음."
+    },
+    "sound": {
+      "section": "사운드",
+      "label": "효과음 / 콜아웃"
+    },
+    "weightStep": {
+      "section": "무게 증가폭",
+      "pill": "{step}kg",
+      "explainer": "세트 기록에서 +/- 버튼이 한 번에 바꾸는 무게."
+    },
+    "footer": "OVERDRIVE · Phase 1 로컬 MVP. 전투력은 재미용 자체 산식이다."
+  },
+  "boot": {
+    "brand": "OVERDRIVE"
+  },
+  "character": {
+    "toggle": {
+      "front": "앞",
+      "back": "뒤"
+    },
+    "cardioChip": "🏃 유산소 / 컨디셔닝",
+    "hint": "부위를 터치해서 운동을 골라. 전투력이 오르면 오라가 강해진다."
+  },
+  "region": {
+    "chest": "가슴",
+    "shoulders": "어깨",
+    "back": "등",
+    "arms": "팔",
+    "core": "코어",
+    "legs": "하체"
+  },
+  "grade": {
+    "ordinary": "일반인",
+    "rookie": "루키",
+    "fighter": "파이터",
+    "warrior": "워리어",
+    "beast": "비스트",
+    "monster": "괴수",
+    "ascendant": "초월자"
+  },
+  "logger": {
+    "lastSet": "지난: {set}",
+    "lastSetWeight": "{weight}kg × ",
+    "lastSetRir": " (RIR {rir})",
+    "firstSet": "첫 세트!",
+    "sessionSetCount": "   ·   이번 세션 {count}세트 ✓",
+    "field": {
+      "weight": "무게",
+      "repsOrTime": "횟수 / 초",
+      "reps": "횟수",
+      "weightUnit": "kg"
+    },
+    "rirLabel": "RIR (선택)",
+    "rirMaxPill": "4+",
+    "repeatLast": "지난 세트 반복 ⚡",
+    "logSet": "기록 ⚡",
+    "close": "닫기",
+    "exerciseMeta": {
+      "bodyweightPrefix": "맨몸 · ",
+      "repRange": "{low}–{high}회"
+    },
+    "exerciseListEmpty": "운동이 없어."
+  },
+  "stepper": {
+    "minus": "−",
+    "plus": "+"
+  },
+  "juice": {
+    "callout": {
+      "overdrive": "OVERDRIVE!",
+      "redline": "REDLINE!",
+      "maxPower": "MAX POWER!"
+    },
+    "tier3": {
+      "label": "OVERDRIVE"
+    }
+  },
+  "program": {
+    "upperA": {
+      "title": "상체 A",
+      "focus": "벤치 + 풀업 중심"
+    },
+    "lowerA": {
+      "title": "하체 A",
+      "focus": "스쿼트 중심"
+    },
+    "intervals": {
+      "title": "인터벌",
+      "focus": "HIIT 컨디셔닝"
+    },
+    "upperB": {
+      "title": "상체 B",
+      "focus": "오버헤드 + 로우 중심"
+    },
+    "lowerB": {
+      "title": "하체 B",
+      "focus": "데드리프트 중심"
+    },
+    "intervalsZone2": {
+      "title": "인터벌 / Zone 2",
+      "focus": "유산소"
+    },
+    "rest": {
+      "title": "휴식",
+      "focus": "회복 — 단백질/수면"
+    }
+  },
+  "cp": {
+    "component": {
+      "strengthVolume": "근력 볼륨",
+      "sessions": "주간 세션",
+      "conditioning": "컨디셔닝",
+      "streak": "연속",
+      "discipline": "규율(단백질/휴식)",
+      "recomp": "리컴프",
+      "fitnessMarkers": "체력 마커"
+    }
+  },
+  "exercise": {
+    "barbell_bench_press": "바벨 벤치프레스",
+    "incline_db_press": "인클라인 덤벨 프레스",
+    "overhead_press": "오버헤드 프레스",
+    "lateral_raise": "사이드 레터럴 레이즈",
+    "pull_up": "풀업",
+    "barbell_row": "바벨 로우",
+    "lat_pulldown": "랫 풀다운",
+    "db_curl": "덤벨 컬",
+    "triceps_pushdown": "트라이셉 푸시다운",
+    "barbell_back_squat": "바벨 백스쿼트",
+    "deadlift": "데드리프트",
+    "romanian_deadlift": "루마니안 데드리프트",
+    "leg_press": "레그 프레스",
+    "leg_curl": "레그 컬",
+    "bulgarian_split_squat": "불가리안 스플릿 스쿼트",
+    "standing_calf_raise": "스탠딩 카프 레이즈",
+    "hanging_leg_raise": "행잉 레그 레이즈",
+    "plank": "플랭크",
+    "cable_fly": "케이블 플라이",
+    "dips": "딥스",
+    "face_pull": "페이스 풀",
+    "hammer_curl": "해머 컬",
+    "hip_thrust": "힙 쓰러스트",
+    "cable_crunch": "케이블 크런치",
+    "hiit_intervals": "HIIT 인터벌",
+    "zone2_run": "Zone 2 러닝"
+  }
+}
