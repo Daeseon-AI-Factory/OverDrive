@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
@@ -10,6 +10,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { colors, displayFamily, fontSize, numberFamily } from '../../ui/theme/tokens';
 import type { Burst } from './JuiceProvider';
+import { makeEnergyPopEffect, makeOverdriveBurstEffect } from './shaders';
+import { SkiaBurst } from './SkiaBurst';
 import { calloutAt, TIER_COLOR, TIER_LABEL } from './tierConfig';
 
 /**
@@ -30,6 +32,11 @@ function JuiceBurst({ burst, onDone }: { burst: Burst; onDone: () => void }) {
   const showCallout = verdict.tier >= 3;
   const label = verdict.tier === 4 ? calloutAt(id) : TIER_LABEL[verdict.tier];
   const numText = `+${Math.max(0, Math.round(verdict.deltaCp))}`;
+  // GPU shader: overdriveBurst (T3/T4) or energyPop (T1/T2). null if SkSL compile fails → text-only.
+  const effect = useMemo(
+    () => (verdict.tier >= 3 ? makeOverdriveBurstEffect() : makeEnergyPopEffect()),
+    [verdict.tier],
+  );
 
   useEffect(() => {
     p.value = 0;
@@ -41,7 +48,7 @@ function JuiceBurst({ burst, onDone }: { burst: Burst; onDone: () => void }) {
   }, []);
 
   const flash = useAnimatedStyle(() => ({
-    opacity: interpolate(p.value, [0, 0.07, 1], [0, 0.55 * intensity, 0]),
+    opacity: interpolate(p.value, [0, 0.07, 1], [0, 0.3 * intensity, 0]),
   }));
 
   const floatWrap = useAnimatedStyle(() => ({
@@ -71,6 +78,7 @@ function JuiceBurst({ burst, onDone }: { burst: Burst; onDone: () => void }) {
   return (
     <View pointerEvents="none" style={styles.fill}>
       <Animated.View style={[styles.fill, { backgroundColor: color }, flash]} />
+      {effect ? <SkiaBurst effect={effect} progress={p} intensity={intensity} color={color} /> : null}
 
       {showCallout && label ? (
         <View style={styles.calloutWrap}>
