@@ -1,0 +1,35 @@
+---
+title: "GPU 파티클 폭발 (Skia/SkSL) 배선 — 에셋 없이 코드로"
+date: "2026-06-02"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "빌더 '너무 약하고 반듯하다, 전문 그래픽 없으니 어쩔 수 없나'에 대한 답: 아니다. v0(Reanimated 텍스트)에서 진짜 GPU 레이어(Skia SkSL)를 켜서 절차적 파티클 폭발 + 난류를 배선. 폭발은 전부 GPU 수학 — 디자이너 에셋 0개(§6.4)."
+tags: ["phase-1", "juice", "skia", "sksl", "graphics"]
+---
+
+## 왜
+
+빌더가 기기에서 보고 "너무 약하고 반듯하다 — 전문 그래픽 없으니 어쩔 수 없나." 오해를 바로잡고 진짜 엔진을 켤 타이밍. 그동안 보인 건 의도된 v0(Reanimated로 글자만 움직임). "반듯함"은 파티클·난류·왜곡 부재지 한계가 아님. **절차적 셰이더는 에셋이 아니라 수학** — ShaderToy처럼 PNG 한 장 없이 폭발을 만든다(§6.4 "병목은 에셋이 아니라 셰이더").
+
+## 한 일
+
+- `SkiaBurst`: 전역 `<Canvas>` + `<Fill><Shader>` 로 SkSL `RuntimeEffect` 실행. uniform(uProgress/uTime/uIntensity/uResolution/uColor)을 burst progress(Reanimated shared value)로 `useDerivedValue` 구동. 컴파일 실패 시 null → 텍스트-온리 폴백.
+- `overdriveBurst.sksl`(T3/T4): 쇼크웨이브 링 + **48개 방사형 파티클 스파크**(per-particle `hash21`로 각도/속도 랜덤 = organic) + 난류 haze + 핫코어 + 크로마틱.
+- `energyPop.sksl`(T1/T2): 코어 글로우 + 링 + 18개 라이트 스파크.
+- `JuiceOverlay`: 셰이더 레이어(글자 뒤) + 플래시 축소(셰이더가 주인공) + 키네틱 텍스트(크로마틱 분열, 앞).
+- 티어로 셰이더 선택(≥3 overdriveBurst / 그외 energyPop), `useMemo`로 1회 컴파일.
+
+## 검증 (실측)
+
+- `tsc --noEmit` clean · `expo lint` clean.
+- 라이브 Metro 핫리로드 반영, **런타임 에러 0, SkSL compile-fail 0** (셰이더 GPU 컴파일 성공).
+- 커밋 `99adbdc`. 빌더 기기에서 약빨 체감 → 강도/파티클 수/추가 이펙트 이터레이션.
+
+## 다음 (천장은 한참 위)
+
+- 강도 튜닝(파티클 48→수백, 블룸, 화면 왜곡/렌즈플레어, 스피드라인 멀티패스).
+- **오디오**(펀치 SFX·베이스 드롭·콜아웃 VO·앰비언트) + 햅틱 점증.
+- CharacterAura/Forge 챔버도 같은 SkSL로 앰비언트 에너지.
+- 저사양 안드로이드 프로파일 → 'mid' intensity 자동 degrade.
