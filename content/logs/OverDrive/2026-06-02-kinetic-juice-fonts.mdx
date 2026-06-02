@@ -1,0 +1,35 @@
+---
+title: "키네틱 타이포 폭발 + 디스플레이 폰트 + 스크린 셰이크 (+ i18n 보간 버그 픽스)"
+date: "2026-06-02"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "빌더 피드백 '글자도 터지고 존나 폭발해야지'에 대응. 시스템폰트→Anton/Orbitron, '+N'/콜아웃이 펀치+크로마틱 RGB 분열+글로우로 터지고, 화면 전체 스크린 셰이크. 그리고 스크린샷에서 발견된 i18n 보간 버그(literal {count}) 픽스."
+tags: ["phase-1", "juice", "typography", "fonts", "i18n"]
+---
+
+## 왜
+
+빌더가 기기에서 보고: "텍스트 구리다. 뭔가 터질 때 글자도 터지고 존나 씨발 폭발하는 느낌이어야지." v0(밍밍한 플래시+페이드)로는 §6.4("그래픽 히어로, 한계까지") 미달. 기기 켜놓고 핫리로드로 즉시 반영하며 폭발시킴.
+
+## 같이 잡은 버그 (스크린샷)
+
+FORGE COMPLETE 요약이 `{count}세트`, `볼륨 {vol}`, `전투력 +{delta}` 처럼 **플레이스홀더가 글자 그대로** 나옴. 원인: 카탈로그는 `{단일괄호}`인데 i18next 기본 보간은 `{{이중괄호}}` → 치환 실패, 원문 반환. tsc/jest/번들 다 통과(런타임 템플릿 미스매치). 픽스: `interpolation: { prefix:'{', suffix:'}' }` 한 줄 → 전 플레이스홀더 일괄 해결. (troubleshooting.md)
+
+## 폭발 패스 (전부 UI 스레드, 로깅 비차단)
+
+- **폰트**: `@expo-google-fonts` Anton(콜아웃/타이틀, condensed black) + Orbitron(숫자/전투력, techy digits). Boot에서 로드 + 스플래시로 게이트. monoFamily → numberFamily/displayFamily 전면 교체.
+- **키네틱 타이포**: '+N'과 콜아웃이 — 펀치 스케일(오버슛 0.2→1+intensity→정착) + **크로마틱 RGB 분열**(cyan/magenta 레이어가 펀치 순간 양옆으로 벌어졌다 스냅백) + 글로우 + 살짝 회전. 강도는 `intensity01`(티어/노력) 비례.
+- **스크린 셰이크**: `JuiceProvider`가 children 전체를 Animated.View로 감싸 tier≥2에서 화면을 흔듦(withSequence 진동, 강도 비례). 들어올 때 화면이 진짜 들썩.
+- 등급/전투력/요약 숫자도 새 폰트로 → 전체 톤이 "전투력 게임" 답게.
+
+## 검증
+
+- `tsc --noEmit` clean · `expo lint` clean · `expo export` 번들 성공. 라이브 Metro 핫리로드로 기기 즉시 반영.
+- 커밋 `e50abc0`. lint이 또 신규 React Compiler 룰(`react-hooks/immutability`)로 Reanimated `shakeX.value=` 변형을 오탐 → Reanimated 표준 패턴이라 해당 줄만 사유 달고 비활성.
+- "약빨" 체감은 빌더 검증 — 강도/타이밍/셰이크 진폭은 기기 튜닝 대상.
+
+## 다음
+
+- 빌더 피드백(밍밍/딱좋음/과함)으로 강도 튜닝 → 그 다음 진짜 GPU: **SkSL 파티클 폭발 + 에너지 오라** (JuiceOverlay/CharacterAura/Forge 챔버) + 오디오(펀치 SFX·콜아웃 VO·앰비언트).

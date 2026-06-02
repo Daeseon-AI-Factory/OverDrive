@@ -139,3 +139,11 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 
 <!-- skipped: 6a2c81e docs(log): note hook keyword false-positive + override (2176fd4) [no-log] -->
 <!-- skipped: c6715fc docs(log): record THE FORGE session ritual (901d481) [no-log] -->
+
+## i18n interpolation renders literal {placeholders} (single vs double braces)
+
+- **Symptom**: on-device, the FORGE COMPLETE summary showed the placeholder names literally instead of values (screenshot): `{count}세트`, `볼륨 {vol}`, `전투력 +{delta}`, `{days}일 연속`. Same for every interpolated string.
+- **Cause**: the translation catalogs use SINGLE-brace placeholders (`{count}`), but i18next's default interpolation delimiters are DOUBLE braces (`{{count}}`). With single braces, i18next finds no placeholders and returns the raw string verbatim. (tsc/jest/bundle all pass — it's a runtime templating mismatch.)
+- **Fix**: configured the i18next delimiters to single braces in `src/i18n/index.ts`: `interpolation: { escapeValue: false, prefix: '{', suffix: '}' }`. Fixes every placeholder at once without editing the 4 catalogs.
+- **Commit**: e50abc0
+- **Pattern**: When hand-authoring i18next catalogs with `{single}` placeholders, set `interpolation.prefix/suffix` to match — or author `{{double}}`. A wrong delimiter fails silently (literal text), not loudly.
