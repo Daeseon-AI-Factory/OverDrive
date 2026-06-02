@@ -37,7 +37,8 @@
       ],
       "expo-sqlite",
       "expo-audio",
-      "expo-font"
+      "expo-font",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,
