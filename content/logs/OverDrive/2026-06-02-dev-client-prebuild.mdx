@@ -1,0 +1,30 @@
+---
+title: "dev client 빌드 성공 + prebuild 설정 (RECORD_AUDIO 과권한 플래그)"
+date: "2026-06-02"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "빌더가 npx expo run:ios로 dev client를 빌드해 시뮬레이터에 앱이 떴다(Phase 1 Accept '오프라인 로드' 통과). prebuild가 ios/ 생성 + app.json(bundleId/오디오권한)·package.json(run 스크립트) 수정. expo-audio가 RECORD_AUDIO를 자동 추가 — 우린 재생만이라 출시 전 제거 필요."
+tags: ["phase-1", "build", "prebuild", "compliance"]
+---
+
+## 무엇
+
+빌더가 `npx expo run:ios` 실행 → **시뮬레이터에 OVERDRIVE 앱이 뜸.** 내가 헤드리스로 한 검증(tsc·jest·lint·expo-doctor·expo export 1589모듈 번들)이 실제 빌드/로드로 확인된 셈. CNG(continuous native generation)라 `ios/`·`android/`는 .gitignore(prebuild로 재생성).
+
+prebuild 자동 수정(커밋 `71b56bd`):
+- `app.json`: `ios.bundleIdentifier = com.anonymous.overdrive`, Android 권한 추가.
+- `package.json`: `ios`/`android` 스크립트가 `expo run:*`로 갱신.
+
+## FLAG: RECORD_AUDIO 과권한
+
+`expo-audio` config 플러그인이 **`RECORD_AUDIO`(마이크) + MODIFY_AUDIO_SETTINGS + FOREGROUND_SERVICE\***를 자동으로 박았다. 그런데 OVERDRIVE는 **사운드 재생만(콜아웃/SFX), 녹음 안 함.** 마이크 권한은:
+- 최소권한 원칙 위반(docs/compliance/health-data.md에 적은 그 원칙).
+- 스토어 심사/유저 신뢰에 불리.
+
+→ **출시 전 expo-audio 플러그인 설정으로 RECORD_AUDIO 제거**(plugin 옵션 또는 app.json android.permissions 화이트리스트). dev 도그푸딩 단계엔 무해라 지금은 플래그만.
+
+## 다음
+
+- UX 대개편: 빌더 피드백 — 수동 입력 경멸, "내 캐릭터 몸 터치 → 부위별 운동 선택"(코어스하게). 바디맵 picker + 저마찰 로거로 오늘 탭 재설계 착수.
