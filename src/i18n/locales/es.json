@@ -188,5 +188,20 @@
     "cable_crunch": "Crunch en polea",
     "hiit_intervals": "Intervalos HIIT",
     "zone2_run": "Carrera Zona 2"
+  },
+  "forge": {
+    "enter": "ENTRAR A LA FRAGUA",
+    "active": "EN LA FRAGUA",
+    "finish": "TERMINAR",
+    "complete": "FRAGUA COMPLETA",
+    "tapToContinue": "toca para continuar",
+    "subtitle": "Cámara de entrenamiento de hoy",
+    "hint": "Entra a la fragua para empezar.",
+    "summary": {
+      "sets": "{count} series",
+      "volume": "Volumen {vol}",
+      "cpGained": "Poder +{delta}",
+      "streak": "racha de {days} días 🔥"
+    }
   }
 }

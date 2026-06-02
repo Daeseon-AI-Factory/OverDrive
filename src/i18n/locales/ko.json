@@ -188,5 +188,20 @@
     "cable_crunch": "케이블 크런치",
     "hiit_intervals": "HIIT 인터벌",
     "zone2_run": "Zone 2 러닝"
+  },
+  "forge": {
+    "enter": "용광로 진입",
+    "active": "용광로 안",
+    "finish": "수련 완료",
+    "complete": "수련 완료",
+    "tapToContinue": "탭하여 계속",
+    "subtitle": "오늘의 수련장",
+    "hint": "용광로에 진입해서 수련을 시작해.",
+    "summary": {
+      "sets": "{count}세트",
+      "volume": "볼륨 {vol}",
+      "cpGained": "전투력 +{delta}",
+      "streak": "{days}일 연속 🔥"
+    }
   }
 }

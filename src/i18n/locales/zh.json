@@ -188,5 +188,20 @@
     "cable_crunch": "绳索卷腹",
     "hiit_intervals": "HIIT 间歇",
     "zone2_run": "Zone 2 慢跑"
+  },
+  "forge": {
+    "enter": "进入熔炉",
+    "active": "熔炉中",
+    "finish": "完成训练",
+    "complete": "熔炼完成",
+    "tapToContinue": "点击继续",
+    "subtitle": "今日修炼室",
+    "hint": "进入熔炉开始训练。",
+    "summary": {
+      "sets": "{count} 组",
+      "volume": "训练量 {vol}",
+      "cpGained": "战力 +{delta}",
+      "streak": "连续 {days} 天 🔥"
+    }
   }
 }

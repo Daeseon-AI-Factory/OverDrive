@@ -188,5 +188,20 @@
     "cable_crunch": "Cable Crunch",
     "hiit_intervals": "HIIT Intervals",
     "zone2_run": "Zone 2 Run"
+  },
+  "forge": {
+    "enter": "ENTER THE FORGE",
+    "active": "IN THE FORGE",
+    "finish": "FINISH",
+    "complete": "FORGE COMPLETE",
+    "tapToContinue": "tap to continue",
+    "subtitle": "Today’s training chamber",
+    "hint": "Enter the forge to start training.",
+    "summary": {
+      "sets": "{count} sets",
+      "volume": "Volume {vol}",
+      "cpGained": "Combat Power +{delta}",
+      "streak": "{days}-day streak 🔥"
+    }
   }
 }

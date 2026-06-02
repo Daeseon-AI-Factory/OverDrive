@@ -4,6 +4,7 @@ import { recomputeAndStore } from '../../db/repos/combatPowerRepo';
 import { appendPowerEvent } from '../../db/repos/powerEventRepo';
 import { addSet } from '../../db/repos/setLogRepo';
 import type { LoggedVia } from '../../db/types';
+import { useSessionStore } from '../forge/sessionStore';
 import { useCombatPowerStore } from '../../stores/combatPowerStore';
 import { classifyEvent } from '../juice/classifyEvent';
 import { useJuice } from '../juice/JuiceProvider';
@@ -43,6 +44,7 @@ export function useLogSet() {
         rir: input.rir,
         loggedVia: input.loggedVia ?? 'manual',
       });
+      useSessionStore.getState().recordSet(input.weight * input.reps); // feeds the Forge session summary
 
       const result = await recomputeAndStore(db);
       useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
