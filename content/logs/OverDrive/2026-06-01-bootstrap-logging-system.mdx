@@ -1,0 +1,49 @@
+---
+title: "프로젝트 로깅 시스템 부트스트랩 (dual-write + Stop hook v3)"
+date: "2026-06-01"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "Phase 1 빌드 전에 dual-write 로깅 방법론을 깔고, 반쪽 설치였던 CLAUDE.md를 채워 Stop 훅을 실제로 작동 가능하게 만들었다."
+tags: ["phase-0", "logging", "tooling", "claude-code"]
+---
+
+## 왜
+
+OVERDRIVE를 무지성으로 빌드하지 않기로 했다. 세션은 사라지고, 왜 그 기술을 골랐는지·무슨 버그를 어떻게 고쳤는지 질의 가능한 기록이 안 남는다. 그래서 **첫 줄의 앱 코드를 쓰기 전에** dual-write 로깅 시스템부터 깔았다.
+
+- `docs/troubleshooting.md` — 문제 인덱스(Symptom·Cause·Fix·Commit·Pattern)
+- `content/logs/OverDrive/<date>-<slug>.mdx` — 날짜 인덱스 내러티브(이 파일)
+- `.claude/hooks/stop-check.sh` + `settings.json` — 세션 끝에 안 적으면 막는 Stop 훅(v3)
+- `CLAUDE.md` — 훅이 참조하는 규칙 + OVERDRIVE 사수 항목
+
+## 상태 (실측)
+
+repo를 스캔하니 부트스트랩이 절반만 돌아 있었다:
+
+```
+.claude/hooks/stop-check.sh   # v3, 실행 비트 OK, 6676 bytes
+.claude/settings.json         # Stop 훅 배선 완료 (timeout 10s)
+docs/troubleshooting.md       # 시드 템플릿
+content/logs/OverDrive/       # 빈 디렉토리
+CLAUDE.md                     # 없음 (MISSING)  ← 핵심 누락
+```
+
+의존성도 확인: `jq 1.8.1` 존재(훅의 block 단계에 필요), 훅 실행 비트 `-rwxr-xr-x`. 즉 훅은 작동 가능했지만, **참조 대상인 CLAUDE.md가 repo에 없어서 시스템이 반쪽**이었다 — 훅이 막으면서 "CLAUDE.md 규칙을 따르라"는데 그 파일이 없는 상태. (troubleshooting.md에 별도 엔트리로 기록.)
+
+## 한 일
+
+`CLAUDE.md`를 작성했다. 훅이 이름으로 가리키는 `"Project log (required, dual-write)"` 섹션에 dual-write 규칙·.mdx frontmatter 템플릿·7대 안티-할루시네이션 규칙·visibility 기본값·decision 티어(T1/T2)·워크플로를 담고, 그 아래에 OVERDRIVE 사수 항목(Phase 순서, TS strict, 키 서버사이드, 헬스 컴플라이언스, 오리지널 IP, JUICE는 로깅을 막지 않음, 전투력=재미용 라벨, 반수치심)을 박았다. 빈 logs 디렉토리엔 `.gitkeep`을 넣어 git이 추적하게 했다.
+
+스캐폴드 전체를 한 커밋으로 박제했다: **5 files, 287 insertions** (`2675f48`).
+
+## 검증
+
+- 이 엔트리 자체가 시스템의 첫 실전 가동이다 — 커밋 후 `git rev-parse HEAD`로 해시(`2675f48`)를 취득해 인용했고(규칙 4), 날짜는 `git log -1 --format=%cI` = `2026-06-01T22:16:40-04:00` 기준(규칙 5).
+- troubleshooting.md + 이 .mdx = dual-write 충족. 둘 다 `2675f48`을 인용하므로 Stop 훅의 해시-센티넬 통과 조건 만족.
+
+## 다음
+
+- 로깅 스캐폴드가 main에 올라갔으니, Phase 1(로컬 MVP) 빌드 시작 가능.
+- 후속: OVERDRIVE 전체 빌드 스펙을 `docs/overdrive-spec.md`로 버전관리에 박제할지 결정.
