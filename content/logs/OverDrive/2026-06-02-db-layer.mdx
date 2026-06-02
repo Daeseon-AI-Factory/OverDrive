@@ -1,0 +1,35 @@
+---
+title: "로컬 SQLite 데이터 레이어 — 스키마/마이그레이션/시드/repos/7일 집계"
+date: "2026-06-02"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "Phase 1 온디바이스 영속을 위한 expo-sqlite 7테이블 스키마(마이그레이션·20종 시드·6 repos·7일 전투력 집계)를 PG 포워드-호환 컨벤션으로 구현. 순수 streak 집계는 테스트, 나머지는 tsc clean(런타임은 dev client 빌드 검증)."
+tags: ["phase-1", "db", "sqlite", "data-layer"]
+---
+
+## 무엇
+
+Phase 1은 백엔드 없이 온디바이스 저장이라, 모든 데이터의 원본은 로컬 SQLite다. raw `expo-sqlite`(56.0.4)로 7테이블을 깔았다 — 소규모(7테이블)라 ORM(drizzle) 없이 raw가 더 가볍다(플랜 결정).
+
+- **테이블**: user · exercise · workout_session · set_log · cardio_log · combat_power · power_event. (BodyComp/FitnessTest=Phase 5, League/Friendship/AuraCard=Phase 3–4, Program=코드 상수, Streak=계산.)
+- **PG 포워드-호환 컨벤션**(Phase 2 마이그를 기계적으로): ISO-8601 UTC TEXT 타임스탬프, 모든 트랜잭션 행에 `client_uuid TEXT UNIQUE`(sync 키), `CHECK(... IN ...)` enum, JSON-in-TEXT(settings/breakdown), `is_pr` 0/1, `exercise.id`=slug(Phase 2 LLM 퍼지매칭 타깃).
+
+## 결정 / 함정
+
+- **마이그레이션**: `PRAGMA user_version` 증분. `DATABASE_VERSION` 상수 bump + `if(version===N)` 블록 추가, 출시된 마이그는 절대 수정 금지. `IF NOT EXISTS`/`INSERT OR IGNORE`로 재실행 안전. `.sql` import 대신 **인라인 템플릿 스트링**(metro/babel 설정 회피).
+- **함정 박제**: `PRAGMA foreign_keys`는 **연결마다** 재발행해야 한다(persist 안 됨 → 누락 시 CASCADE 침묵 실패). `journal_mode=WAL`은 1회 persist. → `migrateDbIfNeeded`가 매 open마다 FK ON, WAL은 version 0 블록에서 1회.
+- **로깅 핫패스의 유일한 await** = `setLogRepo.addSet`: 이전 베스트 조회 → `detectPr` → is_pr/score와 함께 insert. 반환된 isPr로 caller가 JUICE 티어를 T3로 격상. (JUICE는 이 await 이후 fire-and-forget.)
+- **7일 집계**(`combatPowerRepo.buildInput`): 근력볼륨(PR ×1.15)·세션수·컨디셔닝units·streak를 병렬 조회 → `CombatPowerInput`. Phase 1은 discipline=null(미추적→renorm), verifiedRatio=0(자기보고→보너스 0).
+
+## 검증 (실측)
+
+- `npx tsc --noEmit` → **clean** (전체).
+- `npx jest` → **39/39 PASS** (전투력 11 + JUICE 14 + PR 8 + streak 6). `computeStreak`는 월/년 경계·live streak(오늘 미운동 시 어제 앵커)·gap·중복까지 테스트.
+- 커밋 `13c48bb`.
+- **한계(정직)**: repo의 SQL 실행은 expo-sqlite=네이티브라 jest로 못 돈다. SQL은 작성+타입드+리뷰됐고, **런타임 정합성은 빌더의 dev client 빌드 시 스모크로 검증** 예정(오프라인 부팅→마이그→시드→로깅).
+
+## 다음
+
+- 기기 의존 레이어로 진입: 네온 테마/프리미티브 → **JUICE 렌더부**(JuiceProvider/JuiceOverlay + energyPop/overdriveBurst SkSL 셰이더) → 로깅 핫패스 배선 → 화면 4탭. 여기부턴 내가 코드를 짜도 **실제로 터지는 건 빌더가 빌드해야** 보임.
