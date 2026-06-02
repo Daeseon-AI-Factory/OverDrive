@@ -1,0 +1,48 @@
+---
+title: "전투력(Combat Power) v1 엔진 — 재미용 자체 산식, 11 단위테스트"
+date: "2026-06-01"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "스펙 §6.3 바스켓을 0–9999 bounded·monotonic·안티수치심 산식으로 구현하고, floor/clamp/saturation/renorm/breadth-gate/등급경계를 11개 property 테스트로 박았다. 빌드 없이 기기-독립으로 검증 가능한 코어부터."
+tags: ["phase-1", "combat-power", "domain-logic", "tests"]
+---
+
+## 왜 순서를 바꿔 이걸 먼저
+
+빌더 결정이 **"코드부터, 빌드는 나중에"** 였다. 화면/셰이더/네이티브(Skia·sqlite)는 dev client 빌드가 있어야 실행을 볼 수 있지만, **전투력 산식은 순수 함수라 jest로 지금 당장 검증**된다. 게다가 스펙 §10이 전투력 계산을 단위테스트 의무 대상으로 못박았다. 그래서 플랜의 빌드 순서(테마→DB→JUICE→전투력) 대신 **검증 가능한 순수 코어(전투력)를 선행**했다.
+
+## 산식 (플랜 §3 그대로)
+
+```
+basket01  = Σ_i ( w_i_eff · s_i )            // 활성 컴포넌트만 가중평균, ∈[0,1]
+trustMult = 1 + 0.15·clamp01(verifiedRatio)  // 항상 >= 1 (자기보고 무처벌)
+score     = clamp( round(9999 · basket01 · trustMult), 50, maxScore )
+```
+
+- 컴포넌트: 근력볼륨 `sat(v,15000)` · 세션 `ramp(n,5)` · 컨디셔닝 `sat(u,90)` · 연속 `sat(d,10)` · 규율 `(단백질/7+휴식/7)/2`. 리컴프·체력마커는 Phase 5라 **비활성**.
+- `sat(x,k)=1-e^(-x/k)` — 천장 없는 포화(추격감). `ramp`는 cap까지 선형.
+- 등급(오리지널): 일반인 0 / 루키 800 / 파이터 2000 / 워리어 3500 / 비스트 5000 / 괴수 6500 / 초월자 8200.
+
+## 설계 결정 3가지
+
+1. **graceful renorm.** 비활성 컴포넌트는 분모에서 빼고 활성 가중치를 1로 재정규화. → 미래(리컴프/마커) 데이터가 없다고 점수에 **숨은 천장**이 생기지 않는다. (테스트 #5: discipline null + 4컴포넌트만으로도 9999 도달 가능.)
+2. **anti-shame.** 빈 주 = floor 50(0 아님). `trustMult`는 절대 1 미만 X — 검증 데이터는 **보너스(+0~15%)** 일 뿐 자기보고를 깎지 않는다. 약한 하루도 빈 주보다 점수 높음.
+3. **breadth-gate (튜닝 다이얼).** 최상위 초월자(8200+)는 **검증/마커 breadth** 필요 → Phase 1 자기보고만으론 괴수(8199) 캡. 플랜이 "자기보고만으로 초월자 허용?"을 빌더 콜로 남겼기에, 기본 ON으로 구현하되 상수로 끌 수 있게 했다.
+
+## 검증 (실측)
+
+- `npx jest src/features/combat-power` → **11/11 PASS** (0.5s). floor·trustMult 정확값(1.0/1.075/1.15)·볼륨 monotonic+포화·renorm·top clamp·breadth-gate·등급경계 14개·정수/범위.
+- `npx tsc --noEmit` → **clean** (`types/jest.d.ts` reference directive 추가 후, troubleshooting.md 참조).
+- 커밋 `d3dd577` (`git log -1 --format=%cI` = `2026-06-01T23:38:30-04:00`).
+
+## 남은 것 (이 엔진의 UI/배선)
+
+- `useCombatPower` 훅 + `combatPowerStore`(오도미터 슬램용 prev/score) + repo upsert — DB 레이어(Step 4) 후.
+- **전투력 탭 UI에 "재미용 자체 산식 · 과학적 지표 아님" 라벨(§11.4 필수)** — 화면 단계(Step 8).
+- 가중치/커브/등급밴드는 dogfooding 후 빌더 튜닝 대상(플랜 §7).
+
+## 다음
+
+- 같은 "순수 코어 먼저" 원칙으로 **JUICE `classifyEvent`**(이벤트→티어 판정, 안티수치심 floor)와 **`detectPr`**(점진적 과부하)를 단위테스트와 함께. 그 다음 DB 레이어, 그리고 기기 필요한 Skia 셰이더/오버레이/화면.
