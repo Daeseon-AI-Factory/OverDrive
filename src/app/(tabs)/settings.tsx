@@ -16,6 +16,7 @@ export default function SettingsScreen() {
   const db = useSQLiteContext();
   const juiceIntensity = useSettingsStore((s) => s.juiceIntensity);
   const soundOn = useSettingsStore((s) => s.soundOn);
+  const weightStep = useSettingsStore((s) => s.weightStep);
   const apply = useSettingsStore((s) => s.apply);
 
   const persist = async (patch: Partial<ReturnType<typeof currentSettings>>) => {
@@ -56,6 +57,22 @@ export default function SettingsScreen() {
               trackColor={{ true: colors.cyan, false: colors.line }}
             />
           </View>
+        </Card>
+
+        <SectionTitle>무게 증가폭</SectionTitle>
+        <Card>
+          <View style={{ flexDirection: 'row' }}>
+            {[1.25, 2.5, 5].map((w) => (
+              <Pill
+                key={w}
+                label={`${w}kg`}
+                active={weightStep === w}
+                color={colors.cyan}
+                onPress={() => persist({ weightStep: w })}
+              />
+            ))}
+          </View>
+          <Muted style={{ marginTop: space.sm }}>세트 기록에서 +/- 버튼이 한 번에 바꾸는 무게.</Muted>
         </Card>
 
         <Muted style={{ marginTop: space.xl }}>

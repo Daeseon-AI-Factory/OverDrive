@@ -24,7 +24,6 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase): Promise<void> {
   if (version === 0) {
     await db.execAsync('PRAGMA journal_mode = WAL;');
     await db.execAsync(SCHEMA_V1);
-    await seedExercises(db);
     await ensureLocalUser(db);
     version = 1;
   }
@@ -37,6 +36,10 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase): Promise<void> {
     version = DATABASE_VERSION;
   }
   await db.execAsync(`PRAGMA user_version = ${version};`);
+
+  // Seed runs every boot (INSERT OR IGNORE, idempotent) so new catalog exercises land in
+  // already-migrated databases without needing a schema version bump.
+  await seedExercises(db);
 }
 
 /** Single local user for Phase 1. Idempotent. */

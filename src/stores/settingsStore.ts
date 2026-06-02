@@ -27,5 +27,6 @@ export function currentSettings(): UserSettings {
     aestheticPref: s.aestheticPref,
     juiceIntensity: s.juiceIntensity,
     soundOn: s.soundOn,
+    weightStep: s.weightStep,
   };
 }

@@ -12,6 +12,8 @@ export interface UserSettings {
   aestheticPref: AestheticPref;
   juiceIntensity: JuiceIntensity;
   soundOn: boolean;
+  /** Weight stepper increment (kg) in the set logger. */
+  weightStep: number;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -22,6 +24,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   aestheticPref: 'battle',
   juiceIntensity: 'full',
   soundOn: true,
+  weightStep: 2.5,
 };
 
 /** Tolerant parse of the stored settings JSON — always returns a complete object. */

@@ -36,6 +36,13 @@ export const EXERCISE_SEED: SeedExercise[] = [
   // Core
   { id: 'hanging_leg_raise', name: '행잉 레그 레이즈', muscle_group: 'core', type: 'strength', default_sets: 3, rep_low: 8, rep_high: 15, is_bodyweight: true },
   { id: 'plank', name: '플랭크', muscle_group: 'core', type: 'strength', default_sets: 3, rep_low: 30, rep_high: 60, is_bodyweight: true },
+  // Added to round out each body region (body-map picker coverage)
+  { id: 'cable_fly', name: '케이블 플라이', muscle_group: 'chest', type: 'strength', default_sets: 3, rep_low: 10, rep_high: 15, is_bodyweight: false },
+  { id: 'dips', name: '딥스', muscle_group: 'chest', type: 'strength', default_sets: 3, rep_low: 6, rep_high: 12, is_bodyweight: true },
+  { id: 'face_pull', name: '페이스 풀', muscle_group: 'shoulders', type: 'strength', default_sets: 3, rep_low: 12, rep_high: 20, is_bodyweight: false },
+  { id: 'hammer_curl', name: '해머 컬', muscle_group: 'biceps', type: 'strength', default_sets: 3, rep_low: 8, rep_high: 12, is_bodyweight: false },
+  { id: 'hip_thrust', name: '힙 쓰러스트', muscle_group: 'posterior_chain', type: 'strength', default_sets: 3, rep_low: 8, rep_high: 15, is_bodyweight: false },
+  { id: 'cable_crunch', name: '케이블 크런치', muscle_group: 'core', type: 'strength', default_sets: 3, rep_low: 10, rep_high: 15, is_bodyweight: false },
   // Conditioning / 인터벌
   { id: 'hiit_intervals', name: 'HIIT 인터벌', muscle_group: 'conditioning', type: 'cardio', default_sets: 1, rep_low: 0, rep_high: 0, is_bodyweight: true },
   { id: 'zone2_run', name: 'Zone 2 러닝', muscle_group: 'conditioning', type: 'cardio', default_sets: 1, rep_low: 0, rep_high: 0, is_bodyweight: true },
