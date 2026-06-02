@@ -1,0 +1,41 @@
+---
+title: "브랜드 리서치: 'OverDrive' 공개 앱명 NO-GO (코드네임은 유지)"
+date: "2026-06-02"
+project: "OverDrive"
+kind: "business"
+visibility: "private"
+language: "ko"
+summary: "병렬 리서치 결과 'OverDrive'는 피트니스 공개 앱명으로 NO-GO — 'Overdrive Fitness'가 iOS/Play 양쪽 동일 카테고리 존재 + OverDrive Inc.(도서관) 인접 강마크 + 클린 도메인/핸들 0. 코드네임/인앱 콜아웃으로는 유지, 공개명은 별도 채택. Phase 1 도그푸딩은 막지 않음(출시 전 게이트)."
+tags: ["phase-1", "brand", "compliance", "business", "decision-input"]
+---
+
+## 무엇
+
+§11(브랜드 가용성 출시 전 검증 필수) 대응으로 백그라운드 리서치 에이전트를 돌렸고(worktree 아님, docs/compliance/ 새 파일만, 직접 검증 후 커밋 `1da3947`), 명확한 결론이 나왔다.
+
+## 결론: 'OverDrive' 공개 앱명 NO-GO (검증)
+
+스택되는 충돌 3:
+1. **하드 블로커** — **'Overdrive Fitness'** 앱이 iOS App Store(id1530052619) + Google Play(`com.trainerize.overdrivefitness1`) 양쪽에 **동일 카테고리**로 이미 존재(Overdrive Fitness Corp.). 같은 단어·같은 제품군 → 스토어 리젝(Apple 2.3.7/4.1, Google impersonation) + 혼동가능성 위험.
+2. **인접 강마크** — OverDrive, Inc.(KKR 소유, Libby/Sora, 도서관 대출 ~90%)가 overdrive.com/.app + `@overdrive` 핸들 점유.
+3. **클린 에셋 0** — .com/.app/.io 전부 점유, 무접미사 핸들 불가.
+
+피트니스(클래스 9/41)가 도서관 마크와 클래스 거리로 공존 *가능성*은 있으나, **'Overdrive Fitness' 동일 카테고리 충돌 앞에서 그 논리는 무너짐.**
+
+## 중요 한계 (정직)
+
+- **이건 clearance(법적 판단)가 아니라 directional 리서치.** USPTO TSDR·KIPRIS가 JS 구동이라 자동 조회 불가 → 클래스 9/41/42 라이브 서치 + **변호사 clearance가 출시 게이트**(§11). 문서에 `(unverified)` 명시.
+
+## 권고 (빌더 결정 사항)
+
+- **OVERDRIVE는 코드네임 + 인앱 콜아웃("OVERDRIVE!"/"REDLINE!"/"MAX POWER!" — 오리지널, §5)으로 유지.**
+- **공개 앱명/상표는 오리지널 신규 채택.** 1순위 후보 **REPLOOM**(충돌 미발견), 차순위 SURGECORE/VOLTMARK. (전부 clearance 필요.) 리서치 중 탈락(피트니스 선점): ForgeFit/Kinetiq/MaxRep/Redline/Hypewave.
+
+## 영향 / 타이밍
+
+- **Phase 1(개인 도그푸딩)은 안 막힌다** — 출시 전(Phase 6) 게이트다. 지금 빌드/사용엔 'OverDrive' 그대로 OK.
+- 결정 시점: 공개 전. 빌더가 (a) 코드네임 유지+공개명 나중 결정(권장) / (b) 지금 채택+리네임 / (c) 보류 중 택.
+
+## 다음
+
+- 빌더 결정 대기. 채택 시: app.json `name`/`slug`/`scheme` + 스토어 메타만 바꾸면 됨(코어 코드는 OVERDRIVE 콜아웃 유지). 변호사 clearance + 도메인/핸들 선점.
