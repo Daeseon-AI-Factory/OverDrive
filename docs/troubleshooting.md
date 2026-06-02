@@ -98,3 +98,19 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Cause**: expo-router `Tabs.Screen` `tabBarIcon` passes `color: ColorValue` (which includes `OpaqueColorValue`), not `string`.
 - **Fix**: typed the icon render prop param as `{ color: ColorValue }` (imported from react-native). `<Text style={{ color }}>` accepts ColorValue.
 - **Commit**: aa9d668
+<!-- skipped: efab586 docs(log): record Phase 1 runnable slice + expo-doctor fixes (aa9d668) [no-log] -->
+<!-- skipped: f2db76f docs(log): record SkSL shader sources (061b378) [no-log] -->
+<!-- skipped: 071a147 docs(log): record brand NO-GO research (1da3947) [no-log] -->
+<!-- skipped: fe7be02 docs(log): record dev-client build + prebuild config (71b56bd) [no-log] -->
+
+## React Compiler era react-hooks lint rules block ref-write-in-render and setState-in-effect
+
+- **Symptom**: `expo lint` (eslint-config-expo flat) errored on patterns tsc/jest pass clean on:
+  ```
+  src/features/logging/Stepper.tsx:31  Cannot update ref during render  react-hooks/refs
+  src/features/logging/SetLoggerSheet.tsx:42  Avoid calling setState() directly within an effect  react-hooks/set-state-in-effect
+  ```
+- **Cause**: SDK 56 ships the newer `react-hooks` rules and the project has `reactCompiler: true`. `valueRef.current = value` during render and a synchronous `setCount(0)` inside `useEffect` both break the React Compiler's assumptions.
+- **Fix**: (1) Stepper — moved the ref sync into `useEffect(() => { valueRef.current = value; }, [value])`. (2) SetLoggerSheet — removed the in-effect `setCount(0)` and reset state via a remount `key={activeExercise?.id}` on the parent (idiomatic "reset state on prop change"). (3) ExerciseRegionSheet — dropped a synchronous `setRows([])` (modal hidden when picker is null → stale rows never shown).
+- **Commit**: 88cdbd9
+- **Pattern**: Under React Compiler, treat `expo lint` as a gate — it catches ref-in-render / setState-in-effect that typecheck and bundling miss. Prefer a remount `key` over an in-effect reset.
