@@ -3,7 +3,9 @@ import { Text, type ColorValue } from 'react-native';
 import { colors } from '@/ui/theme/tokens';
 
 function tabIcon(glyph: string) {
-  return ({ color }: { color: ColorValue }) => <Text style={{ color, fontSize: 18 }}>{glyph}</Text>;
+  const Icon = ({ color }: { color: ColorValue }) => <Text style={{ color, fontSize: 18 }}>{glyph}</Text>;
+  Icon.displayName = `TabIcon(${glyph})`;
+  return Icon;
 }
 
 export default function TabsLayout() {

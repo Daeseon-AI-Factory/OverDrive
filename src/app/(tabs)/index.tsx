@@ -15,7 +15,6 @@ export default function TodayScreen() {
   const db = useSQLiteContext();
   const logSet = useLogSet();
   const score = useCombatPowerStore((s) => s.score);
-  const gradeKey = useCombatPowerStore((s) => s.gradeKey);
 
   const program = useMemo(() => todayProgram(), []);
   const [exercises, setExercises] = useState<ExerciseRow[]>([]);
@@ -48,6 +47,7 @@ export default function TodayScreen() {
     return () => {
       alive = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run only on db/program change; selectedId default is set inside
   }, [db, program]);
 
   // Prefill from the last set of the selected exercise.
