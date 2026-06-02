@@ -1,0 +1,47 @@
+---
+title: "Phase 1 스캐폴드 — Expo SDK 56 앱 + 네이티브 의존성 + 테스트 인프라"
+date: "2026-06-01"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "워크플로로 검증한 Phase 1 플랜대로 Expo SDK 56 앱을 스캐폴드하고, Skia/sqlite/audio/haptics 등 네이티브 의존성과 jest 테스트 인프라를 깔아 tsc clean + jest green 베이스라인을 만들었다."
+tags: ["phase-1", "scaffold", "expo", "skia", "tooling"]
+---
+
+## 왜
+
+스펙 박제(`08519e7`)와 8-에이전트 설계 워크플로로 나온 Phase 1 플랜(`docs/phase1-plan.md`)을 받았고, 빌더가 **"SDK 56 락 + 지금 스캐폴드 + 코드부터(빌드는 나중에)"**로 결정. 이 엔트리는 그 첫 실행 — 굴러가는 RN/Expo 베이스라인을 만드는 단계다.
+
+## 한 일
+
+**Step 0 — 스캐폴드 + 머지.** `create-expo-app` default 템플릿으로 임시 디렉토리에 생성 후, **기존 `.git`/`CLAUDE.md`/`.claude`/`docs`/`content`를 rsync `--exclude`로 보존**하며 머지(템플릿이 `.` 직접 스캐폴드면 기존 파일을 덮어씀 → temp+rsync가 정답). 해결된 버전(실측):
+
+```
+expo 56.0.8 · react-native 0.85.3 · react 19.2.3 · expo-router 56.2.8
+New Architecture(Fabric) 강제 — newArchEnabled 플래그 자체가 없음
+```
+
+템플릿이 이미 해둔 것: `tsconfig strict:true` + `@/*`→`./src/*`, 라우트는 **`src/app/`**(루트 `app/` 아님 → 플랜을 이 컨벤션에 맞춤), `typedRoutes`+`reactCompiler` ON, **babel/metro config 없음**(preset-expo zero-config). 앱 이름 `OverDrive`, scheme `overdrive`로 변경.
+
+**Step 1 — 의존성.** `npx expo install`로 SDK 56 호환 핀 자동 해결(강결합 footgun 회피): Skia 2.6.2 · expo-sqlite 56.0.4 · expo-audio 56.0.11 · expo-haptics 56.0.3 · expo-dev-client 56.0.18 · async-storage 2.2.0 · expo-crypto 56.0.4. **reanimated 4.3.1 / worklets 0.8.3은 번들판 그대로 유지**(플랜의 "latest 4.4.0/0.9.1" 대신 SDK가 테스트한 호환쌍을 신뢰 — 손 bump 금지). zustand 5, jest-expo + RTL 추가. `expo install`이 app.json에 expo-sqlite/audio/font config 플러그인 자동 등록.
+
+**테스트 인프라.** jest는 babel-jest가 명시적 `babel.config.js`를 요구 → `babel-preset-expo`만 담은 최소 config 작성(plan 경고대로 reanimated/worklets 플러그인 **수동 추가 안 함** — preset-expo가 자동 주입). `jest.config.js`는 `preset: 'jest-expo'`. 샌리티 테스트로 TS 변환 통과 확인 후 삭제.
+
+## 검증 (실측)
+
+- `npx tsc --noEmit` → **clean (exit 0)** (CSS 타입 선언 추가 후, troubleshooting.md 참조)
+- `npx jest` 샌리티 → **PASS** (jest-expo + babel-preset-expo가 TS 변환)
+- `git add -A` → **node_modules 0개 스테이징**(.gitignore OK), 55 파일 커밋
+- 커밋 `1cfc136` (`git log -1 --format=%cI` = `2026-06-01T23:29:39-04:00`)
+
+## 마찰 (troubleshooting.md에 문자 그대로 기록)
+
+설치 중 3건 — ① SDK 56 템플릿의 `*.css`/`global.css` 임포트에 TS 선언 부재(`TS2307/TS2882`) → `types/css.d.ts` ② RTL이 `react-test-renderer@19.2.7`(react ^19.2.7) 끌어옴 vs SDK 핀 react 19.2.3 `ERESOLVE` → renderer를 19.2.3으로 핀 ③ RTL 13은 `extend-expect` 제거됨 → `setupFilesAfterEnv` 삭제. 셋 다 `1cfc136`.
+
+## 다음
+
+- Step 2 마저: ESLint `no-restricted-paths`로 레이어 경계 강제(features→app import 금지 등).
+- Step 3: B급 네온 테마 토큰 + UI 프리미티브.
+- Step 4: 로컬 SQLite 데이터 레이어(7테이블 + 시드 + repos + 단위테스트).
+- 이후 **Step 5 JUICE 엔진 최우선**(§11.2) — OverDrive의 심장.
