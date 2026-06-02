@@ -28,8 +28,12 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase): Promise<void> {
     version = 1;
   }
 
-  // Future migrations:
-  // if (version === 1) { await db.execAsync(MIGRATION_002); version = 2; }
+  if (version === 1) {
+    // Builder directive: profile language is English. Flip the stale pre-i18n 'ko' default once.
+    // (Language changes made after this run persist normally — this block won't re-run.)
+    await db.runAsync(`UPDATE user SET locale = 'en' WHERE id = ?`, [LOCAL_USER_ID]);
+    version = 2;
+  }
 
   if (version !== DATABASE_VERSION) {
     // Defensive: keep stored version in lockstep with the constant.

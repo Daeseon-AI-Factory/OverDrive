@@ -5,7 +5,7 @@
 // Deferred to later phases: BodyComp/FitnessTest (Phase 5), League/Friendship/AuraCard (Phase 3-4).
 // Program is a code constant (defaultProgram.ts), not a table. Streak is computed, not stored.
 
-export const DATABASE_VERSION = 1;
+export const DATABASE_VERSION = 2;
 
 export const SCHEMA_V1 = `
 CREATE TABLE IF NOT EXISTS user (
