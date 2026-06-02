@@ -1,83 +1,97 @@
 import { useSQLiteContext } from 'expo-sqlite';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
-import { updateSettings } from '@/db/repos/userRepo';
+import { updateLocale, updateSettings } from '@/db/repos/userRepo';
+import i18n, { LOCALE_LABEL, SUPPORTED_LOCALES, type AppLocale } from '@/i18n';
 import type { JuiceIntensity } from '@/lib/settings';
+import type { UnitSystem } from '@/lib/units';
 import { currentSettings, useSettingsStore } from '@/stores/settingsStore';
 import { Card, Muted, Pill, Screen, SectionTitle } from '@/ui/primitives';
 import { colors, fontSize, space } from '@/ui/theme/tokens';
 
-const INTENSITY_OPTIONS: { key: JuiceIntensity; label: string }[] = [
-  { key: 'full', label: '풀' },
-  { key: 'mid', label: '중' },
-  { key: 'minimal', label: '미니멀' },
-];
+const INTENSITY: JuiceIntensity[] = ['full', 'mid', 'minimal'];
+const UNIT_SYSTEMS: UnitSystem[] = ['metric', 'imperial'];
 
 export default function SettingsScreen() {
   const db = useSQLiteContext();
+  const { t } = useTranslation();
   const juiceIntensity = useSettingsStore((s) => s.juiceIntensity);
   const soundOn = useSettingsStore((s) => s.soundOn);
   const weightStep = useSettingsStore((s) => s.weightStep);
+  const unitSystem = useSettingsStore((s) => s.unitSystem);
+  const locale = useSettingsStore((s) => s.locale);
   const apply = useSettingsStore((s) => s.apply);
+  const setLocale = useSettingsStore((s) => s.setLocale);
 
   const persist = async (patch: Partial<ReturnType<typeof currentSettings>>) => {
     apply(patch);
     await updateSettings(db, currentSettings());
   };
 
+  const changeLanguage = async (l: AppLocale) => {
+    setLocale(l);
+    await i18n.changeLanguage(l);
+    await updateLocale(db, l);
+  };
+
   return (
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space.xxl }}>
-        <Text style={styles.title}>설정</Text>
+        <Text style={styles.title}>{t('settings.title')}</Text>
 
-        <SectionTitle>JUICE 강도</SectionTitle>
+        <SectionTitle>{t('settings.language.section')}</SectionTitle>
         <Card>
-          <View style={{ flexDirection: 'row' }}>
-            {INTENSITY_OPTIONS.map((o) => (
+          <View style={styles.wrapRow}>
+            {SUPPORTED_LOCALES.map((l) => (
+              <Pill key={l} label={LOCALE_LABEL[l]} active={locale === l} color={colors.cyan} onPress={() => changeLanguage(l)} />
+            ))}
+          </View>
+        </Card>
+
+        <SectionTitle>{t('settings.units.section')}</SectionTitle>
+        <Card>
+          <View style={styles.wrapRow}>
+            {UNIT_SYSTEMS.map((u) => (
               <Pill
-                key={o.key}
-                label={o.label}
-                active={juiceIntensity === o.key}
-                color={colors.energyHi}
-                onPress={() => persist({ juiceIntensity: o.key })}
+                key={u}
+                label={t(`settings.units.${u}`)}
+                active={unitSystem === u}
+                color={colors.cyan}
+                onPress={() => persist({ unitSystem: u })}
               />
             ))}
           </View>
-          <Muted style={{ marginTop: space.sm }}>
-            미니멀은 화면 연출을 끄고 햅틱만 남긴다(헬스장 무음용). 로깅 속도엔 영향 없음.
-          </Muted>
         </Card>
 
-        <SectionTitle>사운드</SectionTitle>
+        <SectionTitle>{t('settings.juice.section')}</SectionTitle>
+        <Card>
+          <View style={styles.wrapRow}>
+            {INTENSITY.map((o) => (
+              <Pill key={o} label={t(`settings.juice.${o}`)} active={juiceIntensity === o} color={colors.energyHi} onPress={() => persist({ juiceIntensity: o })} />
+            ))}
+          </View>
+          <Muted style={{ marginTop: space.sm }}>{t('settings.juice.explainer')}</Muted>
+        </Card>
+
+        <SectionTitle>{t('settings.sound.section')}</SectionTitle>
         <Card>
           <View style={styles.switchRow}>
-            <Text style={styles.label}>효과음 / 콜아웃</Text>
-            <Switch
-              value={soundOn}
-              onValueChange={(v) => persist({ soundOn: v })}
-              trackColor={{ true: colors.cyan, false: colors.line }}
-            />
+            <Text style={styles.label}>{t('settings.sound.label')}</Text>
+            <Switch value={soundOn} onValueChange={(v) => persist({ soundOn: v })} trackColor={{ true: colors.cyan, false: colors.line }} />
           </View>
         </Card>
 
-        <SectionTitle>무게 증가폭</SectionTitle>
+        <SectionTitle>{t('settings.weightStep.section')}</SectionTitle>
         <Card>
-          <View style={{ flexDirection: 'row' }}>
+          <View style={styles.wrapRow}>
             {[1.25, 2.5, 5].map((w) => (
-              <Pill
-                key={w}
-                label={`${w}kg`}
-                active={weightStep === w}
-                color={colors.cyan}
-                onPress={() => persist({ weightStep: w })}
-              />
+              <Pill key={w} label={t('settings.weightStep.pill', { step: w })} active={weightStep === w} color={colors.cyan} onPress={() => persist({ weightStep: w })} />
             ))}
           </View>
-          <Muted style={{ marginTop: space.sm }}>세트 기록에서 +/- 버튼이 한 번에 바꾸는 무게.</Muted>
+          <Muted style={{ marginTop: space.sm }}>{t('settings.weightStep.explainer')}</Muted>
         </Card>
 
-        <Muted style={{ marginTop: space.xl }}>
-          OVERDRIVE · Phase 1 로컬 MVP. 전투력은 재미용 자체 산식이다.
-        </Muted>
+        <Muted style={{ marginTop: space.xl }}>{t('settings.footer')}</Muted>
       </ScrollView>
     </Screen>
   );
@@ -85,6 +99,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: fontSize.xl, fontWeight: '900', marginTop: space.lg },
+  wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   label: { color: colors.text, fontSize: fontSize.md, fontWeight: '600' },
 });

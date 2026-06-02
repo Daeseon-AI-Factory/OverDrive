@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Text, type ColorValue } from 'react-native';
 import { colors } from '@/ui/theme/tokens';
 
@@ -9,6 +10,7 @@ function tabIcon(glyph: string) {
 }
 
 export default function TabsLayout() {
+  const { t } = useTranslation();
   return (
     <Tabs
       screenOptions={{
@@ -18,10 +20,10 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.textDim,
       }}
     >
-      <Tabs.Screen name="index" options={{ title: '오늘', tabBarIcon: tabIcon('◆') }} />
-      <Tabs.Screen name="power" options={{ title: '전투력', tabBarIcon: tabIcon('⚡') }} />
-      <Tabs.Screen name="history" options={{ title: '기록', tabBarIcon: tabIcon('≡') }} />
-      <Tabs.Screen name="settings" options={{ title: '설정', tabBarIcon: tabIcon('⚙') }} />
+      <Tabs.Screen name="index" options={{ title: t('tabs.today'), tabBarIcon: tabIcon('◆') }} />
+      <Tabs.Screen name="power" options={{ title: t('tabs.power'), tabBarIcon: tabIcon('⚡') }} />
+      <Tabs.Screen name="history" options={{ title: t('tabs.history'), tabBarIcon: tabIcon('≡') }} />
+      <Tabs.Screen name="settings" options={{ title: t('tabs.settings'), tabBarIcon: tabIcon('⚙') }} />
     </Tabs>
   );
 }

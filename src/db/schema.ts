@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS user (
   id           TEXT PRIMARY KEY NOT NULL,
   handle       TEXT,
   display_name TEXT,
-  locale       TEXT NOT NULL DEFAULT 'ko',
+  locale       TEXT NOT NULL DEFAULT 'en',
   settings     TEXT NOT NULL DEFAULT '{}',
   created_at   TEXT NOT NULL,
   updated_at   TEXT NOT NULL

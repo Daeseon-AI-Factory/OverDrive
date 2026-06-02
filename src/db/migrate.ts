@@ -47,7 +47,7 @@ async function ensureLocalUser(db: SQLiteDatabase): Promise<void> {
   const now = nowIso();
   await db.runAsync(
     `INSERT OR IGNORE INTO user (id, locale, settings, created_at, updated_at)
-     VALUES (?, 'ko', ?, ?, ?)`,
+     VALUES (?, 'en', ?, ?, ?)`,
     [LOCAL_USER_ID, JSON.stringify(DEFAULT_SETTINGS), now, now],
   );
 }

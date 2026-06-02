@@ -23,3 +23,12 @@ export async function updateSettings(
     id,
   ]);
 }
+
+/** Persist the chosen UI language (User.locale column — syncs to Postgres in Phase 2). */
+export async function updateLocale(
+  db: SQLiteDatabase,
+  locale: string,
+  id: string = LOCAL_USER_ID,
+): Promise<void> {
+  await db.runAsync('UPDATE user SET locale = ?, updated_at = ? WHERE id = ?', [locale, nowIso(), id]);
+}

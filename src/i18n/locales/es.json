@@ -45,7 +45,15 @@
       "pill": "{step}kg",
       "explainer": "Cuánto cambian el peso los botones +/- en cada toque dentro del registro de series."
     },
-    "footer": "OVERDRIVE · MVP local de la Fase 1. El Poder de Combate es una fórmula original por diversión."
+    "footer": "OVERDRIVE · MVP local de la Fase 1. El Poder de Combate es una fórmula original por diversión.",
+    "language": {
+      "section": "Idioma"
+    },
+    "units": {
+      "section": "Unidades",
+      "metric": "Métrico (kg · km)",
+      "imperial": "Imperial (lb · mi)"
+    }
   },
   "boot": {
     "brand": "OVERDRIVE"

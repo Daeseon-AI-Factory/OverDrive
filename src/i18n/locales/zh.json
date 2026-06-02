@@ -45,7 +45,15 @@
       "pill": "{step}kg",
       "explainer": "记录组数时，每点一次 +/- 按钮改变的重量值。"
     },
-    "footer": "OVERDRIVE · Phase 1 本地 MVP。战斗力为趣味原创算法。"
+    "footer": "OVERDRIVE · Phase 1 本地 MVP。战斗力为趣味原创算法。",
+    "language": {
+      "section": "语言"
+    },
+    "units": {
+      "section": "单位",
+      "metric": "公制 (kg · km)",
+      "imperial": "英制 (lb · mi)"
+    }
   },
   "boot": {
     "brand": "OVERDRIVE"

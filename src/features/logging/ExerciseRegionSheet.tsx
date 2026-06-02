@@ -1,5 +1,6 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ExerciseRow } from '@/db/types';
 import { Muted } from '@/ui/primitives';
@@ -21,6 +22,7 @@ export function ExerciseRegionSheet({
   onClose: () => void;
 }) {
   const db = useSQLiteContext();
+  const { t } = useTranslation();
   const [rows, setRows] = useState<ExerciseRow[]>([]);
   const idsKey = picker ? picker.exerciseIds.join(',') : '';
 
@@ -60,17 +62,17 @@ export function ExerciseRegionSheet({
               contentContainerStyle={{ paddingVertical: space.sm }}
               renderItem={({ item }) => (
                 <Pressable style={styles.row} onPress={() => onSelect(item)}>
-                  <Text style={styles.exName}>{item.name}</Text>
+                  <Text style={styles.exName}>{t(`exercise.${item.id}`)}</Text>
                   <Muted>
-                    {item.is_bodyweight ? '맨몸 · ' : ''}
-                    {item.rep_low}–{item.rep_high}회
+                    {item.is_bodyweight ? t('logger.exerciseMeta.bodyweightPrefix') : ''}
+                    {t('logger.exerciseMeta.repRange', { low: item.rep_low, high: item.rep_high })}
                   </Muted>
                 </Pressable>
               )}
-              ListEmptyComponent={<Muted style={{ paddingVertical: space.lg }}>운동이 없어.</Muted>}
+              ListEmptyComponent={<Muted style={{ paddingVertical: space.lg }}>{t('logger.exerciseListEmpty')}</Muted>}
             />
             <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={8}>
-              <Muted>닫기</Muted>
+              <Muted>{t('logger.close')}</Muted>
             </Pressable>
           </>
         ) : null}

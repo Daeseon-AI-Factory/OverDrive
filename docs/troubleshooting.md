@@ -114,3 +114,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: (1) Stepper — moved the ref sync into `useEffect(() => { valueRef.current = value; }, [value])`. (2) SetLoggerSheet — removed the in-effect `setCount(0)` and reset state via a remount `key={activeExercise?.id}` on the parent (idiomatic "reset state on prop change"). (3) ExerciseRegionSheet — dropped a synchronous `setRows([])` (modal hidden when picker is null → stale rows never shown).
 - **Commit**: 88cdbd9
 - **Pattern**: Under React Compiler, treat `expo lint` as a gate — it catches ref-in-render / setState-in-effect that typecheck and bundling miss. Prefer a remount `key` over an in-effect reset.
+<!-- skipped: d87e62d docs(log): record body-map redesign + react-hooks lint fixes (88cdbd9) [no-log] -->

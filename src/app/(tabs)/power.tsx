@@ -1,6 +1,7 @@
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { getLatest } from '@/db/repos/combatPowerRepo';
 import type { CombatPowerComponent } from '@/features/combat-power/combatPower.types';
@@ -11,6 +12,7 @@ import { colors, fontSize, monoFamily, space } from '@/ui/theme/tokens';
 
 export default function PowerScreen() {
   const db = useSQLiteContext();
+  const { t } = useTranslation();
   const score = useCombatPowerStore((s) => s.score);
   const [breakdown, setBreakdown] = useState<CombatPowerComponent[]>([]);
   const [verifiedRatio, setVerifiedRatio] = useState(0);
@@ -42,21 +44,20 @@ export default function PowerScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space.xxl }}>
         <View style={styles.hero}>
           <Text style={styles.score}>{score}</Text>
-          <Text style={[styles.grade, { color: colors.cyan }]}>{grade.label}</Text>
-          {/* REQUIRED label — spec §6.3 / §11.4 */}
-          <Text style={styles.disclaimer}>재미용 자체 산식 · 과학적 지표 아님</Text>
+          <Text style={[styles.grade, { color: colors.cyan }]}>{t(`grade.${grade.key}`)}</Text>
+          <Text style={styles.disclaimer}>{t('power.disclaimer')}</Text>
         </View>
 
-        <SectionTitle>구성 (breakdown)</SectionTitle>
+        <SectionTitle>{t('power.section.breakdown')}</SectionTitle>
         {active.length === 0 ? (
           <Card>
-            <Muted>아직 데이터가 없어. 오늘 탭에서 세트를 기록하면 전투력이 나타난다.</Muted>
+            <Muted>{t('power.empty')}</Muted>
           </Card>
         ) : (
           <Card>
             {active.map((c) => (
               <View key={c.key} style={styles.row}>
-                <Text style={styles.rowLabel}>{c.label}</Text>
+                <Text style={styles.rowLabel}>{t(`cp.component.${c.key}`)}</Text>
                 <View style={styles.barTrack}>
                   <View style={[styles.barFill, { width: `${Math.round(c.score01 * 100)}%` }]} />
                 </View>
@@ -66,12 +67,9 @@ export default function PowerScreen() {
           </Card>
         )}
 
-        <SectionTitle>검증 데이터</SectionTitle>
+        <SectionTitle>{t('power.section.verified')}</SectionTitle>
         <Card>
-          <Muted>
-            검증 비율 {Math.round(verifiedRatio * 100)}% — 워치/임포트/센서 데이터는 전투력에 가중(보너스)된다.
-            Phase 1은 전부 자기보고라 보너스 0. (자기보고도 절대 깎이지 않음.)
-          </Muted>
+          <Muted>{t('power.verifiedExplainer', { pct: Math.round(verifiedRatio * 100) })}</Muted>
         </Card>
       </ScrollView>
     </Screen>

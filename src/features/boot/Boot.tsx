@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
+import i18n, { DEFAULT_LOCALE, isSupportedLocale, type AppLocale } from '@/i18n';
 import { recomputeAndStore } from '../../db/repos/combatPowerRepo';
-import { getSettings } from '../../db/repos/userRepo';
+import { getSettings, getUser, updateLocale } from '../../db/repos/userRepo';
 import { useCombatPowerStore } from '../../stores/combatPowerStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { colors, fontSize } from '../../ui/theme/tokens';
@@ -20,6 +21,20 @@ export function Boot({ children }: { children: React.ReactNode }) {
     (async () => {
       const settings = await getSettings(db);
       useSettingsStore.getState().hydrate(settings);
+
+      // Resolve UI language from the User row (default 'en'; persist the seed on first run).
+      const user = await getUser(db);
+      const stored = user?.locale ?? '';
+      let locale: AppLocale;
+      if (isSupportedLocale(stored)) {
+        locale = stored;
+      } else {
+        locale = DEFAULT_LOCALE;
+        await updateLocale(db, locale);
+      }
+      if (i18n.language !== locale) await i18n.changeLanguage(locale);
+      useSettingsStore.getState().setLocale(locale);
+
       const result = await recomputeAndStore(db);
       // First snapshot: align prev to score so the odometer doesn't slam on launch.
       useCombatPowerStore.setState({ score: result.score, prev: result.score, gradeKey: result.grade.key });

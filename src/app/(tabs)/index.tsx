@@ -1,5 +1,6 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { startSession } from '@/db/repos/sessionRepo';
 import type { ExerciseRow } from '@/db/types';
@@ -15,6 +16,7 @@ import { colors, fontSize, monoFamily, space } from '@/ui/theme/tokens';
 
 export default function TodayScreen() {
   const db = useSQLiteContext();
+  const { t } = useTranslation();
   const score = useCombatPowerStore((s) => s.score);
   const program = useMemo(() => todayProgram(), []);
 
@@ -30,15 +32,18 @@ export default function TodayScreen() {
     return s.id;
   }, [db, program.dayType, sessionId]);
 
-  const onRegionPress = useCallback((region: BodyRegionId) => {
-    setActiveRegion(region);
-    setPicker({ title: REGIONS[region].labelKo, exerciseIds: REGIONS[region].exerciseIds });
-  }, []);
+  const onRegionPress = useCallback(
+    (region: BodyRegionId) => {
+      setActiveRegion(region);
+      setPicker({ title: t(`region.${region}`), exerciseIds: REGIONS[region].exerciseIds });
+    },
+    [t],
+  );
 
   const onCardioPress = useCallback(() => {
     setActiveRegion(null);
-    setPicker({ title: '유산소 / 컨디셔닝', exerciseIds: [...CARDIO_EXERCISE_IDS] });
-  }, []);
+    setPicker({ title: t('today.cardioSheetTitle'), exerciseIds: [...CARDIO_EXERCISE_IDS] });
+  }, [t]);
 
   const grade = gradeForScore(score);
 
@@ -46,17 +51,15 @@ export default function TodayScreen() {
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space.xxl }}>
         <View style={styles.header}>
-          <Muted>전투력</Muted>
+          <Muted>{t('today.combatPowerLabel')}</Muted>
           <Text style={styles.cpScore}>{score}</Text>
-          <Text style={[styles.grade, { color: colors.cyan }]}>{grade.label}</Text>
+          <Text style={[styles.grade, { color: colors.cyan }]}>{t(`grade.${grade.key}`)}</Text>
         </View>
 
         <Card>
-          <Text style={styles.dayTitle}>{program.title}</Text>
-          <Muted>{program.focus}</Muted>
-          {program.dayType === 'rest' ? (
-            <Muted style={{ marginTop: space.sm }}>오늘은 휴식 💤 — 그래도 기록하고 싶으면 부위를 터치해.</Muted>
-          ) : null}
+          <Text style={styles.dayTitle}>{t(program.titleKey)}</Text>
+          <Muted>{t(program.focusKey)}</Muted>
+          {program.dayType === 'rest' ? <Muted style={{ marginTop: space.sm }}>{t('today.restDayHint')}</Muted> : null}
         </Card>
 
         <MyCharacter activeRegion={activeRegion} onRegionPress={onRegionPress} onCardioPress={onCardioPress} />

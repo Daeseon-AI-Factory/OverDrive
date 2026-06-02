@@ -45,7 +45,15 @@
       "pill": "{step}kg",
       "explainer": "How much the +/- buttons change the weight per tap in the set logger."
     },
-    "footer": "OVERDRIVE · Phase 1 local MVP. Combat Power is a for-fun original formula."
+    "footer": "OVERDRIVE · Phase 1 local MVP. Combat Power is a for-fun original formula.",
+    "language": {
+      "section": "Language"
+    },
+    "units": {
+      "section": "Units",
+      "metric": "Metric (kg · km)",
+      "imperial": "Imperial (lb · mi)"
+    }
   },
   "boot": {
     "brand": "OVERDRIVE"

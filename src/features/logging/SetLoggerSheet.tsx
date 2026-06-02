@@ -1,18 +1,20 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { getLastSetForExercise } from '@/db/repos/setLogRepo';
 import type { ExerciseRow } from '@/db/types';
+import { displayToKg, formatWeight, kgToDisplay, weightStepDisplay, weightUnit } from '@/lib/units';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { Muted, NeonButton, Pill } from '@/ui/primitives';
 import { colors, fontSize, radius, space } from '@/ui/theme/tokens';
-import { useLogSet } from './useLogSet';
 import { Stepper } from './Stepper';
+import { useLogSet } from './useLogSet';
 
 /**
- * Low-friction set logger (spec §6.1). Prefilled from the last set; "지난 세트 반복" logs in ONE tap,
- * steppers replace the keyboard. Stays open after logging so set 2+ is a single tap. Calls the
- * unchanged useLogSet hot path (→ JUICE fires there).
+ * Low-friction set logger (spec §6.1). Prefilled from the last set; "repeat last set" logs in ONE
+ * tap, steppers replace the keyboard. Weight is shown/edited in the user's units (kg/lb) but stored
+ * canonical kg. Stays open after logging. Calls the unchanged useLogSet hot path (→ JUICE fires).
  */
 export function SetLoggerSheet({
   exercise,
@@ -24,17 +26,20 @@ export function SetLoggerSheet({
   onClose: () => void;
 }) {
   const db = useSQLiteContext();
+  const { t } = useTranslation();
   const logSet = useLogSet();
-  const weightStep = useSettingsStore((s) => s.weightStep);
+  const unitSystem = useSettingsStore((s) => s.unitSystem);
+  const weightStepKg = useSettingsStore((s) => s.weightStep);
 
+  const isBw = exercise?.is_bodyweight === 1;
+
+  // weight is in DISPLAY units (kg or lb); lastSet keeps canonical kg for exact repeats.
   const [weight, setWeight] = useState(0);
   const [reps, setReps] = useState(0);
   const [rir, setRir] = useState<number | null>(null);
-  const [lastSet, setLastSet] = useState<{ weight: number; reps: number; rir: number | null } | null>(null);
+  const [lastSet, setLastSet] = useState<{ weightKg: number; reps: number; rir: number | null } | null>(null);
   const [count, setCount] = useState(0);
   const [busy, setBusy] = useState(false);
-
-  const isBw = exercise?.is_bodyweight === 1;
 
   useEffect(() => {
     if (!exercise) return;
@@ -43,13 +48,13 @@ export function SetLoggerSheet({
       const last = await getLastSetForExercise(db, exercise.id);
       if (!alive) return;
       if (last) {
-        setLastSet({ weight: last.weight, reps: last.reps, rir: last.rir });
-        setWeight(last.weight);
+        setLastSet({ weightKg: last.weight, reps: last.reps, rir: last.rir });
+        setWeight(Math.round(kgToDisplay(last.weight, unitSystem) * 10) / 10);
         setReps(last.reps);
         setRir(last.rir);
       } else {
         setLastSet(null);
-        setWeight(exercise.is_bodyweight ? 0 : 20);
+        setWeight(exercise.is_bodyweight ? 0 : Math.round(kgToDisplay(20, unitSystem)));
         setReps(exercise.rep_low);
         setRir(null);
       }
@@ -58,33 +63,36 @@ export function SetLoggerSheet({
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db, exercise?.id]);
+  }, [db, exercise?.id, unitSystem]);
 
-  const commit = async (w: number, r: number, rv: number | null) => {
+  const commitKg = async (weightKg: number, r: number, rv: number | null) => {
     if (!exercise || r <= 0 || busy) return;
     setBusy(true);
     try {
       const sid = await ensureSession();
-      const finalW = exercise.is_bodyweight ? 0 : w;
+      const finalKg = exercise.is_bodyweight ? 0 : weightKg;
       await logSet({
         sessionId: sid,
         exerciseId: exercise.id,
-        weight: finalW,
+        weight: finalKg,
         reps: r,
         rir: rv,
         hitTargetReps: r >= exercise.rep_low,
         loggedVia: 'quick',
       });
       setCount((c) => c + 1);
-      setLastSet({ weight: finalW, reps: r, rir: rv });
+      setLastSet({ weightKg: finalKg, reps: r, rir: rv });
     } finally {
       setBusy(false);
     }
   };
 
-  const lastLabel = lastSet
-    ? `지난: ${lastSet.weight > 0 ? `${lastSet.weight}kg × ` : ''}${lastSet.reps}${lastSet.rir != null ? ` (RIR ${lastSet.rir})` : ''}`
-    : '첫 세트!';
+  const lastSetText = (() => {
+    if (!lastSet) return t('logger.firstSet');
+    const w = formatWeight(lastSet.weightKg, unitSystem); // '' for bodyweight
+    const core = `${w ? `${w} × ` : ''}${lastSet.reps}${lastSet.rir != null ? t('logger.lastSetRir', { rir: lastSet.rir }) : ''}`;
+    return t('logger.lastSet', { set: core });
+  })();
 
   return (
     <Modal visible={!!exercise} transparent animationType="slide" onRequestClose={onClose}>
@@ -93,23 +101,40 @@ export function SetLoggerSheet({
         {exercise ? (
           <>
             <View style={styles.handle} />
-            <Text style={styles.title}>{exercise.name}</Text>
+            <Text style={styles.title}>{t(`exercise.${exercise.id}`)}</Text>
             <Muted>
-              {lastLabel}
-              {count > 0 ? `   ·   이번 세션 ${count}세트 ✓` : ''}
+              {lastSetText}
+              {count > 0 ? t('logger.sessionSetCount', { count }) : ''}
             </Muted>
 
             {!isBw ? (
-              <Stepper label="무게" value={weight} step={weightStep} min={0} max={500} precision={1} unit="kg" onChange={setWeight} />
+              <Stepper
+                label={t('logger.field.weight')}
+                value={weight}
+                step={weightStepDisplay(unitSystem, weightStepKg)}
+                min={0}
+                max={2000}
+                precision={1}
+                unit={weightUnit(unitSystem)}
+                onChange={setWeight}
+              />
             ) : null}
-            <Stepper label={isBw ? '횟수 / 초' : '횟수'} value={reps} step={1} min={0} max={999} precision={0} onChange={setReps} />
+            <Stepper
+              label={isBw ? t('logger.field.repsOrTime') : t('logger.field.reps')}
+              value={reps}
+              step={1}
+              min={0}
+              max={999}
+              precision={0}
+              onChange={setReps}
+            />
 
-            <Text style={styles.rirLabel}>RIR (선택)</Text>
+            <Text style={styles.rirLabel}>{t('logger.rirLabel')}</Text>
             <View style={styles.rirRow}>
               {[0, 1, 2, 3, 4].map((n) => (
                 <Pill
                   key={n}
-                  label={n === 4 ? '4+' : String(n)}
+                  label={n === 4 ? t('logger.rirMaxPill') : String(n)}
                   active={rir === n}
                   color={colors.violet}
                   onPress={() => setRir(rir === n ? null : n)}
@@ -118,21 +143,21 @@ export function SetLoggerSheet({
             </View>
 
             <NeonButton
-              label="지난 세트 반복 ⚡"
+              label={t('logger.repeatLast')}
               color={colors.cyan}
               disabled={!lastSet || busy}
-              onPress={() => lastSet && commit(lastSet.weight, lastSet.reps, lastSet.rir)}
+              onPress={() => lastSet && commitKg(lastSet.weightKg, lastSet.reps, lastSet.rir)}
               style={{ marginTop: space.lg }}
             />
             <NeonButton
-              label="기록 ⚡"
+              label={t('logger.logSet')}
               color={colors.energyHi}
               disabled={!reps || busy}
-              onPress={() => commit(weight, reps, rir)}
+              onPress={() => commitKg(displayToKg(weight, unitSystem), reps, rir)}
               style={{ marginTop: space.sm }}
             />
             <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={8}>
-              <Muted>닫기</Muted>
+              <Muted>{t('logger.close')}</Muted>
             </Pressable>
           </>
         ) : null}

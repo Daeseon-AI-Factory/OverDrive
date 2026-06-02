@@ -1,22 +1,27 @@
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { Card, Muted, Screen } from '@/ui/primitives';
+import { formatWeight } from '@/lib/units';
 import { colors, fontSize, space } from '@/ui/theme/tokens';
 
 interface HistoryRow {
   id: string;
-  weight: number;
+  weight: number; // kg (canonical)
   reps: number;
   rir: number | null;
   is_pr: number;
   logged_at: string;
-  exercise_name: string;
+  exercise_id: string;
 }
 
 export default function HistoryScreen() {
   const db = useSQLiteContext();
+  const { t } = useTranslation();
+  const unitSystem = useSettingsStore((s) => s.unitSystem);
   const [rows, setRows] = useState<HistoryRow[]>([]);
 
   useFocusEffect(
@@ -24,9 +29,8 @@ export default function HistoryScreen() {
       let alive = true;
       (async () => {
         const r = await db.getAllAsync<HistoryRow>(
-          `SELECT sl.id, sl.weight, sl.reps, sl.rir, sl.is_pr, sl.logged_at, e.name AS exercise_name
-           FROM set_log sl JOIN exercise e ON e.id = sl.exercise_id
-           ORDER BY sl.logged_at DESC LIMIT 100`,
+          `SELECT id, weight, reps, rir, is_pr, logged_at, exercise_id
+           FROM set_log ORDER BY logged_at DESC LIMIT 100`,
         );
         if (alive) setRows(r);
       })();
@@ -38,10 +42,10 @@ export default function HistoryScreen() {
 
   return (
     <Screen>
-      <Text style={styles.title}>기록</Text>
+      <Text style={styles.title}>{t('history.title')}</Text>
       {rows.length === 0 ? (
         <Card>
-          <Muted>아직 기록이 없어. 오늘 탭에서 첫 세트를 남겨봐.</Muted>
+          <Muted>{t('history.empty')}</Muted>
         </Card>
       ) : (
         <FlatList
@@ -49,18 +53,25 @@ export default function HistoryScreen() {
           keyExtractor={(r) => r.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: space.xxl }}
-          renderItem={({ item }) => (
-            <View style={styles.row}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.ex}>{item.exercise_name}</Text>
-                <Muted>
-                  {item.weight > 0 ? `${item.weight}kg × ${item.reps}` : `${item.reps}회`}
-                  {item.rir != null ? ` · RIR ${item.rir}` : ''}
-                </Muted>
+          renderItem={({ item }) => {
+            const main =
+              item.weight > 0
+                ? `${formatWeight(item.weight, unitSystem)} × ${item.reps}`
+                : t('history.repsOnly', { reps: item.reps });
+            const rir = item.rir != null ? t('history.rirSuffix', { rir: item.rir }) : '';
+            return (
+              <View style={styles.row}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ex}>{t(`exercise.${item.exercise_id}`)}</Text>
+                  <Muted>
+                    {main}
+                    {rir}
+                  </Muted>
+                </View>
+                {item.is_pr === 1 ? <Text style={styles.pr}>{t('history.prBadge')}</Text> : null}
               </View>
-              {item.is_pr === 1 ? <Text style={styles.pr}>PR ⚡</Text> : null}
-            </View>
-          )}
+            );
+          }}
         />
       )}
     </Screen>

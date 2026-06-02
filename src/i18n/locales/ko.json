@@ -45,7 +45,15 @@
       "pill": "{step}kg",
       "explainer": "세트 기록에서 +/- 버튼이 한 번에 바꾸는 무게."
     },
-    "footer": "OVERDRIVE · Phase 1 로컬 MVP. 전투력은 재미용 자체 산식이다."
+    "footer": "OVERDRIVE · Phase 1 로컬 MVP. 전투력은 재미용 자체 산식이다.",
+    "language": {
+      "section": "언어"
+    },
+    "units": {
+      "section": "단위",
+      "metric": "미터법 (kg · km)",
+      "imperial": "야드파운드 (lb · mi)"
+    }
   },
   "boot": {
     "brand": "OVERDRIVE"

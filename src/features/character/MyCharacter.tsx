@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { Muted, Pill } from '@/ui/primitives';
 import { colors, space } from '@/ui/theme/tokens';
@@ -20,12 +21,13 @@ export function MyCharacter({
   onCardioPress: () => void;
 }) {
   const [view, setView] = useState<BodyView>('front');
+  const { t } = useTranslation();
 
   return (
     <View>
       <View style={styles.toggleRow}>
-        <Pill label="앞" active={view === 'front'} color={colors.cyan} onPress={() => setView('front')} />
-        <Pill label="뒤" active={view === 'back'} color={colors.cyan} onPress={() => setView('back')} />
+        <Pill label={t('character.toggle.front')} active={view === 'front'} color={colors.cyan} onPress={() => setView('front')} />
+        <Pill label={t('character.toggle.back')} active={view === 'back'} color={colors.cyan} onPress={() => setView('back')} />
       </View>
 
       <View style={styles.stageWrap}>
@@ -36,9 +38,9 @@ export function MyCharacter({
       </View>
 
       <View style={styles.cardioRow}>
-        <Pill label="🏃 유산소 / 컨디셔닝" color={colors.energyLo} onPress={onCardioPress} />
+        <Pill label={t('character.cardioChip')} color={colors.energyLo} onPress={onCardioPress} />
       </View>
-      <Muted style={styles.hint}>부위를 터치해서 운동을 골라. 전투력이 오르면 오라가 강해진다.</Muted>
+      <Muted style={styles.hint}>{t('character.hint')}</Muted>
     </View>
   );
 }
