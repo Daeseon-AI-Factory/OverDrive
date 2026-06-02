@@ -14,7 +14,7 @@ import { SetLoggerSheet } from '@/features/logging/SetLoggerSheet';
 import { todayProgram } from '@/features/program/defaultProgram';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { Card, Muted, Screen } from '@/ui/primitives';
-import { colors, fontSize, monoFamily, space } from '@/ui/theme/tokens';
+import { colors, displayFamily, fontSize, numberFamily, space } from '@/ui/theme/tokens';
 
 export default function TodayScreen() {
   const { t } = useTranslation();
@@ -102,7 +102,7 @@ export default function TodayScreen() {
 
 const styles = StyleSheet.create({
   header: { alignItems: 'center', marginTop: space.lg },
-  cpScore: { color: colors.text, fontFamily: monoFamily, fontSize: fontSize.odometer, fontWeight: '900' },
-  grade: { fontSize: fontSize.lg, fontWeight: '800', letterSpacing: 2 },
+  cpScore: { color: colors.text, fontFamily: numberFamily, fontSize: fontSize.odometer },
+  grade: { fontFamily: displayFamily, fontSize: fontSize.xl, letterSpacing: 3 },
   dayTitle: { color: colors.text, fontSize: fontSize.lg, fontWeight: '800', marginBottom: 2 },
 });

@@ -40,7 +40,9 @@ i18n.use(initReactI18next).init({
   fallbackLng: DEFAULT_LOCALE,
   supportedLngs: SUPPORTED_LOCALES as unknown as string[],
   compatibilityJSON: 'v4', // Hermes Intl plural coverage is uneven; v4 keeps plurals deterministic
-  interpolation: { escapeValue: false }, // React already escapes
+  // Catalogs use SINGLE-brace placeholders ({count}); i18next defaults to {{double}}, so set the
+  // delimiters to single braces or interpolation silently no-ops (renders the literal "{count}").
+  interpolation: { escapeValue: false, prefix: '{', suffix: '}' }, // React already escapes
   returnNull: false,
 });
 

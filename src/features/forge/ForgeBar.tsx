@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { formatWeight } from '@/lib/units';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { Muted, NeonButton } from '@/ui/primitives';
-import { colors, fontSize, monoFamily, space } from '@/ui/theme/tokens';
+import { colors, fontSize, numberFamily, space } from '@/ui/theme/tokens';
 import { useSessionStore } from './sessionStore';
 
 function useElapsed(startedAt: number | null): string {
@@ -65,5 +65,5 @@ const styles = StyleSheet.create({
     padding: space.md,
   },
   activeLabel: { color: colors.success, fontSize: fontSize.xs, fontWeight: '800', letterSpacing: 2 },
-  activeStats: { color: colors.text, fontFamily: monoFamily, fontSize: fontSize.md, fontWeight: '700', marginTop: 2 },
+  activeStats: { color: colors.text, fontFamily: numberFamily, fontSize: fontSize.md, marginTop: 2 },
 });

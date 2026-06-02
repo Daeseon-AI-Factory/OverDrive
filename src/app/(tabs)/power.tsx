@@ -8,7 +8,7 @@ import type { CombatPowerComponent } from '@/features/combat-power/combatPower.t
 import { gradeForScore } from '@/features/combat-power/grades';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { Card, Muted, Screen, SectionTitle } from '@/ui/primitives';
-import { colors, fontSize, monoFamily, space } from '@/ui/theme/tokens';
+import { colors, displayFamily, fontSize, numberFamily, space } from '@/ui/theme/tokens';
 
 export default function PowerScreen() {
   const db = useSQLiteContext();
@@ -78,8 +78,8 @@ export default function PowerScreen() {
 
 const styles = StyleSheet.create({
   hero: { alignItems: 'center', marginTop: space.xl },
-  score: { color: colors.text, fontFamily: monoFamily, fontSize: fontSize.odometer, fontWeight: '900' },
-  grade: { fontSize: fontSize.xl, fontWeight: '900', letterSpacing: 3 },
+  score: { color: colors.text, fontFamily: numberFamily, fontSize: fontSize.odometer },
+  grade: { fontFamily: displayFamily, fontSize: fontSize.xl, letterSpacing: 3 },
   disclaimer: { color: colors.textDim, fontSize: fontSize.xs, marginTop: space.sm, letterSpacing: 1 },
   row: { flexDirection: 'row', alignItems: 'center', marginVertical: 6 },
   rowLabel: { color: colors.text, fontSize: fontSize.sm, width: 120 },

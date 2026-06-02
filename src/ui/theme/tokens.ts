@@ -29,4 +29,9 @@ export const fontSize = { xs: 12, sm: 14, md: 16, lg: 20, xl: 28, hero: 56, odom
 // Monospace stack for the combat-power odometer (tabular digits = clean slam animation).
 export const monoFamily = "ui-monospace, SFMono-Regular, Menlo, monospace";
 
+// Aggressive display fonts (loaded in Boot). Anton = condensed black callouts/titles;
+// Orbitron = techy digits for scores/steppers. The "폭발" typography.
+export const displayFamily = 'Anton_400Regular';
+export const numberFamily = 'Orbitron_900Black';
+
 export type Colors = typeof colors;

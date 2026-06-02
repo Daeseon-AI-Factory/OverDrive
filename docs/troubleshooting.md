@@ -138,3 +138,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- override-trigger: 2176fd4 docs(log): record migration v2 profile-en (d30fa9b) [no-log] — false positive: this commit IS the docs-only dual-write log entry for the migration; the keyword is incidental (it names what the log documents), and logging a log entry would recurse. -->
 
 <!-- skipped: 6a2c81e docs(log): note hook keyword false-positive + override (2176fd4) [no-log] -->
+<!-- skipped: c6715fc docs(log): record THE FORGE session ritual (901d481) [no-log] -->

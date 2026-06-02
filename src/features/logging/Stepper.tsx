@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors, fontSize, monoFamily, space } from '@/ui/theme/tokens';
+import { colors, fontSize, numberFamily, space } from '@/ui/theme/tokens';
 
 interface StepperProps {
   value: number;
@@ -130,13 +130,13 @@ const styles = StyleSheet.create({
   },
   btnText: { color: colors.cyan, fontSize: 28, fontWeight: '900', lineHeight: 30 },
   valueWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  value: { color: colors.text, fontFamily: monoFamily, fontSize: 40, fontWeight: '900' },
+  value: { color: colors.text, fontFamily: numberFamily, fontSize: 40, fontWeight: '900' },
   unit: { color: colors.textDim, fontSize: fontSize.md, fontWeight: '700' },
   valueInput: {
     flex: 1,
     textAlign: 'center',
     color: colors.text,
-    fontFamily: monoFamily,
+    fontFamily: numberFamily,
     fontSize: 40,
     fontWeight: '900',
     paddingVertical: 0,

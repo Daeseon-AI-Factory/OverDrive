@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { Anton_400Regular, useFonts } from '@expo-google-fonts/anton';
+import { Orbitron_700Bold, Orbitron_900Black } from '@expo-google-fonts/orbitron';
 import { useSQLiteContext } from 'expo-sqlite';
 import i18n, { DEFAULT_LOCALE, isSupportedLocale, type AppLocale } from '@/i18n';
 import { recomputeAndStore } from '../../db/repos/combatPowerRepo';
@@ -15,6 +17,7 @@ import { colors, fontSize } from '../../ui/theme/tokens';
 export function Boot({ children }: { children: React.ReactNode }) {
   const db = useSQLiteContext();
   const [ready, setReady] = useState(false);
+  const [fontsLoaded] = useFonts({ Anton_400Regular, Orbitron_700Bold, Orbitron_900Black });
 
   useEffect(() => {
     let alive = true;
@@ -48,7 +51,7 @@ export function Boot({ children }: { children: React.ReactNode }) {
     };
   }, [db]);
 
-  if (!ready) {
+  if (!ready || !fontsLoaded) {
     return (
       <View style={styles.splash}>
         <Text style={styles.brand}>OVERDRIVE</Text>

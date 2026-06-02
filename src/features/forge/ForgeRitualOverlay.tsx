@@ -13,7 +13,7 @@ import { auraFromCp } from '@/features/character/auraFromCp';
 import { formatWeight } from '@/lib/units';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { colors, fontSize, monoFamily, space } from '@/ui/theme/tokens';
+import { colors, displayFamily, fontSize, numberFamily, space } from '@/ui/theme/tokens';
 import { useSessionStore, type ForgeRitual } from './sessionStore';
 
 /**
@@ -101,9 +101,9 @@ const styles = StyleSheet.create({
   root: { alignItems: 'center', justifyContent: 'center', zIndex: 50, elevation: 50 },
   flare: { position: 'absolute', width: '90%', aspectRatio: 1, borderRadius: 999, shadowOpacity: 0.9, shadowRadius: 60, shadowOffset: { width: 0, height: 0 } },
   center: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.xl },
-  title: { fontSize: fontSize.xl, fontWeight: '900', letterSpacing: 6, textAlign: 'center', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 24 },
+  title: { fontFamily: displayFamily, fontSize: fontSize.hero, letterSpacing: 4, textAlign: 'center', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 30 },
   subtitle: { color: colors.textDim, fontSize: fontSize.sm, marginTop: space.md, letterSpacing: 2 },
   summary: { alignItems: 'center', marginTop: space.lg },
-  summaryLine: { color: colors.text, fontFamily: monoFamily, fontSize: fontSize.lg, fontWeight: '800', marginVertical: 3 },
+  summaryLine: { color: colors.text, fontFamily: numberFamily, fontSize: fontSize.lg, marginVertical: 4 },
   tapHint: { color: colors.textDim, fontSize: fontSize.xs, marginTop: space.lg, letterSpacing: 1 },
 });
