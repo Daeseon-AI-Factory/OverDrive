@@ -78,3 +78,23 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: d3dd577
 - **Pattern**: Prefer a `/// <reference types="x" />` file over a `compilerOptions.types` array when you only need to *add* one ambient package — the array is exclusive and silently drops all other auto-included @types.
 <!-- skipped: d3b66d1 docs(log): record combat-power v1 + jest-globals fix (d3dd577) [no-log] -->
+
+## expo-doctor caught a native peer dep + version drift that tsc passed clean on
+
+- **Symptom**: `tsc --noEmit` and `jest` both green, but `npx expo-doctor` failed 2/21:
+  ```
+  ✖ Check that required peer dependencies are installed
+  Missing peer dependency: expo-asset  (Required by: expo-audio)
+  Your app may crash outside of Expo Go without this dependency.
+  ✖ Check that packages match versions required by installed Expo SDK
+  @types/jest  expected 29.5.14  found 30.0.0
+  ```
+- **Cause**: expo-audio declares `expo-asset` as a native peer dep that `npx expo install expo-audio` did NOT pull transitively — a TypeScript build never references it, so tsc stays green while the dev/EAS build would crash at runtime. Separately, `@types/jest@30` was installed against jest-expo's bundled jest 29.
+- **Fix**: `npx expo install expo-asset` (added its config plugin) + `npm i -D @types/jest@~29.5.14` (align types to the jest 29 runtime). `expo-doctor` → 21/21, tsc still clean, 39/39 jest.
+- **Commit**: aa9d668
+- **Pattern**: Run `expo-doctor` before declaring an Expo feature done — typecheck/tests can't see missing NATIVE peer deps or SDK version drift, and those surface only at build/runtime on device.
+
+- **Symptom**: `tsc` error on the tab layout: `Type '({ color }: { color: string; }) => Element' is not assignable to ... { color: ColorValue }`.
+- **Cause**: expo-router `Tabs.Screen` `tabBarIcon` passes `color: ColorValue` (which includes `OpaqueColorValue`), not `string`.
+- **Fix**: typed the icon render prop param as `{ color: ColorValue }` (imported from react-native). `<Text style={{ color }}>` accepts ColorValue.
+- **Commit**: aa9d668

@@ -1,0 +1,43 @@
+---
+title: "Phase 1 굴러가는 슬라이스 — 4탭 UI + 로깅 핫패스 배선"
+date: "2026-06-02"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "도메인 코어(전투력·JUICE·DB) 위에 4탭 UI와 로깅 핫패스를 배선해, dev client 빌드 시 '로그→전투력 갱신→화면 폭발' 루프가 도는 Phase 1 슬라이스를 완성. expo-doctor 21/21·tsc clean·39 테스트."
+tags: ["phase-1", "ui", "expo-router", "integration"]
+---
+
+## 무엇
+
+검증된 도메인 코어(전투력 엔진·JUICE 판정·PR·DB 레이어) 위에 **사람이 만지는 표면**을 올렸다. 이제 앱이 실제로 하나의 루프를 돈다:
+
+> 운동 선택 → 무게/횟수/RIR 입력 → **기록** → `addSet`(PR 판정 + durable write) → 전투력 재계산 → 오도미터 갱신 → **JUICE 발동(플래시 + "+N" + 햅틱, PR이면 OVERDRIVE)** → PowerEvent fire-and-forget.
+
+- **라우팅**: 루트 `_layout`(GestureHandlerRootView → `SQLiteProvider`+migrate → `Boot`(설정/CP 하이드레이션) → `JuiceProvider` → Stack) + `(tabs)` 4개: 오늘/전투력/기록/설정.
+- **오늘 탭**: 요일별 프로그램(§6.2) + 운동 Pill 선택 + "지난: Xkg×Y" 프리필 + 세트 기록. `useLogSet` 훅이 핫패스 계약을 캡슐화(유일 await=addSet, 나머지는 비차단/fire-and-forget).
+- **전투력 탭**: 큰 오도미터 점수 + 등급 + 컴포넌트 breakdown 바 + **"재미용 자체 산식 · 과학적 지표 아님" 라벨(§11.4 필수)**.
+- **기록**(최근 세트 + PR 배지), **설정**(juice_intensity 풀/중/미니멀, sound_on → DB persist).
+- 데모 템플릿(components/constants/hooks/global.css/explore) 제거, OVERDRIVE 네온 프리미티브로 교체.
+
+## JUICE는 v0 (의도된 선택)
+
+JUICE 비주얼은 **Reanimated 기반 v0**(화면 플래시 + 플로트업 + 콜아웃 + 햅틱)다. **SkSL/Skia GPU 셰이더(에너지 오라·파티클 폭발)는 일부러 미뤘다** — §6.4가 "그럭저럭은 실패, 셰이더 퀄을 한계까지 이터레이션"을 요구하는데, 그건 **기기에서 렌더를 보면서**만 제대로 뽑힌다. 빌드 없이 셰이더를 눈감고 짜는 건 이 프로젝트의 "무지성 금지"에 정면으로 어긋난다. v0가 도파민 루프(로그마다 터짐)는 이미 충족하므로, 셰이더는 빌더의 dev client 위에서 올린다.
+
+## 검증 (실측)
+
+- `npx tsc --noEmit` → **clean** (전체 앱).
+- `npx jest` → **39/39 PASS** (도메인 코어; UI는 런타임).
+- `npx expo-doctor` → **21/21** (수정 후, 아래).
+- 커밋 `aa9d668`.
+- **expo-doctor가 typecheck가 못 본 것을 잡음**(troubleshooting.md): expo-audio의 네이티브 peer `expo-asset` 누락("빌드 시 크래시 가능") → 설치, `@types/jest` 30↔SDK 29 드리프트 → 29 핀. **교훈: Expo 기능은 expo-doctor까지 통과해야 'done'.**
+
+## 한계 (정직)
+
+기기 없이 짠 UI라 **런타임은 미검증**이다 — typecheck/doctor는 통과하지만, expo-router 배선·SQLiteProvider·Reanimated 호스트는 **실제 dev client 빌드에서만** 진짜로 돈다. 첫 빌드에서 잔버그가 나올 수 있고, 그건 다음 이터레이션에서 잡는다.
+
+## 다음 (빌더 + 나)
+
+1. **빌더: dev client 빌드** (`npx expo run:ios` 또는 `run:android`) → 오프라인 스모크: 부팅→마이그레이션→시드→세트 로깅 시 전투력 갱신 + JUICE 발동(write 비차단), PR이면 OVERDRIVE. = **Phase 1 Accept 검증.**
+2. **나: SkSL 셰이더 히어로 레이어**(energyPop T1/T2 → overdriveBurst T3/T4)를 JuiceOverlay에 올리고 기기에서 퀄 이터레이션. + 오디오 풀(콜아웃/SFX), 오도미터 슬램 애니메이션.
