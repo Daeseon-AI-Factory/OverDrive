@@ -4,7 +4,7 @@
 
 - **1차 유저:** 빌더 본인(dogfooding). 성공 기준 = "내가 매일 쓰고 운동에 도움 + 기록할 때마다 개꼴림."
 - **현재 단계:** Phase 1 — 로컬 MVP (백엔드 없이 온디바이스).
-- **전체 빌드 스펙:** 대화로 합의된 OVERDRIVE 빌드 스펙이 정본. (full spec을 `docs/overdrive-spec.md`로 박제하는 건 후속 작업.)
+- **전체 빌드 스펙:** [`docs/overdrive-spec.md`](docs/overdrive-spec.md)가 정본(canonical). 2026-06-01에 대화로 합의된 OVERDRIVE 빌드 스펙을 박제. 코드보다 이 문서가 우선.
 
 ---
 
