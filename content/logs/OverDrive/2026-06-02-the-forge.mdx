@@ -1,0 +1,45 @@
+---
+title: "THE FORGE — 수련장 진입 의식 + 완료 T4 + streak 해금"
+date: "2026-06-02"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "빌더 비전 '헬스장 = 정신과 수련의 방 들어가는 느낌'을 세션 라이프사이클로 구현. 용광로 진입 의식(암전→오라→콜아웃) → 수련 모드(타이머·세트·볼륨) → 완료 풀스크린 T4 + 요약. 이전 streak/T4 구멍도 메움. tsc/lint/jest48/번들 green."
+tags: ["phase-1", "forge", "session", "juice"]
+---
+
+## 왜
+
+빌더: "헬스장 들어갈 때 씨발 엄청난 수련의 방 들어가는 느낌." 그리고 우리가 합의한 features-first(효과는 나중). 그래서 **세션을 의식(ritual)으로** — 구조는 기능(지금), GPU 분위기는 기기 이터레이션. 이름은 빌더 확정 **THE FORGE / 용광로** (i18n 자동 4개 언어).
+
+## 흐름
+
+```
+[진입] 첫 터치/ENTER 버튼 → 세션 생성 → ForgeRitualOverlay: 암전 → 캐릭터 오라색 플레어 → "ENTER THE FORGE" 콜아웃 + 강한 햅틱 (1.6s, 탭 스킵)
+[수련] ForgeBar: 시간·세트수·볼륨, 바디맵으로 기록 → 기록마다 JUICE 폭발 (기존 핫패스)
+[완료] FINISH → completeSession → CP 재계산 → streak 계산 → T4 'session' JUICE → 슈퍼노바 + "FORGE COMPLETE" + 요약(세트/볼륨/전투력 +N/연속) (탭하여 계속)
+```
+
+## 구현
+
+- `sessionStore`(zustand): activeSessionId·startedAt·setCount·volumeKg·cpAtStart + `ritual` 플래그(키드 오버레이 replay).
+- `useForge`: enter()=startSession+ritual / finish()=completeSession→recompute→`computeStreak`(이제 completed_at 박혀서 작동)→`classifyEvent({kind:'session'})` T4→summary.
+- `ForgeRitualOverlay`(Reanimated): 진입은 자동 dismiss, 완료는 요약 보여주고 탭 대기. 오라색은 `auraFromCp(score)`, 볼륨은 `formatWeight`(단위 인지).
+- `ForgeBar`: idle=ENTER 버튼 / active=세션 바(1초 타이머). `useLogSet`이 세트마다 `recordSet(weight*reps)`로 볼륨 집계.
+- 오늘 탭: 첫 터치=진입, 세션 중 부위 터치=picker.
+
+## 구멍 메움
+
+이전엔 세션을 시작만 하고 완료 안 해서 **streak 영원히 0 + T4 세션 폭발 안 터짐**이었음(classifyEvent엔 있는데 호출 없음). FINISH가 `completeSession`을 호출 → 그 세션이 streak에 카운트되고 T4가 발동. 기능+뽕맛 동시 해금.
+
+## 검증 (실측)
+
+- `tsc --noEmit` clean · `expo lint` clean · `jest` **48/48** · `expo export` 번들 성공.
+- 커밋 `901d481`. (로그 커밋 제목엔 트리거 키워드 회피 — 지난 훅 재귀 교훈 적용.)
+- 런타임/의식 "느낌"은 빌더 리로드 검증 — % 오라/타이밍은 기기 튜닝.
+
+## 다음
+
+- 기기에서 진입 의식 타이밍/오라 튜닝 + **SkSL 앰비언트 챔버**(진짜 "수련의 방" 분위기) + 오디오(앰비언트 루프 + 콜아웃 VO).
+- streak 마일스톤(7/30일) 별도 T4, OVERDRIVE MODE(세션 게이지) 등.
