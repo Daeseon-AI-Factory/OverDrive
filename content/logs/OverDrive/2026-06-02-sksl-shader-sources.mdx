@@ -1,0 +1,33 @@
+---
+title: "JUICE SkSL 셰이더 소스 — energyPop / overdriveBurst"
+date: "2026-06-02"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "JUICE 히어로의 GPU 셰이더 소스 2개(T1/T2 energyPop, T3/T4 overdriveBurst)를 오리지널 SkSL로 작성하고, 컴파일 실패를 무음 처리하지 않는 로더를 붙였다. Skia 렌더 컴포넌트 배선은 §6.4대로 기기에서 라이브 이터레이션."
+tags: ["phase-1", "juice", "skia", "sksl", "graphics"]
+---
+
+## 무엇 / 왜 이렇게
+
+JUICE 히어로의 GPU 레이어를 두 단계로 나눴다: **(1) 셰이더 소스(순수·리뷰 가능, 지금)** + **(2) Skia 렌더 배선(기기에서 라이브, 다음)**.
+
+- `energyPop.sksl` (T1/T2): 코어 글로우 + 확장 링. `uIntensity`/`uProgress`로 파라미터화해 한 셰이더가 T1(약)·T2(강) 둘 다 커버 — 가장 자주 터지는 베이스라인 도파민.
+- `overdriveBurst.sksl` (T3/T4): 쇼크웨이브 링 + 방사형 스피드라인 + 핫코어 + 크로마틱 시머. PR/세션/레벨업의 시그니처 OVERDRIVE.
+- `compileEffect`: `Skia.RuntimeEffect.Make`가 컴파일 실패 시 **null을 반환** → 경고 + v0(Reanimated) 폴백. **깨진 셰이더가 invisible no-op로 출시되는 사고 방지**(§6.4).
+- 전부 **오리지널 SkSL**(ShaderToy 등 차용/포팅 아님), premultiplied alpha 출력.
+
+**왜 배선을 미뤘나:** §6.4가 "그럭저럭은 실패, 셰이더 퀄을 한계까지 이터레이션"을 요구한다. 그건 **렌더를 눈으로 보면서**만 가능 — 기기 없이 Skia 컴포넌트를 눈감고 배선하면 이 프로젝트의 "무지성 금지"에 정면으로 어긋난다. 그래서 소스(창작의 핵심)는 지금 박고, 배선+퀄 튜닝은 빌더의 dev client 위에서.
+
+## 검증
+
+- `npx tsc --noEmit` → clean. 로더가 `Skia.RuntimeEffect.Make`를 호출하므로 **Skia 런타임 API 존재가 타입체크로 확인**됨.
+- `npx jest` → 39/39.
+- 커밋 `061b378`.
+- 런타임 검증(실제 컴파일/렌더)은 dev client 빌드에서.
+
+## 다음
+
+- 빌드 뜨면: `SkiaAura` 컴포넌트(전역 Canvas + `<Shader>` + Reanimated 구동 uniform)를 JuiceOverlay에 additive로 올리고 — v0 플래시는 폴백으로 유지 — 기기에서 k값/링폭/시머속도 이터레이션.
+- 병렬: 컴플라이언스+브랜드 리서치 백그라운드 에이전트 진행 중(완료 시 docs/compliance 병합).
