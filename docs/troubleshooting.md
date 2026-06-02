@@ -115,3 +115,14 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 88cdbd9
 - **Pattern**: Under React Compiler, treat `expo lint` as a gate — it catches ref-in-render / setState-in-effect that typecheck and bundling miss. Prefer a remount `key` over an in-effect reset.
 <!-- skipped: d87e62d docs(log): record body-map redesign + react-hooks lint fixes (88cdbd9) [no-log] -->
+
+## Type-guard narrowing lost after reassigning a `let` (i18n locale resolution)
+
+- **Symptom**: `tsc` error in Boot's locale resolution:
+  ```
+  src/features/boot/Boot.tsx(33,45): error TS2345: Argument of type 'string' is not assignable to parameter of type '"en" | "ko" | "es" | "zh"'.
+  ```
+- **Cause**: `let locale = user?.locale ?? ''` is `string`; `if (!isSupportedLocale(locale)) { locale = DEFAULT_LOCALE }` reassigns it, but after the block TS widens `locale` back to `string` (a type-guard's narrowing doesn't survive reassignment of the same `let` in the negative branch), so `setLocale(locale)`/`changeLanguage(locale)` (expecting `AppLocale`) fail.
+- **Fix**: guard a `const stored`, assign into a typed `let locale: AppLocale` in both branches (`if (isSupportedLocale(stored)) locale = stored; else { locale = DEFAULT_LOCALE; ... }`).
+- **Commit**: 9948c04
+- **Pattern**: When a value must end up as a narrowed union, declare it `let x: TheUnion` and assign inside the guard branches — don't rely on a type guard narrowing a reassigned `let` afterward.
