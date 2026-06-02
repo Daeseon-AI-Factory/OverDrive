@@ -1,0 +1,46 @@
+---
+title: "빌드 스펙을 repo 정본으로 박제 (docs/overdrive-spec.md)"
+date: "2026-06-01"
+project: "OverDrive"
+kind: "decision"
+visibility: "public"
+language: "ko"
+summary: "대화로만 존재하던 OVERDRIVE 전체 빌드 스펙을 docs/overdrive-spec.md로 박제해 단일 진실 원천을 만들고, Phase 1 빌드의 기준점을 고정했다."
+tags: ["phase-1", "spec", "decision", "planning"]
+---
+
+## 왜 (Context)
+
+지난 부트스트랩(`2675f48`)에서 로깅 시스템은 깔았지만, **전체 빌드 스펙은 "대화로 합의된 게 정본"이라고만 적혀 있고 repo에도 내 컨텍스트에도 없었다.** 코드 한 줄 쓰기 전에 이걸 박제하지 않으면, 세션이 사라지는 순간 "왜 NestJS인지 / 왜 Skia 한계까지인지 / Phase 순서가 왜 이건지"가 다시 휘발된다. 무지성 빌드 안 하기로 한 원칙([[dual-write-logging-required]])과 정면으로 어긋난다.
+
+## 무엇을 (Decision)
+
+합의된 빌드 스펙 전문을 `docs/overdrive-spec.md`로 그대로 박제했다(§0 작업규칙 ~ §11 시작지시). `CLAUDE.md`의 "후속 작업" 표현을 실제 파일을 가리키는 포인터로 갱신하고 "코드보다 이 문서가 우선"을 명시했다.
+
+이 문서가 인코딩하는 핵심 결정들(이번에 새로 정한 게 아니라, 대화에서 정해진 걸 고정):
+
+- **도메인 백엔드 = Node.js + NestJS + PostgreSQL** (RN과 동일 언어, I/O 워크로드 적합). 단 **Phase 1은 백엔드 없이 온디바이스** — 이 결정은 Phase 2부터 발효.
+- **그래픽 = 히어로, Skia/SkSL 한계까지** (§6.4). "그럭저럭"은 실패로 간주. 3D(R3F/WebGPU) 레이어는 스코프 포함이되 Phase 3.
+- **JUICE 엔진(T1–T4)이 OverDrive의 심장** — 단 T1–T2는 로깅을 1ms도 막지 않는다(비동기·스킵 가능). 로깅 속도 > 화려함.
+- **전투력 = 재미용 자체 산식**(과학 지표 아님, UI 라벨 필수) + trust-tiering.
+- **Phase 0→6 로드맵 고정.** 지금 = Phase 1(로컬 MVP).
+
+## 고려한 대안 (Options)
+
+1. **(채택) 지금 박제 후 Phase 1 진입** — 정본이 repo에 생김. 비용: 스펙을 한 번 옮겨 적는 시간.
+2. **스펙 없이 바로 스캐폴드** — 빠르지만 결정 근거가 다시 휘발, 훅과도 결이 안 맞음.
+3. **아무것도 안 함(대화 의존 유지)** — 세션 사라지면 그대로 손실. 기각.
+
+## 트레이드오프 / 되돌리기 (Trade-off / Reversibility)
+
+- 스펙을 코드와 별도 문서로 둔다 → 코드와 드리프트할 위험. 완화: 변경은 커밋으로만, 사유는 `content/logs`에 기록. 이 .mdx가 그 첫 사례다.
+- 완전 되돌리기 가능: 문서일 뿐, 코드 의존성 없음.
+
+## 검증 (Verified by)
+
+- 커밋 `08519e7` (`git log -1 --format=%cI` = `2026-06-01T22:55:19-04:00`). 변경: `docs/overdrive-spec.md` 신규 + `CLAUDE.md` 포인터 1줄.
+- 이 .mdx가 `08519e7`을 인용 → Stop 훅 해시-센티넬 통과. 버그가 아니라 결정/박제이므로 `docs/troubleshooting.md`엔 엔트리를 만들지 않음(안티-할루시네이션 규칙 1·2: 억지 Symptom 금지).
+
+## 다음
+
+- Phase 1 설계: 현재(2026) 라이브러리 버전 검증(Expo SDK·RN New Arch·Skia·Reanimated 4·expo-sqlite) + 4기둥 설계(로컬 데이터 레이어 / 전투력 v1 산식 / JUICE 엔진 아키텍처 / 앱 구조). 검증된 Phase 1 구현 플랜을 받은 뒤 스캐폴드 진입.
