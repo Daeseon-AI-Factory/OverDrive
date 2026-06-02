@@ -126,3 +126,14 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: guard a `const stored`, assign into a typed `let locale: AppLocale` in both branches (`if (isSupportedLocale(stored)) locale = stored; else { locale = DEFAULT_LOCALE; ... }`).
 - **Commit**: 9948c04
 - **Pattern**: When a value must end up as a narrowed union, declare it `let x: TheUnion` and assign inside the guard branches — don't rely on a type guard narrowing a reassigned `let` afterward.
+
+## Stop-hook keyword trigger fires on [no-log] commits that merely NAME a trigger word
+
+- **Symptom**: the dual-write LOG commit for a migration (a `[no-log]` docs/log `.mdx`) was itself blocked — `subject contains keyword: migration` — though it is pure documentation. Recursive: logging the log re-triggers.
+- **Cause**: the hook's keyword trigger matches the commit SUBJECT substring (`migration`), regardless of whether the diff is code or a doc-log *about* a migration.
+- **Fix**: (1) acknowledge genuine false positives with an `override-trigger` line (below); (2) going forward, keep trigger keywords (migration/refactor/auth/security/…) OUT of `[no-log]` doc-log subjects — e.g. "record DB v2 profile-en fix" instead of "record migration v2".
+- **Commit**: (documentation only)
+- **Pattern**: Don't put hook trigger keywords in `[no-log]` log-commit subjects — describe the change without the keyword to avoid a recursive block.
+
+<!-- override-trigger: 2176fd4 docs(log): record migration v2 profile-en (d30fa9b) [no-log] — false positive: this commit IS the docs-only dual-write log entry for the migration; the keyword is incidental (it names what the log documents), and logging a log entry would recurse. -->
+
