@@ -1,0 +1,36 @@
+---
+title: "마이그레이션 v2 — 로컬 프로필 로케일 'en' 강제"
+date: "2026-06-02"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "빌더 지시 '프로필 무조건 영어로'에 따라 DB v1→v2 마이그레이션으로 로컬 유저의 locale을 한 번에 'en'으로 전환. i18n 도입 전 기본값이 'ko'였던 기존 행을 정정. 이후 사용자가 바꾼 값은 유지."
+tags: ["phase-1", "db", "migration", "i18n"]
+---
+
+## 무엇
+
+빌더: "프로필 무조건 영어로." i18n 도입 전 `user.locale` 기본값이 `'ko'`였던 탓에 기존 로컬 프로필이 한글로 떴다. DB 버전 `1→2` 마이그레이션으로 정정.
+
+```ts
+// src/db/migrate.ts
+if (version === 1) {
+  // Builder directive: profile language is English. Flip the stale pre-i18n 'ko' default once.
+  await db.runAsync(`UPDATE user SET locale = 'en' WHERE id = ?`, [LOCAL_USER_ID]);
+  version = 2;
+}
+```
+
+- **일회성·idempotent**: `user_version` 가드라 v2 블록은 한 번만 실행. 이후 사용자가 설정에서 언어를 바꾸면(예: ko) 그 값은 유지된다(v2 재실행 안 됨).
+- 신규 설치는 `ensureLocalUser`가 이미 `'en'`으로 생성 + 스키마 기본값 `'en'` → v0→1→2 흐름에서 no-op.
+- `DATABASE_VERSION = 2` (schema.ts).
+
+## 검증
+
+- `tsc --noEmit` clean. 커밋 `d30fa9b`.
+- 런타임 확인은 빌더 리로드 시(기존 'ko' 프로필 → 'en' 전환 + 영어 UI).
+
+## 메모
+
+- 이 커밋은 `[no-log]`을 달았으나 Stop 훅이 `migration` 키워드 positive trigger로 정확히 잡아 강제 로깅. 오탐 아님(실제 데이터 마이그레이션) → 오버라이드 대신 기록. 훅이 의도대로 작동.
