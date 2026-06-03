@@ -1,0 +1,36 @@
+---
+title: "카디오/러닝 로깅 + 기록 탭 부위별 주간 정리"
+date: "2026-06-03"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "빌더 피드백 '러닝/유산소가 없고, 내가 한 부위가 체계적으로 정리 안 됨'에 대응. 카디오 종목 확충 + 시간/거리 전용 로거(cardio_log) + 기록 탭을 이번 주 부위별 정리(세트·볼륨, 안 한 부위 흐리게)로 재설계."
+tags: ["phase-1", "cardio", "history", "organization"]
+---
+
+## 왜
+
+빌더: "러닝이나 다른 운동은 없네 + 내가 한 각 부위가 제대로 정리가 안 되는 듯. 존나 쉬우면서 체계적으로 정리되게." 두 구멍: ① 카디오를 무게×횟수(SetLogger)로 기록하니 안 맞음 + 종류 적음 ② 기록 탭이 평면 리스트라 "뭘 얼마나 했나"가 안 보임.
+
+## 카디오 (러닝 등)
+
+- 종목 확충: 러닝(야외)·트레드밀·Zone2·HIIT·사이클·로잉·줄넘기·인클라인워킹 (seed + 4개 언어 운동명).
+- `CardioLoggerSheet`: 시간(분)·거리(km/mi)·RPE 스텝퍼 → `cardio_log`(duration_sec/distance_m/rpe). 오늘 탭에서 **운동 type==='cardio'면 카디오 로거, strength면 SetLogger** 자동 분기.
+- `useLogCardio` 핫패스(addCardio→CP 재계산(컨디셔닝)→JUICE). `classifyEvent`에 cardio 케이스(20분/RPE8+ → T3, 그외 T2) + 테스트. `distanceToMeters` 단위 헬퍼(저장은 m).
+
+## 부위별 주간 정리 (기록 탭)
+
+- `EXERCISE_TO_REGION` 역매핑(REGIONS에서 생성)으로 set_log를 부위로 묶음.
+- 기록 탭 = **"이번 주" 부위별 카드**: 가슴/어깨/등/팔/코어/하체 각각 세트수·볼륨, **안 한 부위는 흐리게("이번 주 안 함")** → 빈 곳이 한눈에. + 유산소(세션수·분) 요약. 아래 최근 기록 리스트.
+- 체계적(부위별 한눈에) + 쉬움(그냥 보임).
+
+## 검증 (실측)
+
+- `tsc --noEmit` clean · `expo lint` clean · `jest` **49/49** · `expo export` 번들 성공.
+- 커밋 `a5897c2`. 런타임은 빌더 리로드 검증.
+
+## 다음
+
+- 부위별 주간 정리를 **바디맵 캐릭터에도** 반영(이번 주 한 부위 글로우) → 시각적 체계화.
+- 카디오 GPU JUICE 튜닝, 강도/오디오.
