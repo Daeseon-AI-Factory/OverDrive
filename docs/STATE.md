@@ -2,6 +2,14 @@
 
 > 컨텍스트 압축·새 세션 시 **여기부터 읽으면 이어받는다.** 정본 스펙은 [`docs/overdrive-spec.md`](overdrive-spec.md), Phase 1 플랜 [`docs/phase1-plan.md`](phase1-plan.md). 버그/함정은 [`docs/troubleshooting.md`](troubleshooting.md), 내러티브는 `content/logs/OverDrive/`. **갱신: 2026-06-03.**
 
+## ▶ 새 세션 첫 행동 (여기부터)
+1. 이 파일 + `docs/overdrive-spec.md`(정본) + `docs/troubleshooting.md`(함정) 훑기.
+2. 앱 한 번 띄워 현 상태 확인: `npx expo run:ios`.
+3. **다음 작업 = 오디오 (아래 "남은 것" #1).** 펀치 SFX·베이스·콜아웃 VO·앰비언트, 오리지널 에셋만, JUICE 비차단.
+4. 비-사소 변경마다 dual-write 로깅 (troubleshooting.md + content/logs).
+
+> 모델/세션 메모: 컨텍스트가 꽉 차면 "1M context 크레딧" 에러가 날 수 있음 — 1M(유료) 켜지 말고 **새 세션 + 이 STATE.md 핸드오프**로 이어갈 것. 기본 모델 Sonnet 4.6(표준 컨텍스트)면 에러·과금 없음.
+
 ## 한 줄
 Phase 1(로컬 MVP) **거의 완성** — 굴러가는 앱이 iPhone 17 시뮬에서 돌고, 핵심 루프(바디맵→로깅→전투력→JUICE 폭발→FORGE 완료)가 작동. 검증: tsc/lint/jest(49)/expo-doctor(21)/expo export 전부 green.
 
