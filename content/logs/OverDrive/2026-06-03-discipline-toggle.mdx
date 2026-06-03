@@ -1,0 +1,28 @@
+---
+title: "원탭 규율 토글 (단백질/수면) → 전투력 규율 컴포넌트 활성"
+date: "2026-06-03"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "종합건강 저마찰 첫 발. 오늘 단백질/수면을 원탭으로 ✓ → discipline 테이블 + 전투력의 비활성이던 '규율' 컴포넌트가 활성화(추적 시작 시에만 — 안 하면 renorm out)."
+tags: ["phase-1", "discipline", "combat-power", "health"]
+---
+
+## 무엇
+
+범위 결정(종합건강이되 저마찰) 후 Phase 1 첫 발. 음식/수면 자동연동은 Phase 2지만, **지금 마찰 0짜리 규율 입력**은 가능: 오늘 단백질 챙김 ✓ / 잘 잠 ✓ 한 탭.
+
+- DB v3: `discipline`(user_id·date·protein·rest) 테이블. fresh는 SCHEMA_V1, 기존(v2)은 v2→v3 `CREATE IF NOT EXISTS`.
+- `disciplineRepo`: getToday/setToday(upsert per day)/countSince(7일 protein·rest 일수 + 추적일수 days).
+- `combatPowerRepo.buildInput`: `days>0`(추적 시작)이면 `discipline:{proteinDays,restOkDays}` 활성, 아니면 `null`(renorm out). → **규율 안 쓰는 동안은 전투력 안 깎임(안티수치심/graceful), 쓰기 시작하면 반영.**
+- `DisciplineCard`(오늘 탭): 단백질/수면 원탭 토글 → setToday → CP 재계산 → 켜면 T1 팝. focus 시 오늘값 로드.
+
+## 검증
+
+- tsc clean · expo lint clean · jest 49/49 · expo export 번들 성공. 커밋 `8cb70f5`.
+
+## 다음
+
+- Phase 2: 음식 사진AI(서버 비전LLM) + Apple Health/Health Connect 수면·체중 임포트 → 규율/영양 자동화.
+- 운동 뽕맛(파티클↑·블룸·오디오) 계속.
