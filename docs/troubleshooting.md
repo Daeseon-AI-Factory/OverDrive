@@ -147,6 +147,18 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: configured the i18next delimiters to single braces in `src/i18n/index.ts`: `interpolation: { escapeValue: false, prefix: '{', suffix: '}' }`. Fixes every placeholder at once without editing the 4 catalogs.
 - **Commit**: e50abc0
 - **Pattern**: When hand-authoring i18next catalogs with `{single}` placeholders, set `interpolation.prefix/suffix` to match — or author `{{double}}`. A wrong delimiter fails silently (literal text), not loudly.
+
+## "no such table: discipline" on device after adding a migration (dev hot-reload vs full boot)
+
+- **Symptom**: red console error on device after the discipline feature shipped:
+  ```
+  Uncaught (in promise) Error: Calling the 'prepareAsync' function has failed
+  → Caused by: Error code 1: no such table: discipline
+  ```
+- **Cause**: DB migrations run in `<SQLiteProvider onInit={migrateDbIfNeeded}>`, which only runs on a FULL app boot. Fast Refresh hot-reloaded the new `DisciplineCard` (which queries `discipline`) onto a still-running app whose DB was at the pre-migration version (v2, no `discipline` table) → the query threw. Worse, `disciplineCountSince` runs inside Combat Power recompute, so it would also break logging.
+- **Fix**: (1) full reload (Cmd+R) runs the v2→v3 migration and creates the table. (2) Hardened `disciplineRepo` reads (`getDisciplineToday`/`disciplineCountSince`) with try/catch → return defaults when the table is absent, so a pre-migration DB never red-screens or breaks CP/logging.
+- **Commit**: 51e3452
+- **Pattern**: A new migration only applies on full app boot, not Fast Refresh. Make repo reads that a hot-reloaded component depends on resilient to the not-yet-created table, and remember to fully reload after adding a migration.
 <!-- skipped: f31f237 docs(log): record kinetic juice + fonts + i18n interpolation fix (e50abc0) [no-log] -->
 <!-- skipped: 6208e30 docs(log): record GPU particle explosion wiring (99adbdc) [no-log] -->
 <!-- skipped: e5c1415 docs(log): record cardio logging + weekly per-region summary (a5897c2) [no-log] -->
