@@ -6,6 +6,7 @@ import { colors, space } from '@/ui/theme/tokens';
 import { BodyMap } from './BodyMap';
 import { CharacterAura } from './CharacterAura';
 import { STAGE_ASPECT, type BodyRegionId, type BodyView } from './regions';
+import { useWeeklyRegions } from './useWeeklyRegions';
 
 /**
  * "MY CHARACTER" — neon humanoid body-map. Tap a region → onRegionPress(region). Front/back toggle
@@ -22,6 +23,7 @@ export function MyCharacter({
 }) {
   const [view, setView] = useState<BodyView>('front');
   const { t } = useTranslation();
+  const glow = useWeeklyRegions();
 
   return (
     <View>
@@ -33,7 +35,7 @@ export function MyCharacter({
       <View style={styles.stageWrap}>
         <View style={styles.stage}>
           <CharacterAura />
-          <BodyMap view={view} activeRegion={activeRegion} onRegionPress={onRegionPress} />
+          <BodyMap view={view} activeRegion={activeRegion} glow={glow} onRegionPress={onRegionPress} />
         </View>
       </View>
 

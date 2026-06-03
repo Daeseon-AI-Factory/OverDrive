@@ -2,15 +2,18 @@ import { StyleSheet, View } from 'react-native';
 import { colors } from '@/ui/theme/tokens';
 import { BodyRegion } from './BodyRegion';
 import { DECOR_RECTS, pct, rectsForView, type BodyRegionId, type BodyView } from './regions';
+import type { RegionGlow } from './useWeeklyRegions';
 
 /** The tappable humanoid for one view. Decorative head/hips behind, Pressable regions on top. */
 export function BodyMap({
   view,
   activeRegion,
+  glow,
   onRegionPress,
 }: {
   view: BodyView;
   activeRegion?: BodyRegionId | null;
+  glow: RegionGlow;
   onRegionPress: (region: BodyRegionId) => void;
 }) {
   return (
@@ -37,6 +40,7 @@ export function BodyMap({
           key={rect.id}
           rect={rect}
           active={activeRegion === rect.region}
+          glow={glow[rect.region]}
           onPress={() => onRegionPress(rect.region)}
         />
       ))}
