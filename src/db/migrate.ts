@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { nowIso } from '../lib/date';
 import { DEFAULT_SETTINGS } from '../lib/settings';
-import { DATABASE_VERSION, SCHEMA_V1 } from './schema';
+import { DATABASE_VERSION, MIGRATION_003, SCHEMA_V1 } from './schema';
 import { seedExercises } from './seed';
 import { LOCAL_USER_ID } from './types';
 
@@ -33,6 +33,11 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase): Promise<void> {
     // (Language changes made after this run persist normally — this block won't re-run.)
     await db.runAsync(`UPDATE user SET locale = 'en' WHERE id = ?`, [LOCAL_USER_ID]);
     version = 2;
+  }
+
+  if (version === 2) {
+    await db.execAsync(MIGRATION_003); // discipline table (protein/rest daily)
+    version = 3;
   }
 
   if (version !== DATABASE_VERSION) {

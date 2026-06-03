@@ -5,7 +5,7 @@
 // Deferred to later phases: BodyComp/FitnessTest (Phase 5), League/Friendship/AuraCard (Phase 3-4).
 // Program is a code constant (defaultProgram.ts), not a table. Streak is computed, not stored.
 
-export const DATABASE_VERSION = 2;
+export const DATABASE_VERSION = 3;
 
 export const SCHEMA_V1 = `
 CREATE TABLE IF NOT EXISTS user (
@@ -97,4 +97,27 @@ CREATE TABLE IF NOT EXISTS power_event (
   created_at  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_powerevent_user ON power_event(user_id, created_at);
+
+CREATE TABLE IF NOT EXISTS discipline (
+  id         TEXT PRIMARY KEY NOT NULL,
+  user_id    TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+  date       TEXT NOT NULL,
+  protein    INTEGER NOT NULL DEFAULT 0,
+  rest       INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL,
+  UNIQUE(user_id, date)
+);
+`;
+
+// v2 → v3: add the discipline table to already-migrated databases (idempotent).
+export const MIGRATION_003 = `
+CREATE TABLE IF NOT EXISTS discipline (
+  id         TEXT PRIMARY KEY NOT NULL,
+  user_id    TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+  date       TEXT NOT NULL,
+  protein    INTEGER NOT NULL DEFAULT 0,
+  rest       INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL,
+  UNIQUE(user_id, date)
+);
 `;

@@ -84,6 +84,15 @@ export interface CombatPowerRow {
   created_at: string;
 }
 
+export interface DisciplineRow {
+  id: string;
+  user_id: string;
+  date: string;
+  protein: number; // 0/1
+  rest: number; // 0/1
+  updated_at: string;
+}
+
 export interface PowerEventRow {
   id: string;
   client_uuid: string;

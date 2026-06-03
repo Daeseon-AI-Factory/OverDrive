@@ -217,5 +217,10 @@
     "distance": "거리 (선택)",
     "rpe": "강도 (RPE, 선택)",
     "min": "분"
+  },
+  "discipline": {
+    "title": "오늘의 규율",
+    "protein": "🥩 단백질",
+    "rest": "😴 수면"
   }
 }

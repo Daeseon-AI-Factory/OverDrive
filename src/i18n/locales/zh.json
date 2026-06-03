@@ -217,5 +217,10 @@
     "distance": "距离（可选）",
     "rpe": "强度 (RPE, 可选)",
     "min": "分钟"
+  },
+  "discipline": {
+    "title": "今日自律",
+    "protein": "🥩 蛋白质",
+    "rest": "😴 睡眠"
   }
 }

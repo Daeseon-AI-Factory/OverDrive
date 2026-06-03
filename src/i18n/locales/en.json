@@ -217,5 +217,10 @@
     "distance": "Distance (optional)",
     "rpe": "Effort (RPE, optional)",
     "min": "min"
+  },
+  "discipline": {
+    "title": "Discipline · today",
+    "protein": "🥩 Protein",
+    "rest": "😴 Slept well"
   }
 }
