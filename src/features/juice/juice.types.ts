@@ -9,6 +9,7 @@ export type PowerEventReason = 'set' | 'pr' | 'session' | 'streak' | 'levelup';
  */
 export type JuiceEvent =
   | { kind: 'set'; isPr: boolean; rir: number | null; hitTargetReps: boolean; deltaCp: number }
+  | { kind: 'cardio'; durationSec: number; rpe: number | null; deltaCp: number }
   | { kind: 'session'; deltaCp: number }
   | { kind: 'streak'; streakDays: number; isMilestone: boolean; deltaCp: number }
   | { kind: 'levelup'; deltaCp: number };

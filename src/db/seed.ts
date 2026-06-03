@@ -43,9 +43,15 @@ export const EXERCISE_SEED: SeedExercise[] = [
   { id: 'hammer_curl', name: '해머 컬', muscle_group: 'biceps', type: 'strength', default_sets: 3, rep_low: 8, rep_high: 12, is_bodyweight: false },
   { id: 'hip_thrust', name: '힙 쓰러스트', muscle_group: 'posterior_chain', type: 'strength', default_sets: 3, rep_low: 8, rep_high: 15, is_bodyweight: false },
   { id: 'cable_crunch', name: '케이블 크런치', muscle_group: 'core', type: 'strength', default_sets: 3, rep_low: 10, rep_high: 15, is_bodyweight: false },
-  // Conditioning / 인터벌
-  { id: 'hiit_intervals', name: 'HIIT 인터벌', muscle_group: 'conditioning', type: 'cardio', default_sets: 1, rep_low: 0, rep_high: 0, is_bodyweight: true },
+  // Conditioning / 유산소 (logged by duration/distance, not sets×reps)
+  { id: 'outdoor_run', name: '러닝 (야외)', muscle_group: 'conditioning', type: 'cardio', default_sets: 1, rep_low: 0, rep_high: 0, is_bodyweight: true },
+  { id: 'treadmill_run', name: '트레드밀', muscle_group: 'conditioning', type: 'cardio', default_sets: 1, rep_low: 0, rep_high: 0, is_bodyweight: true },
   { id: 'zone2_run', name: 'Zone 2 러닝', muscle_group: 'conditioning', type: 'cardio', default_sets: 1, rep_low: 0, rep_high: 0, is_bodyweight: true },
+  { id: 'hiit_intervals', name: 'HIIT 인터벌', muscle_group: 'conditioning', type: 'cardio', default_sets: 1, rep_low: 0, rep_high: 0, is_bodyweight: true },
+  { id: 'cycling', name: '사이클', muscle_group: 'conditioning', type: 'cardio', default_sets: 1, rep_low: 0, rep_high: 0, is_bodyweight: true },
+  { id: 'rowing', name: '로잉', muscle_group: 'conditioning', type: 'cardio', default_sets: 1, rep_low: 0, rep_high: 0, is_bodyweight: true },
+  { id: 'jump_rope', name: '줄넘기', muscle_group: 'conditioning', type: 'cardio', default_sets: 1, rep_low: 0, rep_high: 0, is_bodyweight: true },
+  { id: 'incline_walk', name: '인클라인 워킹', muscle_group: 'conditioning', type: 'cardio', default_sets: 1, rep_low: 0, rep_high: 0, is_bodyweight: true },
 ];
 
 /** Idempotent: INSERT OR IGNORE so re-runs / new migrations don't duplicate or clobber edits. */

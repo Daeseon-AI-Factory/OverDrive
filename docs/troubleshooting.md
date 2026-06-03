@@ -148,3 +148,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: e50abc0
 - **Pattern**: When hand-authoring i18next catalogs with `{single}` placeholders, set `interpolation.prefix/suffix` to match — or author `{{double}}`. A wrong delimiter fails silently (literal text), not loudly.
 <!-- skipped: f31f237 docs(log): record kinetic juice + fonts + i18n interpolation fix (e50abc0) [no-log] -->
+<!-- skipped: 6208e30 docs(log): record GPU particle explosion wiring (99adbdc) [no-log] -->

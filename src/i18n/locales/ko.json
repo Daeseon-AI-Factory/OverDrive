@@ -25,7 +25,9 @@
     "repsOnly": "{reps}회",
     "weightTimesReps": "{weight}kg × {reps}",
     "rirSuffix": " · RIR {rir}",
-    "prBadge": "PR ⚡"
+    "prBadge": "PR ⚡",
+    "weekly": "이번 주",
+    "noneThisWeek": "이번 주 안 함"
   },
   "settings": {
     "title": "설정",
@@ -187,7 +189,13 @@
     "hip_thrust": "힙 쓰러스트",
     "cable_crunch": "케이블 크런치",
     "hiit_intervals": "HIIT 인터벌",
-    "zone2_run": "Zone 2 러닝"
+    "zone2_run": "Zone 2 러닝",
+    "outdoor_run": "러닝 (야외)",
+    "treadmill_run": "트레드밀",
+    "cycling": "사이클",
+    "rowing": "로잉",
+    "jump_rope": "줄넘기",
+    "incline_walk": "인클라인 워킹"
   },
   "forge": {
     "enter": "용광로 진입",
@@ -203,5 +211,11 @@
       "cpGained": "전투력 +{delta}",
       "streak": "{days}일 연속 🔥"
     }
+  },
+  "cardio": {
+    "duration": "시간",
+    "distance": "거리 (선택)",
+    "rpe": "강도 (RPE, 선택)",
+    "min": "분"
   }
 }

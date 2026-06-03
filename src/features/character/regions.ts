@@ -62,8 +62,26 @@ export const REGIONS: Record<BodyRegionId, RegionDef> = {
   },
 };
 
-// Cardio has no body part to touch → separate chip, not a region on the figure.
-export const CARDIO_EXERCISE_IDS = ['hiit_intervals', 'zone2_run'] as const;
+// Cardio has no body part to touch → separate chip, not a region on the figure. Logged by
+// duration/distance (cardio_log), not sets×reps.
+export const CARDIO_EXERCISE_IDS = [
+  'outdoor_run',
+  'treadmill_run',
+  'zone2_run',
+  'hiit_intervals',
+  'cycling',
+  'rowing',
+  'jump_rope',
+  'incline_walk',
+] as const;
+
+// Reverse map exercise id → body region (for the weekly per-region training summary).
+// Cardio ids are intentionally absent (they're summarized separately).
+export const EXERCISE_TO_REGION: Record<string, BodyRegionId> = Object.fromEntries(
+  (Object.entries(REGIONS) as [BodyRegionId, RegionDef][]).flatMap(([rid, def]) =>
+    def.exerciseIds.map((id) => [id, rid] as const),
+  ),
+);
 
 export const VIEW_REGIONS: Record<BodyView, BodyRegionId[]> = {
   front: ['chest', 'shoulders', 'arms', 'core', 'legs'],

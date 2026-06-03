@@ -41,6 +41,10 @@ export function weightStepDisplay(sys: UnitSystem, metricStepKg: number): number
 export function mToDistance(m: number, sys: UnitSystem): number {
   return sys === 'imperial' ? m / M_PER_MI : m / 1000;
 }
+/** Display distance (km or mi) → meters for storage. */
+export function distanceToMeters(value: number, sys: UnitSystem): number {
+  return sys === 'imperial' ? value * M_PER_MI : value * 1000;
+}
 export function formatDistance(m: number, sys: UnitSystem, precision = 2): string {
   return `${round(mToDistance(m, sys), precision)} ${distanceUnit(sys)}`;
 }

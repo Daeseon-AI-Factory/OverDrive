@@ -25,7 +25,9 @@
     "repsOnly": "{reps} reps",
     "weightTimesReps": "{weight}kg × {reps}",
     "rirSuffix": " · RIR {rir}",
-    "prBadge": "PR ⚡"
+    "prBadge": "PR ⚡",
+    "weekly": "Esta semana",
+    "noneThisWeek": "Sin entrenar esta semana"
   },
   "settings": {
     "title": "Ajustes",
@@ -187,7 +189,13 @@
     "hip_thrust": "Empuje de cadera",
     "cable_crunch": "Crunch en polea",
     "hiit_intervals": "Intervalos HIIT",
-    "zone2_run": "Carrera Zona 2"
+    "zone2_run": "Carrera Zona 2",
+    "outdoor_run": "Correr (exterior)",
+    "treadmill_run": "Cinta de correr",
+    "cycling": "Ciclismo",
+    "rowing": "Remo",
+    "jump_rope": "Saltar la cuerda",
+    "incline_walk": "Caminata inclinada"
   },
   "forge": {
     "enter": "ENTRAR A LA FRAGUA",
@@ -203,5 +211,11 @@
       "cpGained": "Poder +{delta}",
       "streak": "racha de {days} días 🔥"
     }
+  },
+  "cardio": {
+    "duration": "Duración",
+    "distance": "Distancia (opcional)",
+    "rpe": "Esfuerzo (RPE, opcional)",
+    "min": "min"
   }
 }

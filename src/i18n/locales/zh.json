@@ -25,7 +25,9 @@
     "repsOnly": "{reps} 次",
     "weightTimesReps": "{weight}kg × {reps}",
     "rirSuffix": " · RIR {rir}",
-    "prBadge": "PR ⚡"
+    "prBadge": "PR ⚡",
+    "weekly": "本周",
+    "noneThisWeek": "本周未训练"
   },
   "settings": {
     "title": "设置",
@@ -187,7 +189,13 @@
     "hip_thrust": "臀冲",
     "cable_crunch": "绳索卷腹",
     "hiit_intervals": "HIIT 间歇",
-    "zone2_run": "Zone 2 慢跑"
+    "zone2_run": "Zone 2 慢跑",
+    "outdoor_run": "户外跑步",
+    "treadmill_run": "跑步机",
+    "cycling": "骑行",
+    "rowing": "划船机",
+    "jump_rope": "跳绳",
+    "incline_walk": "坡度步行"
   },
   "forge": {
     "enter": "进入熔炉",
@@ -203,5 +211,11 @@
       "cpGained": "战力 +{delta}",
       "streak": "连续 {days} 天 🔥"
     }
+  },
+  "cardio": {
+    "duration": "时长",
+    "distance": "距离（可选）",
+    "rpe": "强度 (RPE, 可选)",
+    "min": "分钟"
   }
 }

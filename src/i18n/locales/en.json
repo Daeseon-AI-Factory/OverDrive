@@ -25,7 +25,9 @@
     "repsOnly": "{reps} reps",
     "weightTimesReps": "{weight}kg × {reps}",
     "rirSuffix": " · RIR {rir}",
-    "prBadge": "PR ⚡"
+    "prBadge": "PR ⚡",
+    "weekly": "This week",
+    "noneThisWeek": "Not trained this week"
   },
   "settings": {
     "title": "Settings",
@@ -187,7 +189,13 @@
     "hip_thrust": "Hip Thrust",
     "cable_crunch": "Cable Crunch",
     "hiit_intervals": "HIIT Intervals",
-    "zone2_run": "Zone 2 Run"
+    "zone2_run": "Zone 2 Run",
+    "outdoor_run": "Outdoor Run",
+    "treadmill_run": "Treadmill",
+    "cycling": "Cycling",
+    "rowing": "Rowing",
+    "jump_rope": "Jump Rope",
+    "incline_walk": "Incline Walk"
   },
   "forge": {
     "enter": "ENTER THE FORGE",
@@ -203,5 +211,11 @@
       "cpGained": "Combat Power +{delta}",
       "streak": "{days}-day streak 🔥"
     }
+  },
+  "cardio": {
+    "duration": "Duration",
+    "distance": "Distance (optional)",
+    "rpe": "Effort (RPE, optional)",
+    "min": "min"
   }
 }

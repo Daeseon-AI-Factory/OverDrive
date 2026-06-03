@@ -9,6 +9,7 @@ import { ForgeBar } from '@/features/forge/ForgeBar';
 import { ForgeRitualOverlay } from '@/features/forge/ForgeRitualOverlay';
 import { useSessionStore } from '@/features/forge/sessionStore';
 import { useForge } from '@/features/forge/useForge';
+import { CardioLoggerSheet } from '@/features/logging/CardioLoggerSheet';
 import { ExerciseRegionSheet, type RegionPicker } from '@/features/logging/ExerciseRegionSheet';
 import { SetLoggerSheet } from '@/features/logging/SetLoggerSheet';
 import { todayProgram } from '@/features/program/defaultProgram';
@@ -89,8 +90,14 @@ export default function TodayScreen() {
       />
 
       <SetLoggerSheet
-        key={activeExercise?.id ?? 'none'}
-        exercise={activeExercise}
+        key={`s-${activeExercise?.id ?? 'none'}`}
+        exercise={activeExercise?.type === 'strength' ? activeExercise : null}
+        ensureSession={ensureSession}
+        onClose={() => setActiveExercise(null)}
+      />
+      <CardioLoggerSheet
+        key={`c-${activeExercise?.id ?? 'none'}`}
+        exercise={activeExercise?.type === 'cardio' ? activeExercise : null}
         ensureSession={ensureSession}
         onClose={() => setActiveExercise(null)}
       />

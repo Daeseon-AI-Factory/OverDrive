@@ -59,6 +59,12 @@ describe('classifyEvent — tier classification', () => {
     expect(v.tier).toBe(4);
     expect(v.reason).toBe('levelup');
   });
+
+  it('cardio: 20min+ or RPE>=8 → T3, otherwise T2', () => {
+    expect(classifyEvent({ kind: 'cardio', durationSec: 1800, rpe: null, deltaCp: 20 }).tier).toBe(3);
+    expect(classifyEvent({ kind: 'cardio', durationSec: 600, rpe: 9, deltaCp: 10 }).tier).toBe(3);
+    expect(classifyEvent({ kind: 'cardio', durationSec: 600, rpe: 5, deltaCp: 8 }).tier).toBe(2);
+  });
 });
 
 describe('classifyEvent — intensity & shape invariants', () => {

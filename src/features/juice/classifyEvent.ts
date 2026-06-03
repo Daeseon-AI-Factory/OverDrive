@@ -42,6 +42,11 @@ function verdict(tier: Tier, reason: PowerEventReason, deltaCp: number): JuiceVe
  */
 export function classifyEvent(e: JuiceEvent): JuiceVerdict {
   switch (e.kind) {
+    case 'cardio': {
+      // Longer / harder conditioning = bigger pop. RPE>=8 or 20min+ → T3.
+      const hard = e.durationSec >= 1200 || (e.rpe !== null && e.rpe >= 8);
+      return verdict(hard ? 3 : 2, 'set', e.deltaCp);
+    }
     case 'session':
       return verdict(4, 'session', e.deltaCp);
     case 'levelup':
