@@ -151,3 +151,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: 6208e30 docs(log): record GPU particle explosion wiring (99adbdc) [no-log] -->
 <!-- skipped: e5c1415 docs(log): record cardio logging + weekly per-region summary (a5897c2) [no-log] -->
 <!-- skipped: 481ac78 docs(log): record product scope — food via photo AI in Phase 2 [no-log] -->
+<!-- skipped: d03db82 docs(log): record one-tap discipline toggle (8cb70f5) [no-log] -->
