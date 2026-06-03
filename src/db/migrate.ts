@@ -35,19 +35,18 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase): Promise<void> {
     version = 2;
   }
 
-  if (version === 2) {
-    await db.execAsync(MIGRATION_003); // discipline table (protein/rest daily)
-    version = 3;
-  }
-
   if (version !== DATABASE_VERSION) {
     // Defensive: keep stored version in lockstep with the constant.
     version = DATABASE_VERSION;
   }
   await db.execAsync(`PRAGMA user_version = ${version};`);
 
+  // Additive tables: CREATE IF NOT EXISTS every boot (cheap, idempotent). This is version-INDEPENDENT
+  // so it self-heals a DB whose user_version ran ahead of the table — e.g. a dev hot-reload remounted
+  // SQLiteProvider after the version bump but before the table-creating migration block existed.
+  await db.execAsync(MIGRATION_003);
   // Seed runs every boot (INSERT OR IGNORE, idempotent) so new catalog exercises land in
-  // already-migrated databases without needing a schema version bump.
+  // already-migrated databases.
   await seedExercises(db);
 }
 

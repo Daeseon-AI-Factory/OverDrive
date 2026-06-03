@@ -164,3 +164,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: e5c1415 docs(log): record cardio logging + weekly per-region summary (a5897c2) [no-log] -->
 <!-- skipped: 481ac78 docs(log): record product scope — food via photo AI in Phase 2 [no-log] -->
 <!-- skipped: d03db82 docs(log): record one-tap discipline toggle (8cb70f5) [no-log] -->
+<!-- skipped: b8c3894 docs(log): record no-such-table discipline fix (51e3452) [no-log] -->
