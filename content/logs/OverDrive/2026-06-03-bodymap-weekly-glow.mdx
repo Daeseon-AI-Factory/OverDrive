@@ -1,0 +1,28 @@
+---
+title: "바디맵 주간 트레이닝 글로우 — 캐릭터만 봐도 이번 주 뭘 했는지"
+date: "2026-06-03"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "이번 주 한 부위가 캐릭터 바디맵에 지속 네온 글로우로 표시되게. 세트수 기반(맨몸운동도 잡힘), 로그 시 라이브 갱신. '체계적 정리'를 시각으로."
+tags: ["phase-1", "character", "bodymap", "organization"]
+---
+
+## 무엇
+
+빌더 요청: "바디맵에도 이번 주 한 부위 글로우로 표시해줘 제대로." 기록 탭의 부위별 주간 정리를 **캐릭터 몸에 직접** 반영 — 텍스트 표가 아니라 몸을 보면 바로 안다.
+
+- `useWeeklyRegions`: 최근 7일 set_log를 `EXERCISE_TO_REGION`으로 묶어 **부위별 세트수 → glow 0..1**(`ramp(sets, 6)`, 6세트=풀). **볼륨 아닌 세트수** 기준이라 맨몸운동(풀업/플랭크 등 weight 0)도 잡힘. focus + `setCount`(로그 발생) 시 재조회 → 라이브 갱신.
+- `BodyRegion`: `glow` prop → 안 눌러도 이번 주 한 부위가 **지속 글로우**(보더 두께·그림자·배경 틴트·라벨색이 glow 비례). 누르면 풀.
+- 안 한 부위는 어둡게 → 빈 곳이 몸에서 한눈에.
+
+## 검증
+
+- tsc clean · expo lint clean · jest 49/49 · expo export 번들 성공. 커밋 `4d2ae71`.
+- (lint react-hooks/set-state-in-effect가 "setCount 시 재조회"를 오탐 → 정당한 비동기 재조회라 해당 줄 사유 달고 비활성.)
+
+## 다음 (논의 중)
+
+- 빌더 전략 질문: 종합 건강(휴식/음식까지) vs 운동 타겟팅. 별도 결정 로그 예정.
+- 글로우 → SkSL 앰비언트로 고도화(부위에서 에너지 흐르는 느낌).
