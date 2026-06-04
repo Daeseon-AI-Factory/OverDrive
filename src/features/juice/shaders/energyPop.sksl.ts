@@ -1,6 +1,7 @@
-// SkSL runtime shader — T1/T2 "energy pop" (most-fired). Core glow + expanding ring + ~18 light
-// sparks. Lighter sibling of overdriveBurst (anti-fatigue), still procedural (no assets).
-// PREMULTIPLIED alpha. uIntensity/uProgress parameterize T1 vs T2.
+// SkSL runtime shader — T1/T2 "energy pop" (most-fired, so kept cheap: no fbm, no trails).
+// Crisp expanding ring + 24 flickering sparks + two-stage bloom (broad core + white-hot center).
+// Lighter sibling of overdriveBurst (anti-fatigue), still 100% procedural. PREMULTIPLIED alpha.
+// Same uniform set as overdriveBurst; uIntensity/uProgress parameterize T1 vs T2.
 
 export const ENERGY_POP_SKSL = `
 uniform float  uTime;
@@ -17,25 +18,35 @@ float hash21(float2 p) {
 
 half4 main(float2 fragCoord) {
   float2 uv = (fragCoord - 0.5 * uResolution) / uResolution.y;
-  float d = length(uv);
+  float dist = length(uv);
   float t = uProgress;
+  float fade = 1.0 - t;
 
-  float r = mix(0.0, 0.95, t);
-  float ring = smoothstep(0.07, 0.0, abs(d - r)) * (1.0 - t);
+  // expanding ring (thins as it grows)
+  float rr = mix(0.0, 1.0, t);
+  float ring = smoothstep(mix(0.09, 0.02, t), 0.0, abs(dist - rr)) * fade;
 
+  // 24 light sparks with subtle flicker
   float parts = 0.0;
-  for (int i = 0; i < 18; i++) {
+  for (int i = 0; i < 24; i++) {
     float fi = float(i);
-    float a = (fi / 18.0) * 6.28318 + (hash21(float2(fi, 3.0)) - 0.5) * 0.6;
-    float speed = 0.4 + hash21(float2(fi, 4.0)) * 0.7;
-    float2 pp = float2(cos(a), sin(a)) * (t * speed);
-    parts += smoothstep(0.03, 0.0, length(uv - pp)) * (1.0 - t);
+    float pa = (fi / 24.0) * 6.28318 + (hash21(float2(fi, 3.0)) - 0.5) * 0.6;
+    float speed = 0.45 + hash21(float2(fi, 4.0)) * 0.8;
+    float2 pp = float2(cos(pa), sin(pa)) * (t * speed);
+    float flick = 0.75 + 0.25 * sin(uTime * 22.0 + fi);
+    parts += smoothstep(0.028, 0.0, length(uv - pp)) * fade * flick;
   }
-  parts = clamp(parts, 0.0, 1.0);
+  parts = clamp(parts, 0.0, 1.2);
 
-  float glow = uIntensity * exp(-d * 6.0) * (1.0 - t);
-  float a = clamp(glow + ring * uIntensity * 1.4 + parts * 0.8 * uIntensity, 0.0, 1.0);
-  float3 col = uColor * (0.75 + 0.25 * sin(uTime * 9.0));
-  return half4(col * a, a);
+  // two-stage bloom
+  float core = exp(-dist * 5.5) * fade;
+  float hot = exp(-dist * 12.0) * fade;
+
+  float alpha = clamp((core * 0.7 + ring * 1.3 + parts * 0.8) * uIntensity + hot * uIntensity * 0.6, 0.0, 1.0);
+  float3 col = mix(uColor, float3(1.0, 1.0, 1.0), clamp(hot * 1.1, 0.0, 1.0));
+  col *= 0.85 + 0.15 * sin(uTime * 9.0);
+  col = clamp(col, 0.0, 1.0);
+
+  return half4(col * alpha, alpha);
 }
 `;
