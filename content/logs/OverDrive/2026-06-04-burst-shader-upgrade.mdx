@@ -1,0 +1,38 @@
+---
+title: "폭발을 한계까지 — 버스트 SkSL 셰이더 업그레이드"
+date: "2026-06-04"
+project: "OverDrive"
+kind: "tech-retro"
+visibility: "public"
+language: "ko"
+summary: "T3/T4 OVERDRIVE 폭발을 3중 충격파+입자꼬리+fbm 텐드릴+화이트핫 블룸으로 재작성. 적대적 셰이더 리뷰가 성능·느낌을 다듬음."
+tags: ["phase-1", "juice", "skia", "sksl", "shader"]
+---
+
+오디오를 채운 뒤 다음 한 방은 **시각** — "터질 때 글자도 터지고 존나 폭발"의 그래픽. 버스트 셰이더는 **JS 템플릿 문자열 → `Skia.RuntimeEffect.Make`로 런타임 컴파일**이라, `SkiaBurst`를 안 건드리고 소스만 갈면 **Fast Refresh로 즉시 반영**된다(네이티브 리빌드 0). 그래서 셰이더 이터레이션은 핫하다.
+
+## T3/T4 OVERDRIVE 폭발 — 전면 재작성
+
+이전: 단일 충격파 링 + 48 입자 + 단순 코어. 새 버전(전부 절차적 GPU 수학, 에셋 0):
+
+- **3중 충격파 링** — `t*1.25 - k*0.12`로 스태거된 연쇄 블라스트 프론트, 퍼지며 얇아짐.
+- **40개 입자 + 방사형 모션블러 꼬리** — 각 입자에 속도 방향 스피드라인(`along`/`perp` 분해) + 개별 플리커.
+- **fbm 에너지 텐드릴** — 폴라 공간 3옥타브 value noise로 코어에서 휘몰아치는 난류.
+- **2단 블룸** — 넓은 코어 + 타이트한 화이트핫 중심, white→tier색→밝은 에지 그라데이션.
+- **인-셰이더 크로마틱** 링 시머.
+
+## 적대적 리뷰가 두 가지를 바로잡음
+
+ultracode로 **두 렌즈 병렬 리뷰**(컴파일 정합성 / 성능·느낌)를 돌렸다. 결과:
+
+**컴파일**: 둘 다 Skia 2.6.2에서 `Make`가 유효 effect 반환(willCompile=true) — `half4 main(float2)` 시그니처, 타입(float/float2/float3/half4), 빌트인(2인자 `atan`, `step`, `mix`, `smoothstep`…), 상수 루프 경계, 함수 선언 순서 전부 합법. 블로커 0.
+
+**성능(high)**: 56입자 루프가 풀스크린 3x에서 per-fragment ALU의 80-90%, 각 2회 `sqrt`. → **40개로 축소 + `r2 = dot(rel,rel)` 하나로 head·perp 공유**(`perp = sqrt(r2 - along²)`) → 루프 비용 ~40%↓. 룩은 90% 유지.
+
+**느낌(med)**: `alpha`가 넓은 반경에서 1.0으로 일찍 포화 → 균일한 흰 wash로 폭발의 대비가 뭉개짐. 그리고 선형 감쇠(`1-t`)는 "휙~" 하고 부드럽다. → 광역 가중치 하향(`ring*1.3 + parts*1.0 + tendrils*0.8 + core*0.7`), 코어 falloff 가파르게(4.5→5.5), **`decay = fade²` 펀치 엔벨로프**(t=0 슬램 후 급감속). 밝은 코어 / 어두운 에지 대비 복원.
+
+리뷰가 짚었지만 이번에 **미룬 것**: overdriveBurst를 native-3x full Fill 대신 **0.5~0.6x 오프스크린으로 렌더 후 업스케일**(소프트 글로우라 디테일 불필요 → 단일 최대 성능 이득). host-side 변경이라 캐릭터 오라/포지 챔버 SkSL과 함께 다음 비주얼 라운드로.
+
+## 검증
+
+SkSL 컴파일 리뷰(Skia 2.6.2) · `tsc` · `expo lint`. 셰이더가 문자열이라 jest/export는 SkSL을 못 보지만, `compileEffect`가 실패 시 경고+텍스트 폴백(무음 no-op 금지, §6.4). 커밋 `0c9b4bc`. 기기 체감은 Fast Refresh로 즉시.

@@ -1,11 +1,11 @@
 # OVERDRIVE — 현재 상태 (handoff / 새 컨텍스트용 단일 진실)
 
-> 컨텍스트 압축·새 세션 시 **여기부터 읽으면 이어받는다.** 정본 스펙은 [`docs/overdrive-spec.md`](overdrive-spec.md), Phase 1 플랜 [`docs/phase1-plan.md`](phase1-plan.md). 버그/함정은 [`docs/troubleshooting.md`](troubleshooting.md), 내러티브는 `content/logs/OverDrive/`. **갱신: 2026-06-03.**
+> 컨텍스트 압축·새 세션 시 **여기부터 읽으면 이어받는다.** 정본 스펙은 [`docs/overdrive-spec.md`](overdrive-spec.md), Phase 1 플랜 [`docs/phase1-plan.md`](phase1-plan.md). 버그/함정은 [`docs/troubleshooting.md`](troubleshooting.md), 내러티브는 `content/logs/OverDrive/`. **갱신: 2026-06-04.**
 
 ## ▶ 새 세션 첫 행동 (여기부터)
 1. 이 파일 + `docs/overdrive-spec.md`(정본) + `docs/troubleshooting.md`(함정) 훑기.
 2. 앱 한 번 띄워 현 상태 확인: `npx expo run:ios`.
-3. **다음 작업 = SkSL 셰이더 퀄 고도화 (아래 "남은 것" #1).** 오디오 SFX는 완료(a96743b). VO 콜아웃은 Phase 2.
+3. **다음 작업 = 비주얼 라운드 2 (아래 "남은 것" #1).** 버스트 셰이더는 완료(0c9b4bc), 오디오 SFX도 완료(a96743b). 남은 비주얼 = CharacterAura SkSL + Forge 챔버 SkSL + 버스트 오프스크린 다운스케일.
 4. 비-사소 변경마다 dual-write 로깅 (troubleshooting.md + content/logs).
 
 > 모델/세션 메모: 컨텍스트가 꽉 차면 "1M context 크레딧" 에러가 날 수 있음 — 1M(유료) 켜지 말고 **새 세션 + 이 STATE.md 핸드오프**로 이어갈 것. 기본 모델 Sonnet 4.6(표준 컨텍스트)면 에러·과금 없음.
@@ -27,6 +27,7 @@ Phase 1(로컬 MVP) **거의 완성** — 굴러가는 앱이 iPhone 17 시뮬�
 - DB: 로컬 SQLite (`src/db`) — 스키마/마이그(v3)/시드(32운동)/repos. **마이그는 풀 부팅에서만 + 추가 테이블은 매부팅 CREATE IF NOT EXISTS 자가치유.**
 - 전투력 v1 (`src/features/combat-power`) — 산식·등급·anti-shame·breadth-gate, 11 테스트
 - JUICE (`src/features/juice`) — 판정(classifyEvent) + Reanimated 키네틱(펀치+크로마틱+셰이크) + **SkSL GPU 파티클 폭발**(energyPop/overdriveBurst, SkiaBurst)
+  - 버스트 셰이더 업그레이드(0c9b4bc): 3중 충격파·40 입자꼬리·fbm 텐드릴·2단 화이트핫 블룸·`fade²` 펀치 엔벨로프. 적대적 SkSL 리뷰로 성능(56→40·single sqrt)·느낌(대비 복원) 튜닝.
 - 로깅 핫패스: `useLogSet`(PR감지) / `useLogCardio`
 - 오늘 탭(`src/app/(tabs)/index.tsx`): **바디맵 캐릭터**(부위 터치→운동) + **주간 글로우**(이번주 한 부위 빛남) + SetLogger v2(반복1탭/스텝퍼) + 카디오 로거(시간/거리)
 - THE FORGE (`src/features/forge`) — 세션 진입/완료 의식 + T4 + streak
@@ -37,7 +38,7 @@ Phase 1(로컬 MVP) **거의 완성** — 굴러가는 앱이 iPhone 17 시뮬�
 - 폰트: Anton(콜아웃)/Orbitron(숫자)
 
 ## Phase 1 — 남은 것 (우선순위)
-1. SkSL 셰이더 퀄 이터레이션(파티클↑·블룸·왜곡), CharacterAura/Forge 챔버 SkSL 고도화.
+1. 비주얼 라운드 2: **CharacterAura를 SkSL로**(난류 라디얼 오라, 항시 파워업감 — 현재 View 헤일로) + **Forge 입장 챔버 SkSL**(수련장 분위기) + **overdriveBurst 0.5~0.6x 오프스크린 렌더**(native-3x 낭비 제거, 리뷰가 짚은 최대 성능 이득). ※버스트 셰이더 math 자체는 완료(0c9b4bc).
 2. 사용성 갭: 세트 편집/삭제, 휴식 타이머, 온보딩(키/체중/단백질 목표).
 3. streak 마일스톤 별도 T4, OVERDRIVE MODE(세션 게이지).
 4. **최종 Accept = 빌더 dogfooding "매일 쓸 수준"** (진행 중).
