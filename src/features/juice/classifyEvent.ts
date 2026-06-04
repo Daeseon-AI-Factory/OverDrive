@@ -9,7 +9,7 @@ import {
   TIER_BASE_INTENSITY,
   TIER_DURATION_MS,
 } from './constants';
-import type { JuiceEvent, JuiceVerdict, PowerEventReason, Tier } from './juice.types';
+import type { JuiceEvent, JuiceVerdict, PowerEventReason, SfxName, Tier } from './juice.types';
 
 function intensityFor(tier: Tier, deltaCp: number): number {
   const magnitude = clamp01(Math.abs(deltaCp) / SOLID_DELTA_REF);
@@ -19,7 +19,7 @@ function intensityFor(tier: Tier, deltaCp: number): number {
   return intensity;
 }
 
-function verdict(tier: Tier, reason: PowerEventReason, deltaCp: number): JuiceVerdict {
+function verdict(tier: Tier, reason: PowerEventReason, deltaCp: number, sfx?: SfxName): JuiceVerdict {
   return {
     tier,
     reason,
@@ -27,6 +27,7 @@ function verdict(tier: Tier, reason: PowerEventReason, deltaCp: number): JuiceVe
     intensity01: intensityFor(tier, deltaCp),
     dismiss: tier >= 3 ? 'tap' : 'auto',
     durationMs: TIER_DURATION_MS[tier],
+    ...(sfx ? { sfx } : {}),
   };
 }
 
@@ -45,7 +46,7 @@ export function classifyEvent(e: JuiceEvent): JuiceVerdict {
     case 'cardio': {
       // Longer / harder conditioning = bigger pop. RPE>=8 or 20min+ → T3.
       const hard = e.durationSec >= 1200 || (e.rpe !== null && e.rpe >= 8);
-      return verdict(hard ? 3 : 2, 'set', e.deltaCp);
+      return verdict(hard ? 3 : 2, 'set', e.deltaCp, 'cardio_whoosh');
     }
     case 'session':
       return verdict(4, 'session', e.deltaCp);

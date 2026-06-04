@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useRef, useState } from 
 import { StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { playSfx } from './audio/engine';
 import { fireHaptic } from './haptics';
 import { JuiceOverlay } from './JuiceOverlay';
 import type { JuiceVerdict } from './juice.types';
@@ -58,6 +59,7 @@ export function JuiceProvider({ children }: { children: React.ReactNode }) {
         }
       }
       void fireHaptic(verdict.tier);
+      playSfx(verdict);
     },
     [juiceIntensity, shakeX, shakeY],
   );

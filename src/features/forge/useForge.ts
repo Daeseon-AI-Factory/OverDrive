@@ -4,6 +4,7 @@ import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
 import { appendPowerEvent } from '@/db/repos/powerEventRepo';
 import { completeSession, getCompletedSessionDates, startSession } from '@/db/repos/sessionRepo';
 import { computeStreak } from '@/features/combat-power/aggregate';
+import { playNamed } from '@/features/juice/audio/engine';
 import { classifyEvent } from '@/features/juice/classifyEvent';
 import { fireHaptic } from '@/features/juice/haptics';
 import { useJuice } from '@/features/juice/JuiceProvider';
@@ -27,6 +28,7 @@ export function useForge() {
     const s = await startSession(db, { dayType: todayProgram().dayType });
     useSessionStore.getState().start(s.id, cpAtStart);
     void fireHaptic(3); // entry thump
+    playNamed('forge_enter'); // chamber drone — "entering the training chamber"
   }, [db]);
 
   const finish = useCallback(async () => {

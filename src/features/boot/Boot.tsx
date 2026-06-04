@@ -4,6 +4,7 @@ import { Anton_400Regular, useFonts } from '@expo-google-fonts/anton';
 import { Orbitron_700Bold, Orbitron_900Black } from '@expo-google-fonts/orbitron';
 import { useSQLiteContext } from 'expo-sqlite';
 import i18n, { DEFAULT_LOCALE, isSupportedLocale, type AppLocale } from '@/i18n';
+import { loadSfx } from '@/features/juice/audio/engine';
 import { recomputeAndStore } from '../../db/repos/combatPowerRepo';
 import { getSettings, getUser, updateLocale } from '../../db/repos/userRepo';
 import { useCombatPowerStore } from '../../stores/combatPowerStore';
@@ -21,6 +22,7 @@ export function Boot({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let alive = true;
+    void loadSfx(); // preload JUICE SFX players (fire-and-forget; splash never waits on audio)
     (async () => {
       const settings = await getSettings(db);
       useSettingsStore.getState().hydrate(settings);
