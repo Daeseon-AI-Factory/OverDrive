@@ -159,6 +159,17 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: (1) full reload (Cmd+R) runs the v2→v3 migration and creates the table. (2) Hardened `disciplineRepo` reads (`getDisciplineToday`/`disciplineCountSince`) with try/catch → return defaults when the table is absent, so a pre-migration DB never red-screens or breaks CP/logging.
 - **Commit**: 51e3452
 - **Pattern**: A new migration only applies on full app boot, not Fast Refresh. Make repo reads that a hot-reloaded component depends on resilient to the not-yet-created table, and remember to fully reload after adding a migration.
+
+## expo-audio plugin auto-adds mic/record/background permissions for a playback-only app
+
+- **Symptom**: After wiring the audio layer, an adversarial review of the prebuild config found the app would declare these even though it only plays short SFX (no recording, no background audio):
+  - iOS: `NSMicrophoneUsageDescription`, `UIBackgroundModes: ['audio']`
+  - Android: `RECORD_AUDIO`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK` (+ a media-playback foreground service)
+- **Cause**: `app.json` registered the plugin as bare `"expo-audio"`. Its config-plugin defaults are `recordAudioAndroid: true`, `enableBackgroundPlayback: true`, and an undefined `microphonePermission` falls back to injecting the mic usage string (`node_modules/expo-audio/plugin/build/withAudio.js:8,9-13,26,33,36,60`). The manual `android.permissions` array had also been pre-seeded with the four audio perms. Violates CLAUDE.md §4 (minimal permissions).
+- **Fix**: Register with options `{ microphonePermission: false, recordAudioAndroid: false, enableBackgroundPlayback: false }` and delete the manual `android.permissions` array. Net Android perm left = `MODIFY_AUDIO_SETTINGS` only (plugin adds it unconditionally; non-dangerous, no user prompt, legitimate for playback). Re-run prebuild (`expo run:ios`) to regenerate the gitignored native config.
+- **Verified by**: Read of the installed `withAudio.js` option branches; `expo-doctor` 21/21.
+- **Commit**: 8a4d18f
+- **Pattern**: A media/permission Expo config plugin can silently broaden the permission surface. Register such plugins with explicit options scoped to what you actually use, and re-check Info.plist / AndroidManifest after prebuild — `expo-doctor` does NOT flag over-broad-but-valid permissions.
 <!-- skipped: f31f237 docs(log): record kinetic juice + fonts + i18n interpolation fix (e50abc0) [no-log] -->
 <!-- skipped: 6208e30 docs(log): record GPU particle explosion wiring (99adbdc) [no-log] -->
 <!-- skipped: e5c1415 docs(log): record cardio logging + weekly per-region summary (a5897c2) [no-log] -->
