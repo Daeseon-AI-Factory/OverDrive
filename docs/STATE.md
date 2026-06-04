@@ -5,7 +5,7 @@
 ## ▶ 새 세션 첫 행동 (여기부터)
 1. 이 파일 + `docs/overdrive-spec.md`(정본) + `docs/troubleshooting.md`(함정) 훑기.
 2. 앱 한 번 띄워 현 상태 확인: `npx expo run:ios`.
-3. **다음 작업 = 오디오 (아래 "남은 것" #1).** 펀치 SFX·베이스·콜아웃 VO·앰비언트, 오리지널 에셋만, JUICE 비차단.
+3. **다음 작업 = SkSL 셰이더 퀄 고도화 (아래 "남은 것" #1).** 오디오 SFX는 완료(a96743b). VO 콜아웃은 Phase 2.
 4. 비-사소 변경마다 dual-write 로깅 (troubleshooting.md + content/logs).
 
 > 모델/세션 메모: 컨텍스트가 꽉 차면 "1M context 크레딧" 에러가 날 수 있음 — 1M(유료) 켜지 말고 **새 세션 + 이 STATE.md 핸드오프**로 이어갈 것. 기본 모델 Sonnet 4.6(표준 컨텍스트)면 에러·과금 없음.
@@ -30,17 +30,18 @@ Phase 1(로컬 MVP) **거의 완성** — 굴러가는 앱이 iPhone 17 시뮬�
 - 로깅 핫패스: `useLogSet`(PR감지) / `useLogCardio`
 - 오늘 탭(`src/app/(tabs)/index.tsx`): **바디맵 캐릭터**(부위 터치→운동) + **주간 글로우**(이번주 한 부위 빛남) + SetLogger v2(반복1탭/스텝퍼) + 카디오 로거(시간/거리)
 - THE FORGE (`src/features/forge`) — 세션 진입/완료 의식 + T4 + streak
+- 오디오 (`src/features/juice/audio`) — 절차적 합성 SFX 7종(`scripts/gen-sfx.mjs`, 수학→WAV, 샘플/키 0), 단일 합류점 `playSfx` + 카디오 whoosh 힌트 + 포지 입장 챔버 드론, `soundOn` 게이트. **VO 콜아웃은 Phase 2(TTS 서버키).**
 - i18n (`src/i18n`) — en 기본, en/ko/es/zh, 등급/부위/운동명까지. 단위 kg/lb·km/mi(`src/lib/units.ts`)
 - 기록 탭 — 이번주 부위별 정리 + 유산소
 - 규율 — 단백질/수면 원탭(`src/features/discipline`) → 전투력 규율 컴포넌트
 - 폰트: Anton(콜아웃)/Orbitron(숫자)
 
 ## Phase 1 — 남은 것 (우선순위)
-1. **오디오** — 펀치 SFX·베이스·콜아웃 VO·앰비언트 (JUICE의 빠진 한 축, "약빨" 가장 큰 한 방). 오리지널만.
-2. SkSL 셰이더 퀄 이터레이션(파티클↑·블룸·왜곡), CharacterAura/Forge 챔버 SkSL 고도화.
-3. 사용성 갭: 세트 편집/삭제, 휴식 타이머, 온보딩(키/체중/단백질 목표).
-4. streak 마일스톤 별도 T4, OVERDRIVE MODE(세션 게이지).
-5. **최종 Accept = 빌더 dogfooding "매일 쓸 수준"** (진행 중).
+1. SkSL 셰이더 퀄 이터레이션(파티클↑·블룸·왜곡), CharacterAura/Forge 챔버 SkSL 고도화.
+2. 사용성 갭: 세트 편집/삭제, 휴식 타이머, 온보딩(키/체중/단백질 목표).
+3. streak 마일스톤 별도 T4, OVERDRIVE MODE(세션 게이지).
+4. **최종 Accept = 빌더 dogfooding "매일 쓸 수준"** (진행 중).
+5. (Phase 2로 이월) 오디오 VO 콜아웃(TTS 서버키), 앰비언트 루프.
 
 ## 박제된 핵심 결정 (content/logs)
 - **브랜드: "OverDrive" 공개 앱명 NO-GO** (Overdrive Fitness 선점 등). 코드네임/인앱 콜아웃은 유지, 공개명 별도 채택 + 변호사 clearance. (private 로그)

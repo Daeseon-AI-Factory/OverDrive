@@ -1,0 +1,56 @@
+---
+title: "JUICE의 빠진 한 축 — 절차적 오디오 레이어"
+date: "2026-06-03"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "샘플·외부키 없이 수학으로 합성한 오리지널 SFX 7종을 JUICE 티어에 배선. 셰이더가 절차적이듯 사운드도 절차적."
+tags: ["phase-1", "juice", "audio", "skia-parallel"]
+---
+
+Phase 1 핵심 루프(바디맵→로깅→전투력→JUICE 폭발→FORGE)는 돌았지만 **소리가 없었다.** STATE.md가 가리키던 "약빨 가장 큰 한 방." 오늘 그걸 채웠다.
+
+## 철칙이 설계를 정했다
+
+두 사수 항목이 곧장 접근법을 좁혔다:
+
+- **오리지널 IP만** → 무료 샘플·효과음 라이브러리도 안 됨.
+- **시크릿/키 절대 클라이언트 X** → 온디바이스 TTS API나 사운드 생성 SaaS도 안 됨.
+
+답은 **셰이더와 똑같은 길** — 절차적 합성. SkSL 파티클이 에셋 없이 수학(사인·노이즈·fbm)으로 폭발하듯, 사운드도 `scripts/gen-sfx.mjs`에서 **순수 수학으로 PCM을 만들어 16-bit WAV로 굽는다.** 의존성 0, 외부 호출 0, 시드 고정 LCG라 빌드도 바이트 단위로 재현된다.
+
+합성 프리미티브: 주파수 스윕 오실레이터(sine/tri/saw/square) + 원폴 로우패스 노이즈 + 지수감쇠/벨 엔벨로프 + soft-clip 새추레이션 + declick 페이드. 그걸로 7종:
+
+| 사운드 | 정체 | 쓰임 |
+|---|---|---|
+| `t1_tick` | 밝은 블립 | 일반 세트(anti-shame 최소 팝) |
+| `t2_punch` | 바디 텀프 + 트랜지언트 | 솔리드 세트 |
+| `t3_overdrive` | 라이저→임팩트 | 하드셋/OVERDRIVE |
+| `t4_supernova` | 크랙+서브드롭+샤이머+롱테일 | 세션 완료/맥스 |
+| `pr_sting` | 상승 스파클 | PR·레벨업 |
+| `cardio_whoosh` | 에어리 스웰 | 유산소 |
+| `forge_enter` | 디튠 비팅 드론+딥 임팩트 | 수련장(챔버) 진입 |
+
+각 사운드의 normalize 피크를 이벤트 크기에 맞춰 차등(0.7~0.97)했다 — 작은 기록은 작게, 큰 폭발은 크게.
+
+## 배선: 단일 합류점 + 예외 둘
+
+오디오 매핑 워크플로(4 병렬 리더)로 코드 표면을 정밀 측량한 결과, **모든 JUICE 이벤트가 `JuiceProvider`의 `fireHaptic` 한 줄로 수렴**한다는 걸 확인. 거기 `playSfx(verdict)`를 나란히 박으면 끝.
+
+- `selectSfx(verdict)`는 순수 함수 — `reason`(pr/session/levelup/streak/set) + `tier`로 매핑. 에셋 import와 분리해 jest가 .wav를 안 건드리게 했다(6 테스트).
+- 유산소는 `reason: 'set'`으로 접혀 티어 매핑에 묻히므로, `classifyEvent`가 `verdict.sfx: 'cardio_whoosh'` **힌트**를 달아 whoosh를 살렸다.
+- 수련장 **진입**은 JUICE를 안 거치고 `useForge`에서 직접 햅틱만 쏘므로, 거기 `playNamed('forge_enter')`를 직접 호출(중복 없음).
+
+재생은 전부 fire-and-forget·never-throws·`soundOn` 게이트. **로깅 핫패스를 1ms도 안 막는다**(§6.4). 부팅 때 `loadSfx()`로 플레이어 7개 프리로드(스플래시는 오디오를 안 기다림). iOS 무음 스위치는 통과(`playsInSilentMode`) — 하이프가 핵심, 음소거는 인앱 토글로.
+
+## 의도적으로 미룬 것
+
+- **사람 목소리 콜아웃 VO**("OVERDRIVE!" 음성)은 TTS 키가 필요 → Phase 2 서버사이드. 지금은 합성 스팅어가 그 자리를 대신.
+- 규율 토글은 합류점에서 `t1_tick`을 받으므로 전용 사운드를 안 만듦(중복 발사 방지).
+
+## 검증
+
+tsc · jest 55/55(+6) · expo lint 0 · `expo export`(7 wav 전부 번들, iOS 4.6MB hbc 클린) · expo-doctor 21/21. 커밋 `a96743b`.
+
+기기 체감(시뮬은 무음일 수 있음)은 다음 풀 빌드(`npx expo run:ios`)에서 — Metro 새 에셋은 핫리로드로 안 잡히니 풀 재시작 필수.
