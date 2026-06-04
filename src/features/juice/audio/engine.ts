@@ -20,7 +20,12 @@ export async function loadSfx(): Promise<void> {
   try {
     // Play through the iOS silent switch — the hype is the whole point; the in-app sound toggle
     // (and per-sound volume baked into the WAVs) governs loudness. No background playback.
-    await setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: false });
+    // mixWithOthers: SFX layer over the user's gym music instead of pausing/ducking it.
+    await setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: false,
+      interruptionMode: 'mixWithOthers',
+    });
   } catch {
     // non-fatal — players still work with default audio mode
   }
