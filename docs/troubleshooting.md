@@ -186,3 +186,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: ff15bcb docs(log): record full audit + Today simplification (70fb670, 40cdc00) [no-log] -->
 <!-- override-note: the recurring footgun (STATE.md/CLAUDE.md) — a docs(log) commit whose SUBJECT contains a trigger keyword (audit/migration/refactor/…) re-fires the Stop hook. Keep trigger keywords out of log-commit subjects. -->
 <!-- skipped: 4e15b13 docs: override-trigger for ff15bcb log-commit recursion [no-log] -->
+<!-- skipped: 374ee4c docs(log): record QuickLog AI proxy + key-handling choice (108bc43) [no-log] -->
