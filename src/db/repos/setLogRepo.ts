@@ -20,6 +20,30 @@ export async function getLastSetForExercise(
   );
 }
 
+/** Most-recently-logged exercises with their last set — powers the QuickLog one-tap "repeat" chips. */
+export async function getRecentExercises(
+  db: SQLiteDatabase,
+  limit = 6,
+  userId: string = LOCAL_USER_ID,
+): Promise<{ exerciseId: string; weight: number; reps: number; rir: number | null }[]> {
+  // Window function: rank each exercise's sets by recency and take rn=1 (the latest). Explicit and
+  // unambiguous — avoids relying on SQLite's bare-column-with-MAX behavior for weight/reps/rir.
+  const rows = await db.getAllAsync<{ exercise_id: string; weight: number; reps: number; rir: number | null }>(
+    `SELECT exercise_id, weight, reps, rir FROM (
+       SELECT sl.exercise_id, sl.weight, sl.reps, sl.rir, sl.logged_at,
+              ROW_NUMBER() OVER (PARTITION BY sl.exercise_id ORDER BY sl.logged_at DESC) AS rn
+       FROM set_log sl
+       JOIN workout_session ws ON ws.id = sl.session_id
+       WHERE ws.user_id = ?
+     )
+     WHERE rn = 1
+     ORDER BY logged_at DESC
+     LIMIT ?`,
+    [userId, limit],
+  );
+  return rows.map((r) => ({ exerciseId: r.exercise_id, weight: r.weight, reps: r.reps, rir: r.rir }));
+}
+
 /** Best (max) performance score for an exercise — PR comparison baseline. */
 export async function getBestScoreForExercise(
   db: SQLiteDatabase,

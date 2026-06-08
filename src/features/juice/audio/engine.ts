@@ -44,8 +44,9 @@ export function playNamed(name: SfxName): void {
   const p = players.get(name);
   if (!p) return;
   try {
-    void p.seekTo(0); // restart from the top so rapid logs re-trigger cleanly
-    p.play();
+    // Restart from the top THEN play — sequenced (seekTo is async) so rapid re-triggers replay from
+    // the head instead of racing. Still fire-and-forget: never awaited on the caller's path.
+    void p.seekTo(0).then(() => p.play()).catch(() => {});
   } catch {
     // ignore — audio must never break logging
   }
