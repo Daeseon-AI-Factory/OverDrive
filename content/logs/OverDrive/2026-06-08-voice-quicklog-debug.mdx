@@ -1,0 +1,33 @@
+---
+title: "음성 로깅을 폰에서 살리기 — 쌓인 버그 3개 + cwd 함정"
+date: "2026-06-08"
+project: "OverDrive"
+kind: "troubleshoot"
+visibility: "public"
+language: "ko"
+summary: "🎤 음성→AI 로깅이 폰에서 계속 실패. New-Arch FormData·Whisper 언어·미등록 운동 3중 버그 + cwd가 옛 앱을 띄우던 함정까지 잡아 end-to-end 완성."
+tags: ["phase-1", "quicklog", "voice", "ai", "groq", "new-architecture", "troubleshoot"]
+---
+
+빌더가 "말로 처하고 싶다"고 해서 음성 로깅을 붙였는데, **폰에서만 계속 실패**했다. 워커(Groq Whisper 전사 + Groq llama 파싱)는 curl로 다 검증됐는데도. 화면에 진짜 에러를 띄우게 한 뒤 한 겹씩 까였다.
+
+## 버그 1 — 업로드: New Arch가 RN FormData 파일을 거부
+`Unsupported FormDataPart Implementation`. RN의 `FormData.append('file', { uri, name, type })` 옛 방식이 New Architecture에서 안 먹힘. → **expo-file-system `uploadAsync`(네이티브 멀티파트)** 로 교체. FormData 우회.
+
+## 버그 2 — 전사: 영어를 한글로 받아씀
+다음 시도에서 입력칸에 "원헌드레드 벤치"가 떴다. Whisper를 자동감지로 뒀더니 **한국인 화자의 영어를 한국어로 감지해 한글 음차** → 매칭 0. → **전사 언어를 UI 로케일로 고정.**
+
+## 버그 3 — 파싱: "burpees"가 카탈로그에 없음
+"didn't catch the exercise". AI한테 "시드 카탈로그 안에서만 골라"라고 시켜서, burpees 같은 미등록 운동은 버려졌다. (하드코딩 아님 — 제약이 문제.) → 워커가 **미등록 운동도 반환**(exerciseId '' + name + isBodyweight), 클라가 `ensureExercise()`로 **즉석 생성** 후 기록. 이제 말하는 대로 뭐든 들어가고, 한 번 쓰면 카탈로그/최근에 영구 등록.
+
+## 진짜 함정 — cwd가 옛 앱을 띄우고 있었다
+버그 1·2를 고치고도 "안 된다"길래 보니 — 워커 배포하려 `cd worker` 한 cwd가 **Bash 호출 사이에 유지**돼서, 다음 `expo run:ios`가 **worker 폴더에서** 실행됨. 거기 작은 package.json 보고 "deps 바뀜, 설치?" → 비대화형이라 **빌드 중단**. 그런데 `devicectl launch`는 **이미 깔린 옛 앱**을 띄워서 "성공"처럼 보임 → 새 코드가 폰에 안 올라간 채 몇 사이클 헛돔. (worker에 app.json·ios/·package-lock 쓰레기도 생성됨 — 청소함.)
+
+→ **cwd 루트 복귀** 후 빌드하니 `Bundled … modules` + `Build Succeeded` + `Installing`가 진짜로 찍힘.
+
+## 교훈
+- New-Arch RN 파일 업로드는 `expo-file-system uploadAsync`로. FormData+{uri} 금지.
+- 온디바이스 에러를 화면에 노출해라 — 일반 "실패" 문구가 3개 원인을 가려 리빌드 사이클을 낭비했다.
+- `cd`는 다음 Bash 호출까지 유지된다. 서브디렉터리 명령 후 루트로 복귀. **launch 성공 ≠ 새 빌드** — 빌드로그의 Build Succeeded/Installing로 확인.
+
+검증: tsc · jest 73 · expo lint · 워커 재배포 + curl(영어/버피 5세트 확인). 커밋 `866e295`.

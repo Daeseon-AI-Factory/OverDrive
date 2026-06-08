@@ -187,3 +187,31 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- override-note: the recurring footgun (STATE.md/CLAUDE.md) — a docs(log) commit whose SUBJECT contains a trigger keyword (audit/migration/refactor/…) re-fires the Stop hook. Keep trigger keywords out of log-commit subjects. -->
 <!-- skipped: 4e15b13 docs: override-trigger for ff15bcb log-commit recursion [no-log] -->
 <!-- skipped: 374ee4c docs(log): record QuickLog AI proxy + key-handling choice (108bc43) [no-log] -->
+<!-- skipped: 93fb974 docs(log): record Groq Whisper voice logging (f630201) [no-log] -->
+
+## Voice logging failed silently — three stacked bugs (New-Arch FormData, Whisper language, cwd)
+
+- **Symptom**: 🎤 voice logging on the iPhone kept failing. On-screen errors (surfaced via temporary diagnostic hints) walked through three causes in order:
+  ```
+  Unsupported FormDataPart Implementation       (upload)
+  원헌드레드 벤치  (English shown as Hangul)        (transcription)
+  Didn't catch the exercise                      (parse — "burpees" not in catalog)
+  ```
+- **Cause**:
+  1. **Upload** — RN `FormData.append('file', { uri, name, type })` is rejected on the New Architecture (`Unsupported FormDataPart Implementation`); the old file-part object shape isn't supported.
+  2. **Transcription** — Groq Whisper with `language` omitted (auto-detect) detected Korean for a Korean speaker's English and transliterated it into Hangul → no exercise matched.
+  3. **Parse** — the AI was instructed to map ONLY to the seed catalog; "burpees" isn't in it → omitted → no_exercise.
+- **Fix**:
+  1. Upload via `expo-file-system` `uploadAsync` (`FileSystemUploadType.MULTIPART`) — native multipart, bypasses RN FormData. (`src/features/quicklog/transcribe.ts`)
+  2. Pass the UI locale as the Whisper `language` (`QuickLogBar` → transcribeAudio).
+  3. Worker returns out-of-catalog exercises (exerciseId '' + name + isBodyweight); client `ensureExercise()` creates them. (`worker/src/index.js`, `src/db/repos/setLogRepo.ts`, `useQuickLog.ts`)
+- **Commit**: 866e295
+- **Pattern**: On New-Arch RN, upload files with `expo-file-system uploadAsync`, not `FormData` + `{uri}`. Surface the REAL error on-device (a generic "failed" message hid three distinct causes and cost several rebuild cycles).
+
+## Rebuilds silently shipped a STALE app — leftover cwd from `cd worker`
+
+- **Symptom**: After fixing voice bugs, repeated `expo run:ios` "succeeded" (app launched) but the phone still ran old code — fixes appeared to do nothing for ~2 cycles.
+- **Cause**: A `cd worker && wrangler deploy` left the Bash tool's working directory in `worker/` (it persists across calls). The next `npx expo run:ios` ran INSIDE `worker/`, found the worker's tiny `package.json`, hit "Dependencies changed → install?" which can't prompt in non-interactive mode, and **aborted before building** — yet `devicectl process launch` still launched the previously-installed (stale) app, masking that no new build happened. `expo run:ios` in `worker/` also generated junk there (`worker/app.json`, `worker/ios/`, `worker/package-lock.json`, expo/react deps in `worker/package.json`).
+- **Fix**: Reset cwd to the project root before `expo run:ios`; removed the worker junk artifacts; always run app builds from root. Verified via the build log showing real `Bundled … modules` + `Build Succeeded` + `Installing`.
+- **Commit**: 866e295
+- **Pattern**: `cd` in one Bash call persists to later calls. After `cd`-ing into a subdir for one command, return to root (or use absolute `--config`/`--prefix`). A green "launch" ≠ a fresh build — confirm `Build Succeeded` + `Installing` in the build log, not just that the app opened.
