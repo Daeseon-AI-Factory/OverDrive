@@ -1,0 +1,10 @@
+name = "overdrive-quicklog"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+# Optional: override the Gemini model (default gemini-2.0-flash). Free-tier friendly.
+[vars]
+GEMINI_MODEL = "gemini-2.0-flash"
+
+# The API key is a SECRET, not a var. Set it (never commit it):
+#   cd worker && npx wrangler secret put GEMINI_API_KEY

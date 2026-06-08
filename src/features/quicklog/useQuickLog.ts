@@ -8,7 +8,9 @@ import { useForge } from '@/features/forge/useForge';
 import { useSessionStore } from '@/features/forge/sessionStore';
 import { useLogSet } from '@/features/logging/useLogSet';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { QUICKLOG_ENDPOINT } from './config';
 import { parseEntry, type ParseCandidate } from './parseEntry';
+import { parseEntryAI } from './parseEntryAI';
 
 export interface RecentChip {
   exerciseId: string;
@@ -74,9 +76,51 @@ export function useQuickLog() {
     return useSessionStore.getState().activeSessionId ?? '';
   }, [enter]);
 
-  /** Parse + log one free-text line. Returns ok + the matched name, or a failure reason for a hint. */
+  /**
+   * Parse + log one free-text line. AI-first (Gemini via the proxy — handles messy language + multiple
+   * sets); on any network/timeout/offline failure it falls back to the on-device rule parser, so
+   * logging never depends on the network. Returns ok + matched name, or a reason for a hint.
+   */
   const submitText = useCallback(
     async (text: string): Promise<{ ok: boolean; reason?: string; name?: string }> => {
+      // 1) AI path (only if a proxy endpoint is configured).
+      if (QUICKLOG_ENDPOINT) {
+        try {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), 7000); // never hang logging on a slow network
+          let sets;
+          try {
+            sets = await parseEntryAI(text, candidates, unitSystem, QUICKLOG_ENDPOINT, ctrl.signal);
+          } finally {
+            clearTimeout(timer);
+          }
+          const valid = sets.filter((s) => exMap.current.has(s.exerciseId));
+          if (valid.length > 0) {
+            const sid = await ensureSession();
+            if (sid) {
+              for (const s of valid) {
+                const ex = exMap.current.get(s.exerciseId);
+                await logSet({
+                  sessionId: sid,
+                  exerciseId: s.exerciseId,
+                  weight: s.weightKg,
+                  reps: s.reps,
+                  rir: s.rir,
+                  hitTargetReps: ex ? s.reps >= ex.rep_low : true,
+                  loggedVia: 'quick',
+                });
+              }
+              void load();
+              const head = valid[0].exerciseName;
+              return { ok: true, name: valid.length > 1 ? `${head} +${valid.length - 1}` : head };
+            }
+          }
+        } catch {
+          // network / timeout / proxy error → fall through to the offline rule parser
+        }
+      }
+
+      // 2) Offline fallback: on-device rule parser (single set).
       const r = parseEntry(text, candidates, unitSystem);
       if (!r.ok) return { ok: false, reason: r.reason };
       const sid = await ensureSession();
