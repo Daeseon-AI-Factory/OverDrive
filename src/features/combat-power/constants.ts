@@ -5,6 +5,7 @@
 export const BASE_SCALE = 9999; // max raw scale before clamping
 export const CP_FLOOR = 50; // anti-shame: showing up at all is always > 0
 export const TRUST_BONUS = 0.15; // verified data adds up to +15% (bonus only, never a penalty)
+export const GOAL_BONUS = 0.15; // crushing daily goals adds up to +15% (bonus only, never dilutes/penalizes)
 export const ASCENDANT_MIN = 8200; // 초월자 threshold; gated by breadth (see computeCombatPower)
 
 // Sub-score shaping constants
@@ -12,6 +13,7 @@ export const K_VOL = 15000; // strength volume (Σ weight·reps over 7d) at ~63%
 export const SESS_CAP = 5; // weekly sessions that ramp to full credit
 export const K_COND = 90; // conditioning units (Σ min(min,45)·rpeWeight) at ~63% saturation
 export const K_STREAK = 10; // streak days at ~63% saturation
+export const K_GOALS = 14; // completed daily goal-days over 7d (~2/day) at ~63% saturation
 
 // Applied at AGGREGATION time (in the repo), documented here: a PR set's volume counts ×1.15
 // toward strengthVolume7d. computeCombatPower receives the already-weighted total.

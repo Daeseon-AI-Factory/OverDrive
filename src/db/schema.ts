@@ -5,7 +5,7 @@
 // Deferred to later phases: BodyComp/FitnessTest (Phase 5), League/Friendship/AuraCard (Phase 3-4).
 // Program is a code constant (defaultProgram.ts), not a table. Streak is computed, not stored.
 
-export const DATABASE_VERSION = 3;
+export const DATABASE_VERSION = 4;
 
 export const SCHEMA_V1 = `
 CREATE TABLE IF NOT EXISTS user (
@@ -107,6 +107,30 @@ CREATE TABLE IF NOT EXISTS discipline (
   updated_at TEXT NOT NULL,
   UNIQUE(user_id, date)
 );
+
+CREATE TABLE IF NOT EXISTS daily_target (
+  id          TEXT PRIMARY KEY NOT NULL,
+  user_id     TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+  label       TEXT NOT NULL,
+  unit        TEXT NOT NULL DEFAULT 'reps',
+  target      REAL NOT NULL DEFAULT 1,
+  order_index INTEGER NOT NULL DEFAULT 0,
+  active      INTEGER NOT NULL DEFAULT 1,
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS daily_target_log (
+  id         TEXT PRIMARY KEY NOT NULL,
+  user_id    TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+  target_id  TEXT NOT NULL REFERENCES daily_target(id) ON DELETE CASCADE,
+  date       TEXT NOT NULL,
+  progress   REAL NOT NULL DEFAULT 0,
+  done       INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL,
+  UNIQUE(target_id, date)
+);
+CREATE INDEX IF NOT EXISTS idx_dailygoal_user_date ON daily_target_log(user_id, date);
 `;
 
 // v2 → v3: add the discipline table to already-migrated databases (idempotent).
@@ -120,4 +144,31 @@ CREATE TABLE IF NOT EXISTS discipline (
   updated_at TEXT NOT NULL,
   UNIQUE(user_id, date)
 );
+`;
+
+// v3 → v4: daily training goals (recurring target template + per-day progress). Idempotent.
+export const MIGRATION_004 = `
+CREATE TABLE IF NOT EXISTS daily_target (
+  id          TEXT PRIMARY KEY NOT NULL,
+  user_id     TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+  label       TEXT NOT NULL,
+  unit        TEXT NOT NULL DEFAULT 'reps',
+  target      REAL NOT NULL DEFAULT 1,
+  order_index INTEGER NOT NULL DEFAULT 0,
+  active      INTEGER NOT NULL DEFAULT 1,
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS daily_target_log (
+  id         TEXT PRIMARY KEY NOT NULL,
+  user_id    TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+  target_id  TEXT NOT NULL REFERENCES daily_target(id) ON DELETE CASCADE,
+  date       TEXT NOT NULL,
+  progress   REAL NOT NULL DEFAULT 0,
+  done       INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL,
+  UNIQUE(target_id, date)
+);
+CREATE INDEX IF NOT EXISTS idx_dailygoal_user_date ON daily_target_log(user_id, date);
 `;

@@ -15,6 +15,8 @@ export interface CombatPowerInput {
   streakDays: number;
   /** Protein/rest discipline. `null`/omitted = not tracked → component dropped (renormalized). */
   discipline?: { proteinDays: number; restOkDays: number } | null;
+  /** Daily training goals: completed goal-days in the window. `null` = no targets set → dropped. */
+  dailyGoals?: { completed7d: number } | null;
   /** Phase 5+: normalized recomposition progress 0..1. `null` = inactive. */
   recomp?: number | null;
   /** Phase 5+: normalized fitness-marker score 0..1. `null` = inactive. */
@@ -44,6 +46,8 @@ export interface CombatPowerResult {
   basket01: number;
   /** 1 + TRUST_BONUS·verifiedRatio — always >= 1 (anti-shame, never a penalty). */
   trustMultiplier: number;
+  /** 1 + GOAL_BONUS·dailyGoalScore — always >= 1; crushing daily goals only ever raises CP. */
+  goalMultiplier: number;
   verifiedRatio: number;
   /** Whether 초월자 (top grade) is reachable: requires breadth (verified data or markers/recomp). */
   breadthUnlocked: boolean;

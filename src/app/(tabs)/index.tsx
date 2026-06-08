@@ -5,6 +5,7 @@ import type { ExerciseRow } from '@/db/types';
 import { gradeForScore } from '@/features/combat-power/grades';
 import { MyCharacter } from '@/features/character/MyCharacter';
 import { CARDIO_EXERCISE_IDS, REGIONS, type BodyRegionId } from '@/features/character/regions';
+import { DailyGoalsCard } from '@/features/dailyGoals/DailyGoalsCard';
 import { DisciplineCard } from '@/features/discipline/DisciplineCard';
 import { ForgeBar } from '@/features/forge/ForgeBar';
 import { ForgeRitualOverlay } from '@/features/forge/ForgeRitualOverlay';
@@ -76,6 +77,8 @@ export default function TodayScreen() {
         <ForgeBar onEnter={enter} onFinish={finish} />
 
         <MyCharacter activeRegion={activeRegion} onRegionPress={onRegionPress} onCardioPress={onCardioPress} />
+
+        <DailyGoalsCard />
 
         <DisciplineCard />
       </ScrollView>

@@ -159,6 +159,7 @@
       "conditioning": "Conditioning",
       "streak": "Streak",
       "discipline": "Discipline (protein/rest)",
+      "dailyGoals": "Daily goals",
       "recomp": "Recomp",
       "fitnessMarkers": "Fitness markers"
     }
@@ -222,5 +223,32 @@
     "title": "Discipline · today",
     "protein": "🥩 Protein",
     "rest": "😴 Slept well"
+  },
+  "goals": {
+    "title": "Daily goals",
+    "add": "+ ADD",
+    "empty": "Set a daily target and crush it every day. Tap + ADD.",
+    "done": "DONE ⚡",
+    "unit": { "reps": "reps", "sets": "sets", "sec": "sec", "min": "min", "m": "m", "km": "km" },
+    "suggest": {
+      "burpee": "Burpees",
+      "pushup": "Push-ups",
+      "pullup": "Pull-ups",
+      "squat": "Squats",
+      "lunge": "Lunges",
+      "plank": "Plank",
+      "farmersWalk": "Farmer's Walk",
+      "run": "Run"
+    },
+    "editor": {
+      "title": "New daily goal",
+      "suggest": "Quick pick",
+      "label": "Goal",
+      "labelPlaceholder": "e.g. Burpees",
+      "unit": "Unit",
+      "target": "Daily target",
+      "add": "Add goal ⚡",
+      "cancel": "Cancel"
+    }
   }
 }

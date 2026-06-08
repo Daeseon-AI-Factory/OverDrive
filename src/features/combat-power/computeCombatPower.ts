@@ -4,7 +4,9 @@ import {
   BASE_SCALE,
   COMPONENT_BASE_WEIGHTS,
   CP_FLOOR,
+  GOAL_BONUS,
   K_COND,
+  K_GOALS,
   K_STREAK,
   K_VOL,
   SESS_CAP,
@@ -77,16 +79,21 @@ export function computeCombatPower(input: CombatPowerInput): CombatPowerResult {
 
   const basket01 = clamp01(breakdown.reduce((sum, c) => sum + c.points, 0));
   const trustMultiplier = 1 + TRUST_BONUS * verifiedRatio; // >= 1 always
+  // Daily goals are a BONUS multiplier (like trust), NOT a basket component — so completing a goal
+  // can only ever raise the score, never dilute the weighted average (anti-shame / 성취감 철칙).
+  const goalScore01 = input.dailyGoals ? sat(input.dailyGoals.completed7d, K_GOALS) : 0;
+  const goalMultiplier = 1 + GOAL_BONUS * goalScore01; // >= 1 always
   const breadthUnlocked = verifiedRatio > 0 || input.fitnessMarkers != null || input.recomp != null;
   const maxScore = breadthUnlocked ? BASE_SCALE : ASCENDANT_MIN - 1;
 
-  const score = clamp(Math.round(BASE_SCALE * basket01 * trustMultiplier), CP_FLOOR, maxScore);
+  const score = clamp(Math.round(BASE_SCALE * basket01 * trustMultiplier * goalMultiplier), CP_FLOOR, maxScore);
 
   return {
     score,
     grade: gradeForScore(score),
     basket01,
     trustMultiplier,
+    goalMultiplier,
     verifiedRatio,
     breadthUnlocked,
     breakdown,

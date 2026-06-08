@@ -6,6 +6,7 @@ import { localDateDaysAgo, nowIso, todayLocal } from '../../lib/date';
 import { newUuid } from '../uuid';
 import { LOCAL_USER_ID, type CombatPowerRow } from '../types';
 import { conditioningUnitsSince } from './cardioRepo';
+import { dailyGoalsCompletedSince } from './dailyGoalRepo';
 import { disciplineCountSince } from './disciplineRepo';
 import { countCompletedSessionsSince, getCompletedSessionDates } from './sessionRepo';
 import { strengthVolumeSince } from './setLogRepo';
@@ -20,21 +21,25 @@ const STREAK_LOOKBACK_DAYS = 90;
  */
 export async function buildInput(db: SQLiteDatabase, userId: string = LOCAL_USER_ID): Promise<CombatPowerInput> {
   const since = localDateDaysAgo(WINDOW_DAYS - 1);
-  const [strengthVolume7d, sessions7d, conditioningUnits7d, streakDates, disc] = await Promise.all([
+  const [strengthVolume7d, sessions7d, conditioningUnits7d, streakDates, disc, goals] = await Promise.all([
     strengthVolumeSince(db, since, userId),
     countCompletedSessionsSince(db, since, userId),
     conditioningUnitsSince(db, since, userId),
     getCompletedSessionDates(db, localDateDaysAgo(STREAK_LOOKBACK_DAYS), userId),
     disciplineCountSince(db, since, userId),
+    dailyGoalsCompletedSince(db, since, userId),
   ]);
   // Discipline activates only once the user starts tracking it (else renormalized out — anti-shame).
   const discipline = disc.days > 0 ? { proteinDays: disc.proteinDays, restOkDays: disc.restOkDays } : null;
+  // Daily-goals component activates only once the user sets at least one target.
+  const dailyGoals = goals.hasTargets ? { completed7d: goals.completed } : null;
   return {
     strengthVolume7d,
     sessions7d,
     conditioningUnits7d,
     streakDays: computeStreak(streakDates, todayLocal()),
     discipline,
+    dailyGoals,
     verifiedRatio: 0,
   };
 }

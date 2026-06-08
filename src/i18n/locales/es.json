@@ -159,6 +159,7 @@
       "conditioning": "Acondicionamiento",
       "streak": "Racha",
       "discipline": "Disciplina (proteína/descanso)",
+      "dailyGoals": "Metas diarias",
       "recomp": "Recomposición",
       "fitnessMarkers": "Marcadores de forma física"
     }
@@ -222,5 +223,39 @@
     "title": "Disciplina · hoy",
     "protein": "🥩 Proteína",
     "rest": "😴 Dormí bien"
+  },
+  "goals": {
+    "title": "Metas diarias",
+    "add": "+ AÑADIR",
+    "empty": "Fija una meta diaria y aplástala cada día. Pulsa + AÑADIR.",
+    "done": "HECHO ⚡",
+    "unit": {
+      "reps": "reps",
+      "sets": "series",
+      "sec": "seg",
+      "min": "min",
+      "m": "m",
+      "km": "km"
+    },
+    "suggest": {
+      "burpee": "Burpees",
+      "pushup": "Flexiones",
+      "pullup": "Dominadas",
+      "squat": "Sentadillas",
+      "lunge": "Zancadas",
+      "plank": "Plancha",
+      "farmersWalk": "Paseo del granjero",
+      "run": "Correr"
+    },
+    "editor": {
+      "title": "Nueva meta diaria",
+      "suggest": "Selección rápida",
+      "label": "Meta",
+      "labelPlaceholder": "p. ej. Burpees",
+      "unit": "Unidad",
+      "target": "Meta diaria",
+      "add": "Añadir meta ⚡",
+      "cancel": "Cancelar"
+    }
   }
 }

@@ -159,6 +159,7 @@
       "conditioning": "体能",
       "streak": "连续天数",
       "discipline": "自律（蛋白/休息）",
+      "dailyGoals": "每日目标",
       "recomp": "体态重塑",
       "fitnessMarkers": "体能指标"
     }
@@ -222,5 +223,39 @@
     "title": "今日自律",
     "protein": "🥩 蛋白质",
     "rest": "😴 睡眠"
+  },
+  "goals": {
+    "title": "每日目标",
+    "add": "+ 添加",
+    "empty": "设定每日目标量，每天把它干掉。点击 + 添加。",
+    "done": "完成 ⚡",
+    "unit": {
+      "reps": "次",
+      "sets": "组",
+      "sec": "秒",
+      "min": "分",
+      "m": "米",
+      "km": "公里"
+    },
+    "suggest": {
+      "burpee": "波比跳",
+      "pushup": "俯卧撑",
+      "pullup": "引体向上",
+      "squat": "深蹲",
+      "lunge": "弓步",
+      "plank": "平板支撑",
+      "farmersWalk": "农夫行走",
+      "run": "跑步"
+    },
+    "editor": {
+      "title": "新建每日目标",
+      "suggest": "快速选择",
+      "label": "目标",
+      "labelPlaceholder": "例如：波比跳",
+      "unit": "单位",
+      "target": "每日目标量",
+      "add": "添加目标 ⚡",
+      "cancel": "取消"
+    }
   }
 }

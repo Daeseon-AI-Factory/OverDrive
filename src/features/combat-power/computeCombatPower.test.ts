@@ -114,6 +114,33 @@ describe('computeCombatPower — invariants', () => {
   });
 });
 
+describe('computeCombatPower — daily goals bonus (multiplier, never a penalty)', () => {
+  it('no goals (undefined/null/zero) → goalMultiplier exactly 1, no effect, NO dilution', () => {
+    const a = computeCombatPower(mid); // no dailyGoals field
+    const b = computeCombatPower({ ...mid, dailyGoals: null });
+    const z = computeCombatPower({ ...mid, dailyGoals: { completed7d: 0 } });
+    expect(a.goalMultiplier).toBe(1);
+    expect(b.score).toBe(a.score);
+    // The anti-shame invariant: merely having a goal (0 completions) never LOWERS the score.
+    expect(z.score).toBe(a.score);
+    expect(z.goalMultiplier).toBe(1);
+  });
+
+  it('completing goals is additive-only, monotonic, saturating (+15% cap)', () => {
+    const none = computeCombatPower({ ...mid, dailyGoals: { completed7d: 0 } });
+    const some = computeCombatPower({ ...mid, dailyGoals: { completed7d: 7 } });
+    const more = computeCombatPower({ ...mid, dailyGoals: { completed7d: 14 } });
+    const huge = computeCombatPower({ ...mid, dailyGoals: { completed7d: 1000 } });
+    expect(some.score).toBeGreaterThan(none.score); // crushing daily goals lifts Combat Power
+    expect(more.score).toBeGreaterThanOrEqual(some.score);
+    expect(some.goalMultiplier).toBeGreaterThan(1);
+    expect(huge.goalMultiplier).toBeLessThanOrEqual(1.15 + 1e-9); // bonus caps at +15%
+    const earlyGain = some.score - none.score;
+    const lateGain = more.score - some.score;
+    expect(earlyGain).toBeGreaterThanOrEqual(lateGain); // diminishing returns (equal 7-day spans)
+  });
+});
+
 describe('gradeForScore — band boundaries', () => {
   it('maps each boundary to the right grade (inclusive-low)', () => {
     expect(gradeForScore(0).label).toBe('일반인');

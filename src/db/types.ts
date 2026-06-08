@@ -10,6 +10,8 @@ export type ExerciseType = 'strength' | 'cardio';
 export type LoggedVia = 'manual' | 'voice' | 'imported' | 'quick';
 export type CardioSource = 'manual' | 'imported';
 export type PowerEventReason = 'set' | 'pr' | 'session' | 'streak' | 'levelup';
+/** Unit a daily training target is measured in (modality-agnostic: burpees=reps, carry=sets/m, plank=sec). */
+export type GoalUnit = 'reps' | 'sets' | 'sec' | 'min' | 'm' | 'km';
 
 export interface UserRow {
   id: string;
@@ -102,4 +104,26 @@ export interface PowerEventRow {
   delta: number;
   reason: PowerEventReason;
   created_at: string;
+}
+
+export interface DailyTargetRow {
+  id: string;
+  user_id: string;
+  label: string;
+  unit: GoalUnit;
+  target: number;
+  order_index: number;
+  active: number; // 0/1
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DailyTargetLogRow {
+  id: string;
+  user_id: string;
+  target_id: string;
+  date: string; // yyyy-mm-dd local
+  progress: number;
+  done: number; // 0/1
+  updated_at: string;
 }

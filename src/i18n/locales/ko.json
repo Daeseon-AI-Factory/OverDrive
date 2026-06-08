@@ -159,6 +159,7 @@
       "conditioning": "컨디셔닝",
       "streak": "연속",
       "discipline": "규율(단백질/휴식)",
+      "dailyGoals": "데일리 목표",
       "recomp": "리컴프",
       "fitnessMarkers": "체력 마커"
     }
@@ -222,5 +223,39 @@
     "title": "오늘의 규율",
     "protein": "🥩 단백질",
     "rest": "😴 수면"
+  },
+  "goals": {
+    "title": "데일리 목표",
+    "add": "+ 추가",
+    "empty": "매일 조질 목표량을 정하고 부숴라. + 추가를 눌러.",
+    "done": "완료 ⚡",
+    "unit": {
+      "reps": "회",
+      "sets": "세트",
+      "sec": "초",
+      "min": "분",
+      "m": "m",
+      "km": "km"
+    },
+    "suggest": {
+      "burpee": "버피",
+      "pushup": "푸시업",
+      "pullup": "풀업",
+      "squat": "스쿼트",
+      "lunge": "런지",
+      "plank": "플랭크",
+      "farmersWalk": "파머스 워크",
+      "run": "러닝"
+    },
+    "editor": {
+      "title": "새 데일리 목표",
+      "suggest": "빠른 선택",
+      "label": "목표",
+      "labelPlaceholder": "예: 버피",
+      "unit": "단위",
+      "target": "하루 목표량",
+      "add": "목표 추가 ⚡",
+      "cancel": "취소"
+    }
   }
 }
