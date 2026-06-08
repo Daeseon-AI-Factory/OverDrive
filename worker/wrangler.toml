@@ -2,9 +2,11 @@ name = "overdrive-quicklog"
 main = "src/index.js"
 compatibility_date = "2024-11-01"
 
-# Optional: override the Gemini model (default gemini-2.0-flash). Free-tier friendly.
+# Optional model overrides. Provider is auto-selected by which API key secret is set.
 [vars]
+GROQ_MODEL = "llama-3.3-70b-versatile"
 GEMINI_MODEL = "gemini-2.0-flash"
 
-# The API key is a SECRET, not a var. Set it (never commit it):
-#   cd worker && npx wrangler secret put GEMINI_API_KEY
+# The API key is a SECRET, not a var. Set ONE (never commit it):
+#   cd worker && npx wrangler secret put GROQ_API_KEY      # recommended (fastest)
+#   # or:      npx wrangler secret put GEMINI_API_KEY

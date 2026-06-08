@@ -1,16 +1,18 @@
 # OVERDRIVE QuickLog proxy (Cloudflare Worker)
 
-Holds the **Gemini API key server-side** so it is never shipped in the app bundle (non-negotiable §3).
-The app POSTs free text + the exercise catalog; the Worker calls Gemini in JSON mode and returns
-structured sets.
+Holds the **LLM API key server-side** so it is never shipped in the app bundle (non-negotiable §3).
+The app POSTs free text + the exercise catalog; the Worker calls the LLM in JSON mode and returns
+structured sets. **Provider is auto-selected by which key you set:** `GROQ_API_KEY` → Groq
+(OpenAI-compatible, fastest — recommended); else `GEMINI_API_KEY` → Gemini.
 
 ## Deploy (one time, ~5 min)
 
 ```bash
 cd worker
 npm install
-npx wrangler login                 # opens browser, log into your Cloudflare account (free)
-npx wrangler secret put GEMINI_API_KEY   # paste your free Gemini key — stays a CF secret, never in git
+npx wrangler login                       # opens browser, log into your Cloudflare account (free)
+npx wrangler secret put GROQ_API_KEY     # paste your free Groq key (console.groq.com) — CF secret, never in git
+# or instead:  npx wrangler secret put GEMINI_API_KEY
 npx wrangler deploy
 ```
 
