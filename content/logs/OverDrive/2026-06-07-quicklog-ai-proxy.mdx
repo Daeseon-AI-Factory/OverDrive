@@ -1,0 +1,36 @@
+---
+title: "QuickLog AI — Gemini는 쓰되 키는 서버에 (Cloudflare Worker 프록시)"
+date: "2026-06-07"
+project: "OverDrive"
+kind: "decision"
+visibility: "public"
+language: "ko"
+summary: "빌더가 무료 Gemini 키로 AI 파싱을 원함. 키 클라이언트 금지(§3) 충돌 → 얇은 Worker 프록시로 키를 서버에 두고 AI는 쓰되 규칙파서를 오프라인 폴백으로."
+tags: ["phase-1", "quicklog", "ai", "gemini", "security", "decision-t2"]
+---
+
+## Context & constraints
+빌더가 "규칙파서 빼고 AI 써라, 내 무료 Gemini 키 있다." 그런데 사수항목 §3 = **시크릿/키 절대 클라이언트 X.** RN 앱 번들에 박은 키는 몇 분이면 추출 → 쿼터 도난/과금, 출시 시 치명. 동시에 §6: **로깅은 망에 의존해 막히면 안 됨**(헬스장 신호 약함).
+
+## Options considered
+1. **키를 앱에 직접** — 가장 빠르지만 §3 정면 위반, 키 유출 확정. 기각.
+2. **풀 백엔드(NestJS, Phase 2) 기다림** — 정석이나 지금 dogfooding을 막음. 과함.
+3. **얇은 Cloudflare Worker 프록시(채택)** — 키=Worker 시크릿(앱·git에 0), 앱은 공개 URL만 호출. 무료·엣지·~80줄.
+4. **온디바이스 LLM** — 키 문제는 없으나 모델 무겁고 RN 통합 부담. 기각.
+
+## Chosen + Why
+**#3 프록시.** AI(막말 자연어·다중 세트)를 지금 쓰면서 키는 서버에. 앱: 텍스트+카탈로그 POST → Worker가 Gemini JSON 모드(responseSchema) 호출 → 구조화 세트 반환. 반환 id는 **카탈로그에 대조 검증**(환각 방지, `normalizeAISets` 3 테스트). **AI 우선 + 7s 타임아웃, 실패/오프라인 시 온디바이스 규칙파서로 폴백** → 로깅이 망에 안 묶임. 엔드포인트는 비밀 아님 → `EXPO_PUBLIC_QUICKLOG_ENDPOINT`(.env, gitignore).
+
+## Trade-off accepted
+- AI 경로는 네트워크 왕복(~0.5–2s) → 즉시성 손해(폴백 규칙파서가 즉답 보완).
+- 프록시 배포·관리 1개 추가(무료지만 빌더가 `wrangler login`+`secret put`+`deploy` 직접 — 키가 나/레포에 안 닿게).
+- 무인증 엔드포인트(개인 dogfood OK; 키는 안전, 최악은 URL 발견자가 무료 쿼터 소모) → 출시 전 Cloudflare Access/Phase2 토큰.
+
+## Reversibility
+높음. 프록시는 독립 `worker/`. `EXPO_PUBLIC_QUICKLOG_ENDPOINT` 비우면 즉시 규칙파서-only로 회귀(코드 변경 0). Phase 2 백엔드 생기면 엔드포인트만 그쪽으로.
+
+## Success measure
+빌더가 폰에서 "아까 가슴 빡세게 8개쯤" 같은 막말을 쳐도 정확히 기록되고, 망 끊겨도 "벤치 100 5"는 즉시 잡힘.
+
+## Verified by
+tsc(worker 격리)·jest 72(+normalizeAISets 3)·expo lint·expo export 클린. 커밋 `108bc43`. 배포는 빌더 대기(키 주입). 미배포 시 폴백으로 안전 동작.
