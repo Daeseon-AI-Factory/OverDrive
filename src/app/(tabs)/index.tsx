@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { ExerciseRow } from '@/db/types';
 import { gradeForScore } from '@/features/combat-power/grades';
 import { MyCharacter } from '@/features/character/MyCharacter';
@@ -14,17 +14,22 @@ import { useForge } from '@/features/forge/useForge';
 import { CardioLoggerSheet } from '@/features/logging/CardioLoggerSheet';
 import { ExerciseRegionSheet, type RegionPicker } from '@/features/logging/ExerciseRegionSheet';
 import { SetLoggerSheet } from '@/features/logging/SetLoggerSheet';
-import { todayProgram } from '@/features/program/defaultProgram';
+import { QuickLogBar } from '@/features/quicklog/QuickLogBar';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
-import { Card, Muted, Screen } from '@/ui/primitives';
+import { Muted, Screen } from '@/ui/primitives';
 import { colors, displayFamily, fontSize, numberFamily, space } from '@/ui/theme/tokens';
 
+/**
+ * Today — radically simplified (builder directive: "존나 심플하게"). The default view is just:
+ * the Combat Power number + ONE input (QuickLog) + goals + a one-tap food/rest check. The choice-
+ * heavy body-map / full logger is tucked behind a "수동" toggle so it never competes for attention.
+ */
 export default function TodayScreen() {
   const { t } = useTranslation();
   const score = useCombatPowerStore((s) => s.score);
-  const program = useMemo(() => todayProgram(), []);
   const { enter, finish } = useForge();
 
+  const [manual, setManual] = useState(false);
   const [activeRegion, setActiveRegion] = useState<BodyRegionId | null>(null);
   const [picker, setPicker] = useState<RegionPicker | null>(null);
   const [activeExercise, setActiveExercise] = useState<ExerciseRow | null>(null);
@@ -39,7 +44,7 @@ export default function TodayScreen() {
   const onRegionPress = useCallback(
     (region: BodyRegionId) => {
       if (!useSessionStore.getState().activeSessionId) {
-        void enter(); // first touch enters the forge (ritual); tap again to pick
+        void enter();
         return;
       }
       setActiveRegion(region);
@@ -68,19 +73,22 @@ export default function TodayScreen() {
           <Text style={[styles.grade, { color: colors.cyan }]}>{t(`grade.${grade.key}`)}</Text>
         </View>
 
-        <Card>
-          <Text style={styles.dayTitle}>{t(program.titleKey)}</Text>
-          <Muted>{t(program.focusKey)}</Muted>
-          {program.dayType === 'rest' ? <Muted style={{ marginTop: space.sm }}>{t('today.restDayHint')}</Muted> : null}
-        </Card>
+        {/* THE one input — type/say "벤치 100 5" or tap a recent lift */}
+        <QuickLogBar />
 
         <ForgeBar onEnter={enter} onFinish={finish} />
-
-        <MyCharacter activeRegion={activeRegion} onRegionPress={onRegionPress} onCardioPress={onCardioPress} />
 
         <DailyGoalsCard />
 
         <DisciplineCard />
+
+        <Pressable onPress={() => setManual((v) => !v)} style={styles.manualToggle} hitSlop={8}>
+          <Text style={styles.manualText}>{manual ? t('today.manualHide') : t('today.manualShow')}</Text>
+        </Pressable>
+
+        {manual ? (
+          <MyCharacter activeRegion={activeRegion} onRegionPress={onRegionPress} onCardioPress={onCardioPress} />
+        ) : null}
       </ScrollView>
 
       <ExerciseRegionSheet
@@ -117,5 +125,6 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', marginTop: space.lg },
   cpScore: { color: colors.text, fontFamily: numberFamily, fontSize: fontSize.odometer },
   grade: { fontFamily: displayFamily, fontSize: fontSize.xl, letterSpacing: 3 },
-  dayTitle: { color: colors.text, fontSize: fontSize.lg, fontWeight: '800', marginBottom: 2 },
+  manualToggle: { alignSelf: 'center', paddingVertical: space.lg, marginTop: space.sm },
+  manualText: { color: colors.textDim, fontSize: fontSize.sm, fontWeight: '700', letterSpacing: 1 },
 });

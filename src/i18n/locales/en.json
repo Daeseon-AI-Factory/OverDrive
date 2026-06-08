@@ -8,7 +8,18 @@
   "today": {
     "combatPowerLabel": "COMBAT POWER",
     "restDayHint": "Rest day 💤 — still want to log? Tap a body region.",
-    "cardioSheetTitle": "Cardio / Conditioning"
+    "cardioSheetTitle": "Cardio / Conditioning",
+    "manualShow": "✏️  Manual / by body part",
+    "manualHide": "Hide manual"
+  },
+  "quicklog": {
+    "placeholder": "e.g.  bench 100 5",
+    "log": "LOG ⚡",
+    "help": "Type exercise + weight + reps. Or tap a recent lift to repeat.",
+    "fail": {
+      "no_exercise": "Didn't catch the exercise — try: name weight reps (bench 100 5).",
+      "no_reps": "Add reps — e.g. bench 100 5."
+    }
   },
   "power": {
     "disclaimer": "For-fun original formula · not a scientific metric",

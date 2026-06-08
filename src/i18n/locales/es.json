@@ -8,7 +8,9 @@
   "today": {
     "combatPowerLabel": "PODER DE COMBATE",
     "restDayHint": "Día de descanso 💤 — ¿igual quieres registrar? Toca una zona del cuerpo.",
-    "cardioSheetTitle": "Cardio / Acondicionamiento"
+    "cardioSheetTitle": "Cardio / Acondicionamiento",
+    "manualShow": "✏️  Manual / por músculo",
+    "manualHide": "Ocultar manual"
   },
   "power": {
     "disclaimer": "Fórmula original por diversión · no es una métrica científica",
@@ -256,6 +258,15 @@
       "target": "Meta diaria",
       "add": "Añadir meta ⚡",
       "cancel": "Cancelar"
+    }
+  },
+  "quicklog": {
+    "placeholder": "ej.  press banca 100 5",
+    "log": "REGISTRAR ⚡",
+    "help": "Escribe ejercicio + peso + reps. O toca un ejercicio reciente.",
+    "fail": {
+      "no_exercise": "No entendí el ejercicio — prueba: nombre peso reps.",
+      "no_reps": "Añade las reps — ej. banca 100 5."
     }
   }
 }

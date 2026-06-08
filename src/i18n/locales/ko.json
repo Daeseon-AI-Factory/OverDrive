@@ -8,7 +8,9 @@
   "today": {
     "combatPowerLabel": "전투력",
     "restDayHint": "오늘은 휴식 💤 — 그래도 기록하고 싶으면 부위를 터치해.",
-    "cardioSheetTitle": "유산소 / 컨디셔닝"
+    "cardioSheetTitle": "유산소 / 컨디셔닝",
+    "manualShow": "✏️  수동 / 부위별",
+    "manualHide": "숨기기"
   },
   "power": {
     "disclaimer": "재미용 자체 산식 · 과학적 지표 아님",
@@ -256,6 +258,15 @@
       "target": "하루 목표량",
       "add": "목표 추가 ⚡",
       "cancel": "취소"
+    }
+  },
+  "quicklog": {
+    "placeholder": "예:  벤치 100 5",
+    "log": "기록 ⚡",
+    "help": "운동 + 무게 + 횟수만 쳐. 아니면 최근 운동 탭.",
+    "fail": {
+      "no_exercise": "운동을 못 알아들었어 — 이름 무게 횟수 (벤치 100 5).",
+      "no_reps": "횟수를 넣어줘 — 예: 벤치 100 5."
     }
   }
 }

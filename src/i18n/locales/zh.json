@@ -8,7 +8,9 @@
   "today": {
     "combatPowerLabel": "战斗力",
     "restDayHint": "休息日 💤 — 还想记录？点选一个身体部位。",
-    "cardioSheetTitle": "有氧 / 体能"
+    "cardioSheetTitle": "有氧 / 体能",
+    "manualShow": "✏️  手动 / 按部位",
+    "manualHide": "隐藏手动"
   },
   "power": {
     "disclaimer": "趣味原创算法 · 非科学指标",
@@ -256,6 +258,15 @@
       "target": "每日目标量",
       "add": "添加目标 ⚡",
       "cancel": "取消"
+    }
+  },
+  "quicklog": {
+    "placeholder": "例如  卧推 100 5",
+    "log": "记录 ⚡",
+    "help": "输入 动作 + 重量 + 次数。或点最近动作重复。",
+    "fail": {
+      "no_exercise": "没听懂动作 — 试试：名称 重量 次数。",
+      "no_reps": "加上次数 — 例如 卧推 100 5。"
     }
   }
 }
