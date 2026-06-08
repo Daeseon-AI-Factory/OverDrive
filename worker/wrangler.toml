@@ -5,6 +5,7 @@ compatibility_date = "2024-11-01"
 # Optional model overrides. Provider is auto-selected by which API key secret is set.
 [vars]
 GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_WHISPER_MODEL = "whisper-large-v3"
 GEMINI_MODEL = "gemini-2.0-flash"
 
 # The API key is a SECRET, not a var. Set ONE (never commit it):

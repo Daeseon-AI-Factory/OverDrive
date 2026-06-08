@@ -263,10 +263,15 @@
   "quicklog": {
     "placeholder": "ej.  press banca 100 5",
     "log": "REGISTRAR ⚡",
-    "help": "Escribe ejercicio + peso + reps. O toca un ejercicio reciente.",
+    "help": "Escribe o 🎤 dilo: ejercicio + peso + reps. O toca uno reciente.",
     "fail": {
       "no_exercise": "No entendí el ejercicio — prueba: nombre peso reps.",
-      "no_reps": "Añade las reps — ej. banca 100 5."
-    }
+      "no_reps": "Añade las reps — ej. banca 100 5.",
+      "voice": "No se pudo transcribir — reintenta o escribe.",
+      "mic_denied": "La voz necesita permiso de micrófono.",
+      "no_voice": "La voz necesita el endpoint AI (.env)."
+    },
+    "recording": "● Grabando… toca para parar",
+    "transcribing": "Transcribiendo…"
   }
 }

@@ -40,8 +40,8 @@
       [
         "expo-audio",
         {
-          "microphonePermission": false,
-          "recordAudioAndroid": false,
+          "microphonePermission": "OVERDRIVE uses the microphone only to transcribe your spoken workout logs, on demand.",
+          "recordAudioAndroid": true,
           "enableBackgroundPlayback": false
         }
       ],

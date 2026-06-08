@@ -15,10 +15,15 @@
   "quicklog": {
     "placeholder": "e.g.  bench 100 5",
     "log": "LOG ⚡",
-    "help": "Type exercise + weight + reps. Or tap a recent lift to repeat.",
+    "help": "Type or 🎤 say it: exercise + weight + reps. Or tap a recent lift.",
+    "recording": "● Recording… tap to stop",
+    "transcribing": "Transcribing…",
     "fail": {
       "no_exercise": "Didn't catch the exercise — try: name weight reps (bench 100 5).",
-      "no_reps": "Add reps — e.g. bench 100 5."
+      "no_reps": "Add reps — e.g. bench 100 5.",
+      "voice": "Couldn't transcribe — retry or type it.",
+      "mic_denied": "Voice needs microphone permission.",
+      "no_voice": "Voice needs the AI endpoint set (.env)."
     }
   },
   "power": {

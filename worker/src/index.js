@@ -100,34 +100,74 @@ async function callGemini(env, prompt) {
   return { out };
 }
 
+// POST /parse — free text → structured sets (LLM, provider auto-selected).
+async function handleParse(req, env) {
+  if (!env.GROQ_API_KEY && !env.GEMINI_API_KEY) {
+    return json({ error: 'server missing GROQ_API_KEY or GEMINI_API_KEY secret' }, 500);
+  }
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return json({ error: 'invalid JSON body' }, 400);
+  }
+  const { text, unitSystem = 'metric', exercises = [] } = body || {};
+  if (!text || typeof text !== 'string') return json({ error: 'missing text' }, 400);
+
+  const prompt = buildPrompt(text, unitSystem, exercises);
+  const { out, error, detail } = env.GROQ_API_KEY ? await callGroq(env, prompt) : await callGemini(env, prompt);
+  if (error) return json({ error, detail }, 502);
+  if (!out) return json({ error: 'empty model response' }, 502);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(out);
+  } catch {
+    return json({ error: 'model returned non-JSON', raw: out }, 502);
+  }
+  return json({ sets: Array.isArray(parsed.sets) ? parsed.sets : [], note: parsed.note });
+}
+
+// POST /transcribe — multipart audio → text (Groq whisper-large-v3). Forwards the file to Groq.
+async function handleTranscribe(req, env) {
+  if (!env.GROQ_API_KEY) return json({ error: 'transcription requires GROQ_API_KEY' }, 500);
+  let inForm;
+  try {
+    inForm = await req.formData();
+  } catch {
+    return json({ error: 'expected multipart form-data with a "file" field' }, 400);
+  }
+  const file = inForm.get('file');
+  if (!file) return json({ error: 'missing file' }, 400);
+
+  const out = new FormData();
+  out.append('file', file, 'audio.m4a');
+  out.append('model', env.GROQ_WHISPER_MODEL || 'whisper-large-v3');
+  out.append('response_format', 'json');
+  const lang = inForm.get('language');
+  if (lang) out.append('language', String(lang));
+
+  let r;
+  try {
+    r = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${env.GROQ_API_KEY}` },
+      body: out,
+    });
+  } catch (e) {
+    return json({ error: 'groq transcribe fetch failed', detail: String(e) }, 502);
+  }
+  if (!r.ok) return json({ error: `groq transcribe ${r.status}`, detail: await r.text().catch(() => '') }, 502);
+  const data = await r.json().catch(() => null);
+  return json({ text: data?.text ?? '' });
+}
+
 export default {
   async fetch(req, env) {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
-    if (req.method !== 'POST') return json({ error: 'POST /parse only' }, 405);
-    if (!env.GROQ_API_KEY && !env.GEMINI_API_KEY) {
-      return json({ error: 'server missing GROQ_API_KEY or GEMINI_API_KEY secret' }, 500);
-    }
-
-    let body;
-    try {
-      body = await req.json();
-    } catch {
-      return json({ error: 'invalid JSON body' }, 400);
-    }
-    const { text, unitSystem = 'metric', exercises = [] } = body || {};
-    if (!text || typeof text !== 'string') return json({ error: 'missing text' }, 400);
-
-    const prompt = buildPrompt(text, unitSystem, exercises);
-    const { out, error, detail } = env.GROQ_API_KEY ? await callGroq(env, prompt) : await callGemini(env, prompt);
-    if (error) return json({ error, detail }, 502);
-    if (!out) return json({ error: 'empty model response' }, 502);
-
-    let parsed;
-    try {
-      parsed = JSON.parse(out);
-    } catch {
-      return json({ error: 'model returned non-JSON', raw: out }, 502);
-    }
-    return json({ sets: Array.isArray(parsed.sets) ? parsed.sets : [], note: parsed.note });
+    if (req.method !== 'POST') return json({ error: 'POST only (/parse or /transcribe)' }, 405);
+    const { pathname } = new URL(req.url);
+    if (pathname === '/transcribe') return handleTranscribe(req, env);
+    return handleParse(req, env);
   },
 };
