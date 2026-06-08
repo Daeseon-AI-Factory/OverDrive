@@ -36,4 +36,7 @@ tags: ["phase-1", "quicklog", "ai", "gemini", "security", "decision-t2"]
 tsc(worker 격리)·jest 72(+normalizeAISets 3)·expo lint·expo export 클린. 커밋 `108bc43`. 배포는 빌더 대기(키 주입). 미배포 시 폴백으로 안전 동작.
 
 ## 업데이트 (683ec82): provider-무관 + Groq 기본
-빌더가 Groq(무료·초고속 LPU)를 원함. 우리 케이스(짧은 입력→JSON)는 **속도 > 지능**이라 Groq가 적합 — 기록 시 거의 즉시 폭발(~100-400ms). Worker를 provider-무관으로: `GROQ_API_KEY` 있으면 Groq(`llama-3.3-70b-versatile`, OpenAI 호환 json 모드), 없으면 Gemini. `/parse` 계약·클라이언트 동일. 한국어 막말은 Gemini가 미세 우위일 수 있으나 70b면 충분. 키는 양쪽 다 CF 시크릿. **다음 결정: 음성 전사(transcription) — on-device iOS Speech(무료·오프라인) vs Groq whisper-large-v3(무료·정확) vs gpt-4o-transcribe(유료·최고품질).**
+빌더가 Groq(무료·초고속 LPU)를 원함. 우리 케이스(짧은 입력→JSON)는 **속도 > 지능**이라 Groq가 적합 — 기록 시 거의 즉시 폭발(~100-400ms). Worker를 provider-무관으로: `GROQ_API_KEY` 있으면 Groq(`llama-3.3-70b-versatile`, OpenAI 호환 json 모드), 없으면 Gemini. `/parse` 계약·클라이언트 동일. 한국어 막말은 Gemini가 미세 우위일 수 있으나 70b면 충분. 키는 양쪽 다 CF 시크릿.
+
+## 음성 (f630201): Groq Whisper 채택
+빌더가 gpt-4o-transcribe를 물음 → 그건 *전사(voice→text)* 층(파서와 별개)이고 **유료**. 같은 Groq 키로 **whisper-large-v3**가 무료·초고속·한국어 훌륭 → 채택. Worker에 `POST /transcribe`(멀티파트 오디오 → Groq Whisper → text) 추가. QuickLogBar에 마이크 토글: 녹음(expo-audio) → /transcribe → 같은 Groq 파서 → 기록. **마이크 권한 복구**(microphonePermission+recordAudioAndroid) — 이제 실제 사용하므로 정당(8a4d18f의 재생전용 스코핑 되돌림). 키는 여전히 서버. 네이티브 변경이라 폰 리빌드 필요. 미배포 시: 마이크 버튼은 "엔드포인트 필요" 안내, 텍스트는 규칙파서 폴백.
