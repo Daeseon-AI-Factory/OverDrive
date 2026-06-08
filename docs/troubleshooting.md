@@ -182,3 +182,6 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: f330555 docs(troubleshooting): record expo-audio permission scoping (8a4d18f) [no-log] -->
 <!-- skipped: b3b53f8 docs(log): record burst shader upgrade + visual round 2 backlog (0c9b4bc) [no-log] -->
 <!-- skipped: 64202b1 docs(log): record daily training goals + CP bonus design (4fae73e) [no-log] -->
+<!-- override-trigger: ff15bcb docs(log): record full audit + Today simplification (70fb670, 40cdc00) [no-log] — log-commit recursion: ff15bcb IS the narrative log; the substantive commits (70fb670 audit fixes, 40cdc00 Today simplification) are both already documented in content/logs/OverDrive/2026-06-07-audit-and-simplify.mdx. The word "audit" only appears because it is this log entry's subject. No separate entry needed. -->
+<!-- skipped: ff15bcb docs(log): record full audit + Today simplification (70fb670, 40cdc00) [no-log] -->
+<!-- override-note: the recurring footgun (STATE.md/CLAUDE.md) — a docs(log) commit whose SUBJECT contains a trigger keyword (audit/migration/refactor/…) re-fires the Stop hook. Keep trigger keywords out of log-commit subjects. -->
