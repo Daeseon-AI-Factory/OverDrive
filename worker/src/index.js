@@ -21,7 +21,8 @@ const json = (obj, status = 200) =>
 
 const SHAPE =
   'Respond with ONLY a JSON object of shape ' +
-  '{"sets":[{"exerciseId":string,"exerciseName":string,"weightKg":number,"reps":integer,"rir":integer|null}],"note":string}.';
+  '{"sets":[{"exerciseId":string,"exerciseName":string,"weightKg":number,"reps":integer,"rir":integer|null,"isBodyweight":boolean}],"note":string}. ' +
+  'exerciseId is the catalog id when it matches, or "" (empty) when the exercise is not in the catalog.';
 
 function buildPrompt(text, unitSystem, exercises) {
   const catalog = exercises.map((e) => `- ${e.id}: ${(e.names || []).join(' / ')}`).join('\n');
@@ -30,10 +31,11 @@ function buildPrompt(text, unitSystem, exercises) {
     `The user's display unit system is "${unitSystem}". weightKg MUST be kilograms:`,
     'convert lb→kg (×0.453592); a bare number with no unit is lb when unitSystem is "imperial", else kg;',
     'bodyweight moves → weightKg 0 unless extra load is stated.',
-    'Map each exercise to the closest id from this catalog and output the EXACT id. If nothing matches, omit that set.',
+    'Map each exercise to the closest id from this catalog and output the EXACT id.',
+    'If the exercise is NOT in the catalog, STILL include the set: set exerciseId to "" (empty string), put the exercise name in exerciseName, and set isBodyweight=true for bodyweight moves (burpees, push-ups, mountain climbers, lunges, etc.), false otherwise.',
     catalog,
-    'Extract EVERY set. Examples: "벤치 100 5,5,4" = three sets of 100kg; "스쿼트 5세트 80 10" = five sets of 80kg×10.',
-    'reps is an integer; rir only if explicitly stated (else null). If nothing parses, sets:[] with a short note.',
+    'Extract EVERY set. "10 burpees for 5 sets" = five sets of 10 reps. "벤치 100 5,5,4" = three sets of 100kg. "스쿼트 5세트 80 10" = five sets of 80kg×10.',
+    'reps is an integer; weightKg is 0 for bodyweight; rir only if explicitly stated (else null). If nothing parses, sets:[] with a short note.',
     `User log: """${text}"""`,
   ].join('\n');
 }
@@ -74,8 +76,9 @@ const GEMINI_SCHEMA = {
           weightKg: { type: 'NUMBER' },
           reps: { type: 'INTEGER' },
           rir: { type: 'INTEGER', nullable: true },
+          isBodyweight: { type: 'BOOLEAN', nullable: true },
         },
-        required: ['exerciseId', 'weightKg', 'reps'],
+        required: ['exerciseName', 'weightKg', 'reps'],
       },
     },
     note: { type: 'STRING' },

@@ -15,11 +15,12 @@ export interface ParseCandidate {
 }
 
 export interface ParsedSet {
-  exerciseId: string;
+  exerciseId: string; // catalog id, or '' when the AI proposes an exercise not in the catalog
   exerciseName: string;
   weightKg: number; // canonical kg (0 for bodyweight / weightless)
   reps: number;
   rir: number | null;
+  isBodyweight?: boolean; // AI hint for newly-created exercises
 }
 
 export type ParseResult =

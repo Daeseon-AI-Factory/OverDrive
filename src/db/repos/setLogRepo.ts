@@ -20,6 +20,37 @@ export async function getLastSetForExercise(
   );
 }
 
+/** Deterministic slug for an ad-hoc exercise name (keeps a-z0-9 + Hangul; '버피'→'버피', 'Farmer Walk'→'farmer_walk'). */
+function slugifyExercise(name: string): string {
+  const s = name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9가-힣]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  if (s) return s;
+  // all-symbol fallback — stable per name
+  const sum = Array.from(name).reduce((a, c) => a + c.charCodeAt(0), 0);
+  return `ex_${sum}`;
+}
+
+/**
+ * Ensure an exercise exists for an AI-proposed name not in the seed catalog (e.g. "burpees",
+ * "farmer's walk"), creating it once. Returns the id so QuickLog can log against it immediately
+ * (satisfies the set_log → exercise FK). After creation it shows up in the catalog + recents.
+ */
+export async function ensureExercise(
+  db: SQLiteDatabase,
+  input: { name: string; isBodyweight?: boolean },
+): Promise<string> {
+  const id = slugifyExercise(input.name);
+  await db.runAsync(
+    `INSERT OR IGNORE INTO exercise (id, name, muscle_group, type, default_sets, rep_low, rep_high, is_bodyweight, created_at)
+     VALUES (?, ?, 'other', 'strength', 3, 8, 12, ?, ?)`,
+    [id, input.name.trim() || id, input.isBodyweight ? 1 : 0, nowIso()],
+  );
+  return id;
+}
+
 /** Most-recently-logged exercises with their last set — powers the QuickLog one-tap "repeat" chips. */
 export async function getRecentExercises(
   db: SQLiteDatabase,

@@ -1,26 +1,30 @@
 import type { ParseCandidate, ParsedSet, UnitSystem } from './parseEntry';
 
 /**
- * Validate + normalize the proxy's (Gemini's) loose JSON into ParsedSet[]. Pure → unit-tested.
- * Drops rows whose exerciseId isn't in the real catalog (anti-hallucination) or with bad reps.
+ * Validate + normalize the proxy's (LLM's) loose JSON into ParsedSet[]. Pure → unit-tested.
+ * Keeps every set with positive reps. exerciseId may be '' (exercise not in the catalog) — the
+ * caller resolves/creates it. Drops only rows that identify nothing or have bad reps.
  */
-export function normalizeAISets(data: unknown, validIds: Set<string>): ParsedSet[] {
+export function normalizeAISets(data: unknown): ParsedSet[] {
   const sets = (data as { sets?: unknown })?.sets;
   if (!Array.isArray(sets)) return [];
   const out: ParsedSet[] = [];
   for (const raw of sets) {
     if (!raw || typeof raw !== 'object') continue;
     const s = raw as Record<string, unknown>;
-    const exerciseId = String(s.exerciseId ?? '');
     const reps = Math.round(Number(s.reps));
-    if (!validIds.has(exerciseId) || !Number.isFinite(reps) || reps <= 0) continue;
+    if (!Number.isFinite(reps) || reps <= 0) continue;
+    const exerciseId = String(s.exerciseId ?? '').trim();
+    const exerciseName = String(s.exerciseName ?? '').trim();
+    if (!exerciseId && !exerciseName) continue; // nothing to identify the exercise
     const weightKg = Number(s.weightKg);
     out.push({
       exerciseId,
-      exerciseName: String(s.exerciseName ?? exerciseId),
+      exerciseName: exerciseName || exerciseId,
       weightKg: Number.isFinite(weightKg) && weightKg > 0 ? Math.round(weightKg * 100) / 100 : 0,
       reps,
       rir: s.rir == null ? null : Number.isFinite(Number(s.rir)) ? Number(s.rir) : null,
+      isBodyweight: s.isBodyweight === true ? true : s.isBodyweight === false ? false : undefined,
     });
   }
   return out;
@@ -47,5 +51,5 @@ export async function parseEntryAI(
   });
   if (!res.ok) throw new Error(`quicklog proxy ${res.status}`);
   const data = await res.json();
-  return normalizeAISets(data, new Set(candidates.map((c) => c.id)));
+  return normalizeAISets(data);
 }

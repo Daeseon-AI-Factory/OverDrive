@@ -18,6 +18,7 @@ import { useQuickLog, type RecentChip } from './useQuickLog';
 export function QuickLogBar() {
   const { t } = useTranslation();
   const unitSystem = useSettingsStore((s) => s.unitSystem);
+  const locale = useSettingsStore((s) => s.locale); // transcribe in the UI language (Whisper code)
   const { recents, submitText, repeat } = useQuickLog();
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [text, setText] = useState('');
@@ -60,21 +61,21 @@ export function QuickLogBar() {
         await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
         const uri = recorder.uri;
         if (!uri) {
-          setHint(t('quicklog.fail.voice'));
+          setHint('🎤 no recording (uri null)');
           return;
         }
         setTranscribing(true);
-        const heard = await transcribeAudio(uri, QUICKLOG_ENDPOINT);
+        const heard = await transcribeAudio(uri, QUICKLOG_ENDPOINT, locale); // transcribe in UI language
         setTranscribing(false);
         if (!heard) {
-          setHint(t('quicklog.fail.voice'));
+          setHint('🎤 heard nothing — speak, then tap stop');
           return;
         }
         setText(heard);
         await runSubmit(heard);
-      } catch {
+      } catch (err) {
         setTranscribing(false);
-        setHint(t('quicklog.fail.voice'));
+        setHint('🎤 ' + (err instanceof Error ? err.message : String(err)).slice(0, 110));
       }
       return;
     }
@@ -90,10 +91,10 @@ export function QuickLogBar() {
       recorder.record();
       setRecording(true);
       setHint(null);
-    } catch {
-      setHint(t('quicklog.fail.voice'));
+    } catch (err) {
+      setHint('🎤 rec: ' + (err instanceof Error ? err.message : String(err)).slice(0, 110));
     }
-  }, [recording, transcribing, recorder, runSubmit, t]);
+  }, [recording, transcribing, recorder, runSubmit, locale, t]);
 
   const chipLabel = (c: RecentChip) => {
     const w = formatWeight(c.weight, unitSystem); // '' for bodyweight

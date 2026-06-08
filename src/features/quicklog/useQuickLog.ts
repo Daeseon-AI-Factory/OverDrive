@@ -2,7 +2,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getRecentExercises } from '@/db/repos/setLogRepo';
+import { ensureExercise, getRecentExercises } from '@/db/repos/setLogRepo';
 import type { ExerciseRow } from '@/db/types';
 import { useForge } from '@/features/forge/useForge';
 import { useSessionStore } from '@/features/forge/sessionStore';
@@ -42,8 +42,8 @@ export function useQuickLog() {
     setCandidates(
       rows.map((r) => ({
         id: r.id,
-        name: t(`exercise.${r.id}`),
-        aliases: [r.name, t(`exercise.${r.id}`), ...r.id.split('_')],
+        name: t(`exercise.${r.id}`, { defaultValue: r.name }), // fall back to stored name (ad-hoc exercises)
+        aliases: [r.name, t(`exercise.${r.id}`, { defaultValue: r.name }), ...r.id.split('_')],
         isBodyweight: r.is_bodyweight === 1,
       })),
     );
@@ -53,7 +53,7 @@ export function useQuickLog() {
         const ex = exMap.current.get(x.exerciseId);
         return {
           exerciseId: x.exerciseId,
-          name: ex ? t(`exercise.${x.exerciseId}`) : x.exerciseId,
+          name: ex ? t(`exercise.${x.exerciseId}`, { defaultValue: ex.name }) : x.exerciseId,
           weight: x.weight,
           reps: x.reps,
           rir: x.rir,
@@ -94,15 +94,19 @@ export function useQuickLog() {
           } finally {
             clearTimeout(timer);
           }
-          const valid = sets.filter((s) => exMap.current.has(s.exerciseId));
-          if (valid.length > 0) {
+          if (sets.length > 0) {
             const sid = await ensureSession();
             if (sid) {
-              for (const s of valid) {
-                const ex = exMap.current.get(s.exerciseId);
+              for (const s of sets) {
+                // catalog match, or create the exercise on the fly (burpees, farmer's walk, …)
+                const exId =
+                  s.exerciseId && exMap.current.has(s.exerciseId)
+                    ? s.exerciseId
+                    : await ensureExercise(db, { name: s.exerciseName, isBodyweight: s.isBodyweight });
+                const ex = exMap.current.get(exId);
                 await logSet({
                   sessionId: sid,
-                  exerciseId: s.exerciseId,
+                  exerciseId: exId,
                   weight: s.weightKg,
                   reps: s.reps,
                   rir: s.rir,
@@ -111,8 +115,8 @@ export function useQuickLog() {
                 });
               }
               void load();
-              const head = valid[0].exerciseName;
-              return { ok: true, name: valid.length > 1 ? `${head} +${valid.length - 1}` : head };
+              const head = sets[0].exerciseName;
+              return { ok: true, name: sets.length > 1 ? `${head} +${sets.length - 1}` : head };
             }
           }
         } catch {
@@ -138,7 +142,7 @@ export function useQuickLog() {
       void load();
       return { ok: true, name: r.set.exerciseName };
     },
-    [candidates, unitSystem, ensureSession, logSet, load],
+    [db, candidates, unitSystem, ensureSession, logSet, load],
   );
 
   /** One-tap repeat of a recent lift (same weight×reps). */
