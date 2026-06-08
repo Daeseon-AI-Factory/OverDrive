@@ -1,0 +1,34 @@
+---
+title: "전수 감사 + Today 화면을 '존나 심플하게'"
+date: "2026-06-07"
+project: "OverDrive"
+kind: "tech-retro"
+visibility: "public"
+language: "ko"
+summary: "23-에이전트 전수 감사로 코어가 단단함을 확인하고 새 코드의 실제 버그 3개를 잡음. 빌더 지시대로 Today를 단일 QuickLog 입력으로 갈아엎음."
+tags: ["phase-1", "audit", "quicklog", "ux", "simplify"]
+---
+
+빌더가 ultracode로 "첨부터 끝까지 제대로 점검"을 요구. 6차원 병렬 감사(게이트·전투력/데이터·JUICE/오디오/셰이더·로깅/QuickLog·UX/i18n·컴플라이언스)를 돌리고, **각 발견을 다시 코드에 대고 적대적으로 재검증**(거짓 양성 제거). 서브에이전트 23개.
+
+## 코어는 단단했다 (검증됨)
+전투력 보너스 배수(≥1, 희석 없음)·재정규화·breadth gate·**마이그 v4 자가치유·FK 캐스케이드·SQL 파라미터화(인젝션 없음)·JUICE 비차단 핫패스·오리지널 IP·키 클라이언트 X·TS strict·전투력 비과학 라벨·i18n 4개국어 키 완전 동기화** — 전부 통과. 빌드 성공, 68 테스트 green.
+
+## 잡은 실제 버그 3개 (전부 새 코드, 아직 미연결이라 피해 0)
+
+1. **`getRecentExercises` SQLite 가정 위험** — `MAX(logged_at) + GROUP BY`의 bare-column으로 최신 세트의 weight/reps를 가져오려 했음. SQLite의 min/max-bare-column 특례가 있긴 하나 모호 → **`ROW_NUMBER() OVER (PARTITION BY exercise_id ORDER BY logged_at DESC)` 윈도우 함수로 명시화.** 곧 한탭 칩의 핵심이라 확실히.
+2. **파서 운동명 숫자 오인** — "Zone 2 Run"의 "2"를 무게/횟수로 먹음. **매칭된 운동명을 숫자 추출 전에 문자열에서 제거**(테스트 추가).
+3. **오디오 seekTo/play 경쟁** — `void p.seekTo(0); p.play()`가 비순차 → 연속 기록 시 머리부터 재생 안 될 수 있음. **`seekTo(0).then(play)`로 순차화**(여전히 비차단). 커밋 `70fb670`.
+
+## UX: 빌더 불만 = 감사도 HIGH로 확인 → 갈아엎음
+
+감사: "Today에 인터랙티브 요소 15개+ = 선택 과부하." 빌더가 5번 "심플"을 외친 그 지점. 그래서 **Today를 단일 입력으로 재설계**(커밋 `40cdc00`):
+
+- 기본 화면 = **거대 전투력 + QuickLog 한 칸 + 데일리 목표 + 식단/휴식 원탭.**
+- **QuickLog:** "벤치 100 5" 타이핑(곧 음성) → 파서 → 기록 → 폭발. 또는 **최근 운동 칩 한탭**으로 반복. 메뉴·스텝퍼 0.
+- **바디맵·풀 로거 = "수동" 토글 뒤로** 숨김(평소 안 보임). 프로그램 카드는 제거.
+- 같은 로깅 핫패스 재사용 → JUICE 그대로 발사. 미연결 파서(키스톤)를 화면에 연결.
+
+식단은 Phase 1에선 원탭(단백질/휴식)이 정직한 최대 — **사진→AI 매크로는 서버 키가 필요해 Phase 2.** 음성(온디바이스 STT)은 네이티브 의존성이라 다음 라운드(텍스트+최근칩이 지금의 "존나 편한" 본체).
+
+검증: tsc · jest 69 · expo lint · expo export(번들 클린) · 4개국어 JSON 유효. 시뮬(포트 8082)에 Fast Refresh로 반영. 폰은 다음 Release 리빌드 때.
