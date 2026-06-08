@@ -1,6 +1,6 @@
 # OVERDRIVE — 현재 상태 (handoff / 새 컨텍스트용 단일 진실)
 
-> 컨텍스트 압축·새 세션 시 **여기부터 읽으면 이어받는다.** 정본 스펙은 [`docs/overdrive-spec.md`](overdrive-spec.md), Phase 1 플랜 [`docs/phase1-plan.md`](phase1-plan.md). 버그/함정은 [`docs/troubleshooting.md`](troubleshooting.md), 내러티브는 `content/logs/OverDrive/`. **갱신: 2026-06-04.**
+> 컨텍스트 압축·새 세션 시 **여기부터 읽으면 이어받는다.** 정본 스펙은 [`docs/overdrive-spec.md`](overdrive-spec.md), Phase 1 플랜 [`docs/phase1-plan.md`](phase1-plan.md). 버그/함정은 [`docs/troubleshooting.md`](troubleshooting.md), 내러티브는 `content/logs/OverDrive/`. **갱신: 2026-06-07.**
 
 ## ▶ 새 세션 첫 행동 (여기부터)
 1. 이 파일 + `docs/overdrive-spec.md`(정본) + `docs/troubleshooting.md`(함정) 훑기.
@@ -35,6 +35,7 @@ Phase 1(로컬 MVP) **거의 완성** — 굴러가는 앱이 iPhone 17 시뮬�
 - i18n (`src/i18n`) — en 기본, en/ko/es/zh, 등급/부위/운동명까지. 단위 kg/lb·km/mi(`src/lib/units.ts`)
 - 기록 탭 — 이번주 부위별 정리 + 유산소
 - 규율 — 단백질/수면 원탭(`src/features/discipline`) → 전투력 규율 컴포넌트
+- 데일리 목표 (`src/features/dailyGoals`, 4fae73e) — 반복 템플릿+날짜별 진행(daily_target/_log, 스키마 v4), 단위-무관(reps/sets/sec/min/m/km), 자유입력+빠른칩(버피·파머스워크 등), 완료 시 **전투력 보너스 배수**(희석 없음, ≥1)+JUICE. CP 통합=trustMultiplier와 동형.
 - 폰트: Anton(콜아웃)/Orbitron(숫자)
 
 ## Phase 1 — 남은 것 (우선순위)
@@ -72,7 +73,9 @@ npx expo-doctor           # 네이티브 peer/버전 (Expo 기능엔 필수)
 - i18next 보간은 단일괄호 설정(`{x}`)됨.
 - React Compiler 룰: ref-in-render/setState-in-effect 막음 → 정당하면 사유 달고 disable.
 - `[no-log]` 커밋 제목에 트리거 키워드(migration/refactor/auth…) 넣지 말 것(훅 재귀).
-- expo-audio가 RECORD_AUDIO 자동추가 → 출시 전 제거(우린 재생만).
+- expo-audio가 RECORD_AUDIO 자동추가 → app.json 플러그인 옵션으로 차단 완료(8a4d18f).
+- v4 마이그(daily_target/_log)는 풀 부팅에서만 → 데일리 목표 보려면 `npx expo run:ios` 풀 리빌드.
+- expo-doctor가 SDK56 패치 드리프트 경고(expo 56.0.8 vs .9 등 8개) — 업스트림 패치, 빌드 무해. deps 멋대로 안 올림(멀티앱 빌드 중).
 
 ## 작업 규칙 (사수)
 Phase 순서 · TS strict · 키 클라이언트 금지 · 오리지널 IP · JUICE 로깅 비차단 · 전투력="재미용 자체 산식" 라벨 · **비-사소 변경마다 dual-write**(troubleshooting.md + content/logs).

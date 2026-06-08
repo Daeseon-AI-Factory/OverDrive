@@ -179,3 +179,5 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: 26a331b fix(db): create discipline table every boot (self-heal version-ahead-of-table) [no-log] -->
 <!-- skipped: 440ce15 docs: add STATE.md — roadmap/handoff snapshot for context continuity [no-log] -->
 <!-- skipped: f60251a docs(state): add '새 세션 첫 행동' handoff pointer + model/context note [no-log] -->
+<!-- skipped: f330555 docs(troubleshooting): record expo-audio permission scoping (8a4d18f) [no-log] -->
+<!-- skipped: b3b53f8 docs(log): record burst shader upgrade + visual round 2 backlog (0c9b4bc) [no-log] -->
