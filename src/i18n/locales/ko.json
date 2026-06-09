@@ -299,5 +299,19 @@
   },
   "rest": {
     "label": "휴식"
+  },
+  "rank": {
+    "title": "랭킹",
+    "optIn": "핸들을 정하면 글로벌 랭킹에 참가. 그 전엔 아무것도 전송 안 됨.",
+    "handlePlaceholder": "핸들 (예: DAESEON)",
+    "crewPlaceholder": "크루 코드 (네 헬스장, 예: IRON-GYM)",
+    "join": "참가",
+    "tabWeek": "주간 ↑",
+    "tabCp": "전투력",
+    "tabCrew": "크루",
+    "myRank": "#{rank}",
+    "empty": "보드가 비었어 — 크루 코드를 공유해서 채워.",
+    "offline": "랭킹 서버에 연결 실패.",
+    "selfReport": "Phase 1: 자가신고 점수 · 검증 티어는 추후"
   }
 }

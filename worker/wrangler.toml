@@ -11,3 +11,8 @@ GEMINI_MODEL = "gemini-2.0-flash"
 # The API key is a SECRET, not a var. Set ONE (never commit it):
 #   cd worker && npx wrangler secret put GROQ_API_KEY      # recommended (fastest)
 #   # or:      npx wrangler secret put GEMINI_API_KEY
+
+[[d1_databases]]
+binding = "DB"
+database_name = "overdrive-rank"
+database_id = "a789812b-6608-4dae-90d8-8dd1f83de42a"

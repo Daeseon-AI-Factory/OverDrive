@@ -244,13 +244,90 @@ async function handleFood(req, env) {
   return json({ items, totalKcal: Math.round(totalKcal), totalProteinG: Math.round(totalProteinG), note: parsed.note });
 }
 
+// ---- Rankings (Cloudflare D1) ----------------------------------------------
+// Opt-in: the app only submits once the user picks a handle. Phase 1 scores are self-reported
+// (trust-tiering / verified weighting is Phase 4 hardening). Boards rank by week_gain
+// (improvement — beginners can win) and by cp (absolute, for flavor).
+
+const sanitize = (s, max) => String(s ?? '').trim().slice(0, max);
+
+// POST /rank/submit { deviceId, handle, cp, weekGain, gradeKey, crew?, region? }
+async function handleRankSubmit(req, env) {
+  if (!env.DB) return json({ error: 'rank DB not bound' }, 500);
+  let b;
+  try {
+    b = await req.json();
+  } catch {
+    return json({ error: 'invalid JSON' }, 400);
+  }
+  const deviceId = sanitize(b.deviceId, 64);
+  const handle = sanitize(b.handle, 20);
+  if (!deviceId || !handle) return json({ error: 'missing deviceId/handle' }, 400);
+  const cp = Math.max(0, Math.min(9999, Math.round(Number(b.cp) || 0)));
+  const weekGain = Math.max(0, Math.min(9999, Math.round(Number(b.weekGain) || 0)));
+  const gradeKey = sanitize(b.gradeKey, 24) || 'ordinary';
+  const crew = sanitize(b.crew, 24).toUpperCase() || null;
+  const region = sanitize(b.region, 8).toUpperCase() || null;
+  await env.DB.prepare(
+    `INSERT INTO rank_entry (device_id, handle, cp, week_gain, grade_key, crew, region, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+     ON CONFLICT(device_id) DO UPDATE SET
+       handle=excluded.handle, cp=excluded.cp, week_gain=excluded.week_gain,
+       grade_key=excluded.grade_key, crew=excluded.crew, region=excluded.region, updated_at=excluded.updated_at`,
+  )
+    .bind(deviceId, handle, cp, weekGain, gradeKey, crew, region)
+    .run();
+  return json({ ok: true });
+}
+
+// POST /rank/board { deviceId, sort: 'weekGain'|'cp', crew?, region? } → top 50 + your rank
+async function handleRankBoard(req, env) {
+  if (!env.DB) return json({ error: 'rank DB not bound' }, 500);
+  let b;
+  try {
+    b = await req.json();
+  } catch {
+    return json({ error: 'invalid JSON' }, 400);
+  }
+  const deviceId = sanitize(b.deviceId, 64);
+  const col = b.sort === 'cp' ? 'cp' : 'week_gain';
+  const crew = sanitize(b.crew, 24).toUpperCase();
+  const region = sanitize(b.region, 8).toUpperCase();
+  const where = crew ? 'WHERE crew = ?' : region ? 'WHERE region = ?' : '';
+  const bindScope = crew ? [crew] : region ? [region] : [];
+
+  const top = await env.DB.prepare(
+    `SELECT handle, cp, week_gain AS weekGain, grade_key AS gradeKey, crew, device_id = ? AS isMe
+     FROM rank_entry ${where} ORDER BY ${col} DESC, updated_at ASC LIMIT 50`,
+  )
+    .bind(deviceId, ...bindScope)
+    .all();
+
+  let myRank = null;
+  if (deviceId) {
+    const me = await env.DB.prepare('SELECT cp, week_gain FROM rank_entry WHERE device_id = ?').bind(deviceId).first();
+    if (me) {
+      const myVal = col === 'cp' ? me.cp : me.week_gain;
+      const r = await env.DB.prepare(
+        `SELECT COUNT(*) + 1 AS rank FROM rank_entry ${where ? where + ' AND' : 'WHERE'} ${col} > ?`,
+      )
+        .bind(...bindScope, myVal)
+        .first();
+      myRank = r?.rank ?? null;
+    }
+  }
+  return json({ entries: top.results ?? [], myRank });
+}
+
 export default {
   async fetch(req, env) {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
-    if (req.method !== 'POST') return json({ error: 'POST only (/parse, /transcribe, /food)' }, 405);
+    if (req.method !== 'POST') return json({ error: 'POST only (/parse, /transcribe, /food, /rank/*)' }, 405);
     const { pathname } = new URL(req.url);
     if (pathname === '/transcribe') return handleTranscribe(req, env);
     if (pathname === '/food') return handleFood(req, env);
+    if (pathname === '/rank/submit') return handleRankSubmit(req, env);
+    if (pathname === '/rank/board') return handleRankBoard(req, env);
     return handleParse(req, env);
   },
 };

@@ -20,6 +20,12 @@ export interface UserSettings {
   unitSystem: UnitSystem;
   /** ARENA rival config (deterministic growth curve seed). null until first spawn. */
   rival: { name: string; epoch: string; cp0: number; seed: number } | null;
+  /** Ranking opt-in: handle set = participate; null = nothing is ever sent (privacy default). */
+  rankHandle: string | null;
+  /** Crew/gym code for the crew leaderboard (free-form, uppercased). */
+  rankCrew: string | null;
+  /** Stable anonymous device id for rank upserts (generated once). */
+  rankDeviceId: string | null;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -33,6 +39,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
   weightStep: 2.5,
   unitSystem: 'metric',
   rival: null,
+  rankHandle: null,
+  rankCrew: null,
+  rankDeviceId: null,
 };
 
 /** Tolerant parse of the stored settings JSON — always returns a complete object. */

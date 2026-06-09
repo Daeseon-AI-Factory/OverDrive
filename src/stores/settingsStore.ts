@@ -35,5 +35,8 @@ export function currentSettings(): UserSettings {
     weightStep: s.weightStep,
     unitSystem: s.unitSystem,
     rival: s.rival,
+    rankHandle: s.rankHandle,
+    rankCrew: s.rankCrew,
+    rankDeviceId: s.rankDeviceId,
   };
 }

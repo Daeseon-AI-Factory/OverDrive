@@ -6,6 +6,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { getLatest } from '@/db/repos/combatPowerRepo';
 import type { CombatPowerComponent } from '@/features/combat-power/combatPower.types';
 import { gradeForScore } from '@/features/combat-power/grades';
+import { RankSection } from '@/features/rank/RankSection';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { Card, Muted, Screen, SectionTitle } from '@/ui/primitives';
 import { colors, displayFamily, fontSize, numberFamily, space } from '@/ui/theme/tokens';
@@ -47,6 +48,8 @@ export default function PowerScreen() {
           <Text style={[styles.grade, { color: colors.cyan }]}>{t(`grade.${grade.key}`)}</Text>
           <Text style={styles.disclaimer}>{t('power.disclaimer')}</Text>
         </View>
+
+        <RankSection />
 
         <SectionTitle>{t('power.section.breakdown')}</SectionTitle>
         {active.length === 0 ? (

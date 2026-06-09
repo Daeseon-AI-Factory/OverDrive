@@ -255,6 +255,20 @@
     "protein": "🥩 Protein",
     "rest": "😴 Slept well"
   },
+  "rank": {
+    "title": "Rankings",
+    "optIn": "Pick a handle to join the global leaderboard. Until then, nothing leaves your device.",
+    "handlePlaceholder": "HANDLE (e.g. DAESEON)",
+    "crewPlaceholder": "CREW CODE (your gym, e.g. IRON-GYM)",
+    "join": "JOIN",
+    "tabWeek": "WEEKLY ↑",
+    "tabCp": "POWER",
+    "tabCrew": "CREW",
+    "myRank": "#{rank}",
+    "empty": "Board's empty — share your crew code and fill it.",
+    "offline": "Couldn't reach the leaderboard.",
+    "selfReport": "Phase 1: self-reported scores · verified tiers coming later"
+  },
   "arena": {
     "title": "Arena",
     "ahead": "You're AHEAD by {n}",

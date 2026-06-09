@@ -299,5 +299,19 @@
   },
   "rest": {
     "label": "休息"
+  },
+  "rank": {
+    "title": "排行榜",
+    "optIn": "设置昵称即可加入全球排行。在此之前不会上传任何数据。",
+    "handlePlaceholder": "昵称 (例如 DAESEON)",
+    "crewPlaceholder": "战队代码 (你的健身房)",
+    "join": "加入",
+    "tabWeek": "周榜 ↑",
+    "tabCp": "战斗力",
+    "tabCrew": "战队",
+    "myRank": "#{rank}",
+    "empty": "榜单是空的 — 分享你的战队代码。",
+    "offline": "无法连接排行榜服务器。",
+    "selfReport": "Phase 1: 自报分数 · 验证分级后续推出"
   }
 }

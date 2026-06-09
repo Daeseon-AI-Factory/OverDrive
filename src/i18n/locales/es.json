@@ -299,5 +299,19 @@
   },
   "rest": {
     "label": "DESCANSO"
+  },
+  "rank": {
+    "title": "Clasificación",
+    "optIn": "Elige un alias para unirte al ranking global. Hasta entonces, nada sale de tu dispositivo.",
+    "handlePlaceholder": "ALIAS (ej. DAESEON)",
+    "crewPlaceholder": "CÓDIGO DE CREW (tu gym)",
+    "join": "UNIRSE",
+    "tabWeek": "SEMANAL ↑",
+    "tabCp": "PODER",
+    "tabCrew": "CREW",
+    "myRank": "#{rank}",
+    "empty": "Tabla vacía — comparte tu código de crew.",
+    "offline": "No se pudo conectar al ranking.",
+    "selfReport": "Fase 1: puntuaciones autoinformadas"
   }
 }
