@@ -29,7 +29,12 @@
     "rirSuffix": " · RIR {rir}",
     "prBadge": "PR ⚡",
     "weekly": "이번 주",
-    "noneThisWeek": "이번 주 안 함"
+    "noneThisWeek": "이번 주 안 함",
+    "delete": {
+      "title": "이 세트 삭제?",
+      "confirm": "삭제",
+      "cancel": "취소"
+    }
   },
   "settings": {
     "title": "설정",
@@ -284,5 +289,15 @@
     "boss": "보스:",
     "bossAlive": "생존",
     "bossDown": "처치 ⚡"
+  },
+  "food": {
+    "title": "식단",
+    "placeholder": "예:  닭가슴살 300g + 밥",
+    "log": "기록",
+    "kcal": "{n} kcal",
+    "fail": "추정 실패 — 더 간단히 써봐."
+  },
+  "rest": {
+    "label": "휴식"
   }
 }

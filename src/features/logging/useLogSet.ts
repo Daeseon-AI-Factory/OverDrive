@@ -5,6 +5,7 @@ import { appendPowerEvent } from '../../db/repos/powerEventRepo';
 import { addSet } from '../../db/repos/setLogRepo';
 import type { LoggedVia } from '../../db/types';
 import { useSessionStore } from '../forge/sessionStore';
+import { useRestTimerStore } from '../rest/restTimerStore';
 import { useCombatPowerStore } from '../../stores/combatPowerStore';
 import { classifyEvent } from '../juice/classifyEvent';
 import { useJuice } from '../juice/JuiceProvider';
@@ -45,6 +46,7 @@ export function useLogSet() {
         loggedVia: input.loggedVia ?? 'manual',
       });
       useSessionStore.getState().recordSet(input.weight * input.reps); // feeds the Forge session summary
+      useRestTimerStore.getState().start(); // auto rest countdown (non-blocking; restarts per set)
 
       const result = await recomputeAndStore(db);
       useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);

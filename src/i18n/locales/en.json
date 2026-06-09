@@ -43,7 +43,22 @@
     "rirSuffix": " · RIR {rir}",
     "prBadge": "PR ⚡",
     "weekly": "This week",
-    "noneThisWeek": "Not trained this week"
+    "noneThisWeek": "Not trained this week",
+    "delete": {
+      "title": "Delete this set?",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    }
+  },
+  "food": {
+    "title": "Fuel",
+    "placeholder": "e.g.  chicken breast 300g + rice",
+    "log": "LOG",
+    "kcal": "{n} kcal",
+    "fail": "Couldn't estimate — try simpler wording."
+  },
+  "rest": {
+    "label": "REST"
   },
   "settings": {
     "title": "Settings",

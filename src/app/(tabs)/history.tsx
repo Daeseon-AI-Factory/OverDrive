@@ -2,9 +2,12 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
+import { deleteSet } from '@/db/repos/setLogRepo';
 import { EXERCISE_TO_REGION, REGIONS, type BodyRegionId } from '@/features/character/regions';
 import { localDateDaysAgo } from '@/lib/date';
+import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { formatWeight } from '@/lib/units';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { Card, Muted, Screen, SectionTitle } from '@/ui/primitives';
@@ -37,6 +40,27 @@ export default function HistoryScreen() {
   const [weekly, setWeekly] = useState<Weekly>(emptyWeekly);
   const [cardio, setCardio] = useState({ sessions: 0, minutes: 0 });
   const [recent, setRecent] = useState<RecentRow[]>([]);
+
+  const onDeleteSet = useCallback(
+    (item: RecentRow, label: string) => {
+      Alert.alert(t('history.delete.title'), label, [
+        { text: t('history.delete.cancel'), style: 'cancel' },
+        {
+          text: t('history.delete.confirm'),
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              await deleteSet(db, item.id);
+              setRecent((rs) => rs.filter((r) => r.id !== item.id));
+              const result = await recomputeAndStore(db);
+              useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+            })();
+          },
+        },
+      ]);
+    },
+    [db, t],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -125,17 +149,23 @@ export default function HistoryScreen() {
               item.weight > 0
                 ? `${formatWeight(item.weight, unitSystem)} × ${item.reps}`
                 : t('history.repsOnly', { reps: item.reps });
+            const exName = t(`exercise.${item.exercise_id}`, { defaultValue: item.exercise_id });
             return (
-              <View key={item.id} style={styles.row}>
+              <Pressable
+                key={item.id}
+                style={styles.row}
+                onLongPress={() => onDeleteSet(item, `${exName} · ${main}`)}
+                delayLongPress={400}
+              >
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.ex}>{t(`exercise.${item.exercise_id}`)}</Text>
+                  <Text style={styles.ex}>{exName}</Text>
                   <Muted>
                     {main}
                     {item.rir != null ? t('history.rirSuffix', { rir: item.rir }) : ''}
                   </Muted>
                 </View>
                 {item.is_pr === 1 ? <Text style={styles.pr}>{t('history.prBadge')}</Text> : null}
-              </View>
+              </Pressable>
             );
           })
         )}

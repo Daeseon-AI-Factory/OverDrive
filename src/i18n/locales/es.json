@@ -29,7 +29,12 @@
     "rirSuffix": " · RIR {rir}",
     "prBadge": "PR ⚡",
     "weekly": "Esta semana",
-    "noneThisWeek": "Sin entrenar esta semana"
+    "noneThisWeek": "Sin entrenar esta semana",
+    "delete": {
+      "title": "¿Borrar esta serie?",
+      "confirm": "Borrar",
+      "cancel": "Cancelar"
+    }
   },
   "settings": {
     "title": "Ajustes",
@@ -284,5 +289,15 @@
     "boss": "Jefe:",
     "bossAlive": "VIVO",
     "bossDown": "CAÍDO ⚡"
+  },
+  "food": {
+    "title": "Comida",
+    "placeholder": "ej.  pechuga 300g + arroz",
+    "log": "REGISTRAR",
+    "kcal": "{n} kcal",
+    "fail": "No se pudo estimar — simplifica."
+  },
+  "rest": {
+    "label": "DESCANSO"
   }
 }

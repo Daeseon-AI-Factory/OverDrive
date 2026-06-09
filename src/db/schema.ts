@@ -5,7 +5,7 @@
 // Deferred to later phases: BodyComp/FitnessTest (Phase 5), League/Friendship/AuraCard (Phase 3-4).
 // Program is a code constant (defaultProgram.ts), not a table. Streak is computed, not stored.
 
-export const DATABASE_VERSION = 4;
+export const DATABASE_VERSION = 5;
 
 export const SCHEMA_V1 = `
 CREATE TABLE IF NOT EXISTS user (
@@ -131,6 +131,18 @@ CREATE TABLE IF NOT EXISTS daily_target_log (
   UNIQUE(target_id, date)
 );
 CREATE INDEX IF NOT EXISTS idx_dailygoal_user_date ON daily_target_log(user_id, date);
+
+CREATE TABLE IF NOT EXISTS food_log (
+  id         TEXT PRIMARY KEY NOT NULL,
+  user_id    TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+  date       TEXT NOT NULL,
+  name       TEXT NOT NULL,
+  kcal       REAL NOT NULL DEFAULT 0,
+  protein_g  REAL NOT NULL DEFAULT 0,
+  source     TEXT NOT NULL DEFAULT 'text' CHECK (source IN ('text','voice','photo')),
+  logged_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_food_user_date ON food_log(user_id, date);
 `;
 
 // v2 → v3: add the discipline table to already-migrated databases (idempotent).
@@ -171,4 +183,19 @@ CREATE TABLE IF NOT EXISTS daily_target_log (
   UNIQUE(target_id, date)
 );
 CREATE INDEX IF NOT EXISTS idx_dailygoal_user_date ON daily_target_log(user_id, date);
+`;
+
+// v4 → v5: AI food logging (photo/text/voice → kcal + protein). Idempotent.
+export const MIGRATION_005 = `
+CREATE TABLE IF NOT EXISTS food_log (
+  id         TEXT PRIMARY KEY NOT NULL,
+  user_id    TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+  date       TEXT NOT NULL,
+  name       TEXT NOT NULL,
+  kcal       REAL NOT NULL DEFAULT 0,
+  protein_g  REAL NOT NULL DEFAULT 0,
+  source     TEXT NOT NULL DEFAULT 'text' CHECK (source IN ('text','voice','photo')),
+  logged_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_food_user_date ON food_log(user_id, date);
 `;

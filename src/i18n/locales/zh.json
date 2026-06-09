@@ -29,7 +29,12 @@
     "rirSuffix": " · RIR {rir}",
     "prBadge": "PR ⚡",
     "weekly": "本周",
-    "noneThisWeek": "本周未训练"
+    "noneThisWeek": "本周未训练",
+    "delete": {
+      "title": "删除这组?",
+      "confirm": "删除",
+      "cancel": "取消"
+    }
   },
   "settings": {
     "title": "设置",
@@ -284,5 +289,15 @@
     "boss": "Boss:",
     "bossAlive": "存活",
     "bossDown": "击杀 ⚡"
+  },
+  "food": {
+    "title": "饮食",
+    "placeholder": "例如  鸡胸肉300克 + 米饭",
+    "log": "记录",
+    "kcal": "{n} 千卡",
+    "fail": "无法估算 — 试试更简单的描述。"
+  },
+  "rest": {
+    "label": "休息"
   }
 }

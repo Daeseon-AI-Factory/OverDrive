@@ -145,6 +145,11 @@ export async function addSet(
   return { row, isPr };
 }
 
+/** Delete one logged set (mistake fix). Caller recomputes Combat Power afterwards. */
+export async function deleteSet(db: SQLiteDatabase, setId: string): Promise<void> {
+  await db.runAsync('DELETE FROM set_log WHERE id = ?', [setId]);
+}
+
 /** Per-exercise stats for the weekly-boss picker: best-scoring set + recent training frequency. */
 export async function bossCandidates(
   db: SQLiteDatabase,

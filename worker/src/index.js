@@ -165,12 +165,92 @@ async function handleTranscribe(req, env) {
   return json({ text: data?.text ?? '' });
 }
 
+// POST /food — meal text OR photo → nutrition estimate. Text: JSON {text}. Photo: multipart "file".
+// Returns { items: [{ name, kcal, proteinG }], totalKcal, totalProteinG, note }.
+const FOOD_SHAPE =
+  'Respond with ONLY a JSON object {"items":[{"name":string,"kcal":number,"proteinG":number}],"note":string}. ' +
+  'Estimate per item. Be realistic for typical portions; if the user gives grams, scale accordingly.';
+
+async function handleFood(req, env) {
+  if (!env.GROQ_API_KEY) return json({ error: 'food parsing requires GROQ_API_KEY' }, 500);
+  const ct = req.headers.get('content-type') || '';
+
+  let messages;
+  if (ct.includes('multipart/form-data')) {
+    // photo mode → vision model
+    let form;
+    try {
+      form = await req.formData();
+    } catch {
+      return json({ error: 'bad multipart' }, 400);
+    }
+    const file = form.get('file');
+    if (!file || typeof file === 'string') return json({ error: 'missing file' }, 400);
+    const buf = new Uint8Array(await file.arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+    const dataUrl = `data:${file.type || 'image/jpeg'};base64,${btoa(bin)}`;
+    messages = [
+      { role: 'system', content: `You estimate nutrition from a meal photo. ${FOOD_SHAPE}` },
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'Identify the foods in this meal and estimate kcal + protein grams per item.' },
+          { type: 'image_url', image_url: { url: dataUrl } },
+        ],
+      },
+    ];
+  } else {
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return json({ error: 'invalid JSON body' }, 400);
+    }
+    if (!body?.text) return json({ error: 'missing text' }, 400);
+    messages = [
+      { role: 'system', content: `You estimate nutrition from a short meal description (any language). ${FOOD_SHAPE}` },
+      { role: 'user', content: String(body.text) },
+    ];
+  }
+
+  const model = ct.includes('multipart/form-data')
+    ? env.GROQ_VISION_MODEL || 'meta-llama/llama-4-scout-17b-16e-instruct'
+    : env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+
+  let res;
+  try {
+    res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${env.GROQ_API_KEY}` },
+      body: JSON.stringify({ model, temperature: 0, response_format: { type: 'json_object' }, messages }),
+    });
+  } catch (e) {
+    return json({ error: 'groq food fetch failed', detail: String(e) }, 502);
+  }
+  if (!res.ok) return json({ error: `groq food ${res.status}`, detail: await res.text().catch(() => '') }, 502);
+  const data = await res.json().catch(() => null);
+  const out = data?.choices?.[0]?.message?.content;
+  if (!out) return json({ error: 'empty model response' }, 502);
+  let parsed;
+  try {
+    parsed = JSON.parse(out);
+  } catch {
+    return json({ error: 'model returned non-JSON', raw: out }, 502);
+  }
+  const items = Array.isArray(parsed.items) ? parsed.items : [];
+  const totalKcal = items.reduce((s, i) => s + (Number(i.kcal) || 0), 0);
+  const totalProteinG = items.reduce((s, i) => s + (Number(i.proteinG) || 0), 0);
+  return json({ items, totalKcal: Math.round(totalKcal), totalProteinG: Math.round(totalProteinG), note: parsed.note });
+}
+
 export default {
   async fetch(req, env) {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
-    if (req.method !== 'POST') return json({ error: 'POST only (/parse or /transcribe)' }, 405);
+    if (req.method !== 'POST') return json({ error: 'POST only (/parse, /transcribe, /food)' }, 405);
     const { pathname } = new URL(req.url);
     if (pathname === '/transcribe') return handleTranscribe(req, env);
+    if (pathname === '/food') return handleFood(req, env);
     return handleParse(req, env);
   },
 };

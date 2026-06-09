@@ -8,6 +8,8 @@ import { MyCharacter } from '@/features/character/MyCharacter';
 import { CARDIO_EXERCISE_IDS, REGIONS, type BodyRegionId } from '@/features/character/regions';
 import { DailyGoalsCard } from '@/features/dailyGoals/DailyGoalsCard';
 import { DisciplineCard } from '@/features/discipline/DisciplineCard';
+import { FoodCard } from '@/features/food/FoodCard';
+import { RestTimerBar } from '@/features/rest/RestTimerBar';
 import { ForgeBar } from '@/features/forge/ForgeBar';
 import { ForgeRitualOverlay } from '@/features/forge/ForgeRitualOverlay';
 import { useSessionStore } from '@/features/forge/sessionStore';
@@ -76,6 +78,7 @@ export default function TodayScreen() {
 
         {/* THE one input — type/say "벤치 100 5" or tap a recent lift */}
         <QuickLogBar />
+        <RestTimerBar />
 
         {/* ARENA — rival + weekly boss: the daily stakes */}
         <ArenaCard />
@@ -83,6 +86,8 @@ export default function TodayScreen() {
         <ForgeBar onEnter={enter} onFinish={finish} />
 
         <DailyGoalsCard />
+
+        <FoodCard />
 
         <DisciplineCard />
 
