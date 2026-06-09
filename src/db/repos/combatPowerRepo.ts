@@ -64,6 +64,19 @@ export async function upsertSnapshot(
   );
 }
 
+/** Most recent snapshot on/before a date — weekly-delta baseline for the ARENA showdown. */
+export async function getScoreOnOrBefore(
+  db: SQLiteDatabase,
+  date: string,
+  userId: string = LOCAL_USER_ID,
+): Promise<number | null> {
+  const row = await db.getFirstAsync<{ score: number }>(
+    'SELECT score FROM combat_power WHERE user_id = ? AND date <= ? ORDER BY date DESC LIMIT 1',
+    [userId, date],
+  );
+  return row?.score ?? null;
+}
+
 export async function getLatest(db: SQLiteDatabase, userId: string = LOCAL_USER_ID): Promise<CombatPowerRow | null> {
   return db.getFirstAsync<CombatPowerRow>(
     'SELECT * FROM combat_power WHERE user_id = ? ORDER BY date DESC LIMIT 1',

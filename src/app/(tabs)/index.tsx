@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { ExerciseRow } from '@/db/types';
+import { ArenaCard } from '@/features/arena/ArenaCard';
 import { gradeForScore } from '@/features/combat-power/grades';
 import { MyCharacter } from '@/features/character/MyCharacter';
 import { CARDIO_EXERCISE_IDS, REGIONS, type BodyRegionId } from '@/features/character/regions';
@@ -75,6 +76,9 @@ export default function TodayScreen() {
 
         {/* THE one input — type/say "벤치 100 5" or tap a recent lift */}
         <QuickLogBar />
+
+        {/* ARENA — rival + weekly boss: the daily stakes */}
+        <ArenaCard />
 
         <ForgeBar onEnter={enter} onFinish={finish} />
 

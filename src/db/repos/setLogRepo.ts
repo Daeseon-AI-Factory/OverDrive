@@ -145,6 +145,65 @@ export async function addSet(
   return { row, isPr };
 }
 
+/** Per-exercise stats for the weekly-boss picker: best-scoring set + recent training frequency. */
+export async function bossCandidates(
+  db: SQLiteDatabase,
+  since14d: string,
+  userId: string = LOCAL_USER_ID,
+): Promise<
+  { exerciseId: string; isBodyweight: boolean; bestWeight: number; bestReps: number; bestScore: number; sets14d: number }[]
+> {
+  const best = await db.getAllAsync<{
+    exercise_id: string;
+    weight: number;
+    reps: number;
+    score: number;
+    is_bodyweight: number;
+  }>(
+    `SELECT exercise_id, weight, reps, score, is_bodyweight FROM (
+       SELECT sl.exercise_id, sl.weight, sl.reps, sl.score, e.is_bodyweight,
+              ROW_NUMBER() OVER (PARTITION BY sl.exercise_id ORDER BY sl.score DESC, sl.logged_at DESC) AS rn
+       FROM set_log sl
+       JOIN workout_session ws ON ws.id = sl.session_id
+       JOIN exercise e ON e.id = sl.exercise_id
+       WHERE ws.user_id = ?
+     ) WHERE rn = 1`,
+    [userId],
+  );
+  const freq = await db.getAllAsync<{ exercise_id: string; n: number }>(
+    `SELECT sl.exercise_id, COUNT(*) AS n
+     FROM set_log sl JOIN workout_session ws ON ws.id = sl.session_id
+     WHERE ws.user_id = ? AND ws.date >= ?
+     GROUP BY sl.exercise_id`,
+    [userId, since14d],
+  );
+  const freqMap = new Map(freq.map((f) => [f.exercise_id, f.n]));
+  return best.map((b) => ({
+    exerciseId: b.exercise_id,
+    isBodyweight: b.is_bodyweight === 1,
+    bestWeight: b.weight,
+    bestReps: b.reps,
+    bestScore: b.score,
+    sets14d: freqMap.get(b.exercise_id) ?? 0,
+  }));
+}
+
+/** Did a PR land on this exercise since `sinceDate`? (boss-defeated check — derived, no extra state) */
+export async function hasPrSince(
+  db: SQLiteDatabase,
+  exerciseId: string,
+  sinceDate: string,
+  userId: string = LOCAL_USER_ID,
+): Promise<boolean> {
+  const row = await db.getFirstAsync<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM set_log sl
+     JOIN workout_session ws ON ws.id = sl.session_id
+     WHERE ws.user_id = ? AND sl.exercise_id = ? AND sl.is_pr = 1 AND ws.date >= ?`,
+    [userId, exerciseId, sinceDate],
+  );
+  return (row?.n ?? 0) > 0;
+}
+
 /** Σ(weight·reps), PR sets weighted ×PR_VOLUME_MULT, since `sinceDate`. Fun heuristic per spec §6.3. */
 export async function strengthVolumeSince(
   db: SQLiteDatabase,

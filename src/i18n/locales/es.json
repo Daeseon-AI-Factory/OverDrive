@@ -273,5 +273,16 @@
     },
     "recording": "● Grabando… toca para parar",
     "transcribing": "Transcribiendo…"
+  },
+  "arena": {
+    "title": "Arena",
+    "ahead": "Vas GANANDO por {n}",
+    "behind": "{n} detrás — recupera",
+    "weekYou": "TÚ",
+    "winning": "GANANDO",
+    "losing": "PERDIENDO",
+    "boss": "Jefe:",
+    "bossAlive": "VIVO",
+    "bossDown": "CAÍDO ⚡"
   }
 }

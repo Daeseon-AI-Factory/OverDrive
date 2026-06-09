@@ -18,6 +18,8 @@ export interface UserSettings {
   weightStep: number;
   /** Display units. Storage is always metric (kg/m); this only affects display + input. */
   unitSystem: UnitSystem;
+  /** ARENA rival config (deterministic growth curve seed). null until first spawn. */
+  rival: { name: string; epoch: string; cp0: number; seed: number } | null;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -30,6 +32,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   soundOn: true,
   weightStep: 2.5,
   unitSystem: 'metric',
+  rival: null,
 };
 
 /** Tolerant parse of the stored settings JSON — always returns a complete object. */

@@ -273,5 +273,16 @@
     },
     "recording": "● 녹음 중… 탭해서 멈춤",
     "transcribing": "전사 중…"
+  },
+  "arena": {
+    "title": "아레나",
+    "ahead": "네가 {n} 앞서는 중",
+    "behind": "{n} 뒤처짐 — 따라잡아",
+    "weekYou": "나",
+    "winning": "이기는 중",
+    "losing": "지는 중",
+    "boss": "보스:",
+    "bossAlive": "생존",
+    "bossDown": "처치 ⚡"
   }
 }

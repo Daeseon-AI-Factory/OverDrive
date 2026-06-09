@@ -273,5 +273,16 @@
     },
     "recording": "● 录音中… 点按停止",
     "transcribing": "转写中…"
+  },
+  "arena": {
+    "title": "竞技场",
+    "ahead": "你领先 {n}",
+    "behind": "落后 {n} — 追上去",
+    "weekYou": "你",
+    "winning": "领先中",
+    "losing": "落后中",
+    "boss": "Boss:",
+    "bossAlive": "存活",
+    "bossDown": "击杀 ⚡"
   }
 }

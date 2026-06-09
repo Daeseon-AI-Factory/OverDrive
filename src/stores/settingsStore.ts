@@ -34,5 +34,6 @@ export function currentSettings(): UserSettings {
     soundOn: s.soundOn,
     weightStep: s.weightStep,
     unitSystem: s.unitSystem,
+    rival: s.rival,
   };
 }

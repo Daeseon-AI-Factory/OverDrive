@@ -240,6 +240,17 @@
     "protein": "🥩 Protein",
     "rest": "😴 Slept well"
   },
+  "arena": {
+    "title": "Arena",
+    "ahead": "You're AHEAD by {n}",
+    "behind": "{n} behind — close the gap",
+    "weekYou": "YOU",
+    "winning": "WINNING",
+    "losing": "LOSING",
+    "boss": "Boss:",
+    "bossAlive": "ALIVE",
+    "bossDown": "DOWN ⚡"
+  },
   "goals": {
     "title": "Daily goals",
     "add": "+ ADD",
