@@ -216,3 +216,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 866e295
 - **Pattern**: `cd` in one Bash call persists to later calls. After `cd`-ing into a subdir for one command, return to root (or use absolute `--config`/`--prefix`). A green "launch" ≠ a fresh build — confirm `Build Succeeded` + `Installing` in the build log, not just that the app opened.
 <!-- skipped: fd583b0 docs(log): record voice end-to-end fixes + cwd/FormData traps (866e295) [no-log] -->
+<!-- skipped: 7de255a docs(log): record ARENA + AI food + comfort glue (6e5726a, 0ebc924) [no-log] -->

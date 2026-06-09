@@ -1,0 +1,34 @@
+---
+title: "진짜 랭킹 — 글로벌+크루(헬스장) 리더보드를 D1로 앞당김"
+date: "2026-06-09"
+project: "OverDrive"
+kind: "decision"
+visibility: "public"
+language: "ko"
+summary: "빌더가 '보이기만 하는 경쟁 말고 진짜 랭킹'을 요구. Phase 4였던 리더보드를 기존 워커+Cloudflare D1로 지금 구축. 주간 상승폭이 메인 보드(초보가 이김), opt-in 프라이버시."
+tags: ["phase-1", "rank", "leaderboard", "d1", "competition", "decision-t2"]
+---
+
+## Context
+ARENA(라이벌+보스)를 보고 빌더: "그냥 보이는 게 끝이잖아 — 랭킹시스템이나 지역, 헬스장별로 제대로 구축하자." 진짜 사람과의 랭킹은 스펙상 Phase 4(NestJS 백엔드). 그런데 QuickLog용 Cloudflare Worker가 이미 살아 있다.
+
+## Options considered
+1. **Phase 4 대기(do nothing)** — 정석이지만 빌더가 원하는 "진짜 경쟁"을 수개월 미룸.
+2. **NestJS 백엔드 조기 착수** — 계정/인증/배포 등 과대 스코프, dogfood 단계에 과함.
+3. **기존 워커 + Cloudflare D1(채택)** — 무료 엣지 SQLite. 라우트 2개(/rank/submit, /rank/board)로 리더보드 완성. Phase 2 백엔드가 생기면 그쪽으로 이전 가능(클라는 엔드포인트만 교체).
+
+## Chosen + Why
+#3. `rank_entry` 테이블(D1, 원격 생성) + 익명 deviceId upsert. **메인 보드 = 주간 상승폭**(사수항목 #10: 향상 기준 — 라이브 검증: +120 초보가 CP 2200 고인물을 1위로 이김). 절대 전투력 보드는 보조. **크루 보드** = 자유 코드(헬스장 이름 등)를 공유해 같은 코드끼리 순위 — 헬스장별 랭킹의 가장 가벼운 구현. 지역 필드는 스키마에 깔아둠(후속).
+
+## 프라이버시 (사수항목 #4·#10)
+**엄격 opt-in**: 핸들을 정하기 전엔 아무것도 전송 안 함(기본 = 완전 로컬). 전송되는 건 재미용 전투력 점수+주간 상승+핸들뿐 — 건강 원시 데이터는 절대 기기 밖으로 안 나감. UI에 "자가신고 점수" 라벨(Phase 1), 검증 가중(trust-tiering)은 Phase 4.
+
+## Trade-off
+- 무인증 엔드포인트: 점수 조작 가능(개인/지인 dogfood 스케일에선 수용; 공개 출시 전 Phase 4 hardening 필수).
+- 콜드스타트: 지금은 보드에 빌더 혼자 — 채워지는 건 배포(친구 설치) 이후. 그동안 라이벌이 경쟁 루프 담당.
+
+## Reversibility
+높음 — 클라는 엔드포인트 1개만 바라봄. Phase 2 백엔드로 이전 시 D1 데이터 덤프해 옮기면 끝.
+
+## Verified by
+워커 배포 + curl 라이브: submit×2 → 주간 보드(향상순 1위/2위 정확, myRank 정확) + 크루 보드(IRON-GYM 스코프 정확). tsc · jest 85 · lint. 커밋 `60be727`.
