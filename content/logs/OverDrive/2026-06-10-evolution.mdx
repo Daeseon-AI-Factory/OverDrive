@@ -1,0 +1,26 @@
+---
+title: "EVOLUTION — 내 사진이 등급 따라 진화한다"
+date: "2026-06-10"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "빌더 요청('내 사진 기반으로 운동한 만큼 변화') → Gemini 이미지 모델로 사진 진화 기능 + 식단 사진 로깅. 사진은 통과만, anti-shame은 '오르기만'으로 사수."
+tags: ["phase-1", "evolution", "ai-image", "food-photo", "shareable"]
+---
+
+빌더: "시각적 효과나 아바타, **내 사진 기반으로 운동한 만큼 변화시키는** 실사 생성 기능이 없네." — 리서치가 말한 '공유각 6초 화면'(aura farming)의 정답 기능이라 바로 구축.
+
+## EVOLUTION (`67c4427`)
+- **사진 1장 → 등급별 AI 진화.** Worker `/evolve`가 Gemini 이미지 모델(기본 `gemini-2.5-flash-image`)로 동일 인물·포즈·배경을 유지한 채 등급(루키→초월자)에 맞는 피지크로 변환 + 시네마틱 라이팅. Groq는 이미지 생성이 안 되므로 이 라우트만 Gemini — 워커에 `GEMINI_API_KEY` 시크릿 필요(빌더의 무료 키, 빌더가 직접 주입).
+- **Anti-shame(§9) 설계:** 변환 프롬프트는 등급별로 '점점 영웅적'만 존재 — 다운그레이드 프롬프트 자체가 없음. 등급이 떨어져도 이미지는 그대로.
+- **프라이버시:** 사진은 워커를 통과만(서버 저장 0), 명시적 탭에서만 전송, 원본/결과는 기기 로컬 문서폴더에만. UI에 고지문.
+- Power 탭 EvolutionCard: 선택→진화→탭하면 원본/진화 비교 플립, 등급업 시 재진화 버튼.
+
+## 식단 사진 (같은 픽커로)
+FoodCard에 📷 — 식사 사진 → `/food` 비전 경로(Groq llama-4-scout) → 품목별 kcal/단백질 기록. 단백질 목표 → 규율 → 전투력 흐름 동일.
+
+## 기술 노트
+- `expo-image-picker` 추가(사진 보관함 픽커만 — 카메라/마이크 권한 불요로 스코프 최소화). 네이티브 모듈 → 기기 리빌드 필요.
+- RN 0.85 타입에서 `StyleSheet.absoluteFillObject` 미존재 → 명시적 position fill로 대체.
+- 검증: tsc · jest 85 · lint · 워커 배포. doctor 1건은 기존 SDK 패치 드리프트(기록됨).
