@@ -220,3 +220,5 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- override-trigger: c3d3ad4 docs(log): record real leaderboards decision (60be727) [no-log] — log-commit recursion again: c3d3ad4 IS the T2 decision narrative itself (content/logs/OverDrive/2026-06-09-real-rankings.mdx contains the full Context/Options/Trade-off/Reversibility/Verified-by template for 60be727). The trigger word "decision" is only in the log-commit's subject. Recurring footgun noted twice already — log-commit subjects must avoid trigger keywords; switching to neutral subjects like "docs(log): add entry for <hash>" from now on. -->
 <!-- skipped: 74c7123 docs: add override note for c3d3ad4 [no-log] -->
 <!-- skipped: 5bc3abf docs(log): add entry for 67c4427 [no-log] -->
+<!-- skipped: 2d5147a docs(state): refresh handoff — arena/rank/voice/food/evolution + infra map [no-log] -->
+<!-- skipped: 0a14cba chore: ignore local secret stores [no-log] -->

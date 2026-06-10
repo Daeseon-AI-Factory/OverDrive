@@ -1,0 +1,39 @@
+---
+title: "AI 페어프로그래밍 키 관리 — 전역 시크릿 스토어 + 전역 CLAUDE.md 패턴"
+date: "2026-06-10"
+project: "OverDrive"
+kind: "tech-retro"
+visibility: "public"
+language: "ko"
+summary: "키를 매번 터미널에 붙여넣는 지옥 탈출: ~/.secrets/api-keys.env(600) + ~/.claude/CLAUDE.md 전역 지침. AI가 어느 세션에서든 파일→목적지 파이프로 키를 알아서 주입, 값은 절대 노출 안 됨."
+tags: ["ai-workflow", "claude-code", "secrets", "dx"]
+---
+
+OverDrive에 워커 시크릿(GROQ/GEMINI)을 넣을 때마다 `wrangler secret put` 프롬프트에 키를 수동으로 붙여넣어야 했다. 빌더가 폭발: "매번 처 넣으라고 하는 거 좆같다, 내 파일에 있는 거 알아서 참고해가게 못 하냐." — 된다. AI 페어프로그래밍 시대에 꽤 요긴한 패턴이라 박제.
+
+## 패턴 (2조각)
+
+**1. `~/.secrets/api-keys.env`** — 모든 무효화-가능 개발 키의 단일 저장소.
+- 홈 디렉터리 = 모든 git 레포 **밖** → 커밋 사고 원천 차단.
+- `chmod 600`(파일)/`700`(디렉터리) — 본인 계정만 읽음.
+- `KEY=value` 평문 — `~/.aws/credentials`, `~/.npmrc`와 동일한 업계 표준 방식.
+
+**2. `~/.claude/CLAUDE.md`** — Claude Code가 **모든 프로젝트의 모든 세션 시작 시 자동 로드**하는 사용자 전역 지침. 여기에 규칙을 박는다:
+- 키가 필요하면 그 파일에서 **직접 파이프**해라: `grep '^GEMINI_API_KEY=' ~/.secrets/api-keys.env | cut -d= -f2- | npx wrangler secret put GEMINI_API_KEY`
+- 값은 **절대 출력 금지**(파일명/키 이름은 OK), 레포 안 파일에 쓰기 금지, 사용자에게 붙여넣기 요구 금지.
+- 없는 키만 "이 한 줄 추가해줘"라고 요청.
+
+→ 효과: 미래의 어떤 세션이든(다른 프로젝트 포함) 사용자에게 묻지 않고 키를 주입한다. 값은 셸 파이프로 파일→목적지 직행이라 AI 컨텍스트·채팅·로그에 안 뜬다.
+
+## 보안 모델 (정직하게)
+
+| 지킴 | 한계 |
+|---|---|
+| 레포 밖이라 커밋 불가능 | 디스크 평문 — 사용자 계정 권한의 멀웨어는 읽음(표준 dotfile과 동일 리스크) |
+| 600 권한, FileVault가 도난 방어 | "출력 금지"는 지침이지 물리법칙 아님 — 단 Claude Code 권한 분류기가 실제로 작동(이번 세션에서 광역 크리덴셜 스캔을 차단함) |
+| 파이프 전송이라 노출면 최소 | |
+
+**경계선이 핵심:** 이 파일엔 "유출 시 revoke+재발급으로 끝나는 것"만(API 키·토큰). 비밀번호/은행/복구코드는 절대 금지(Keychain/1Password 영역). 파일 헤더에 이 규칙을 명시해 둠.
+
+## 곁가지 발견
+처음에 "맥 전체에서 키 파일을 찾아주겠다"고 `~/.zshrc`·전 프로젝트 `.env`를 grep하려 하자 **Claude Code 권한 분류기가 차단**했다("credential exploration beyond project scope"). 올바른 차단 — 그래서 설계를 "AI가 찾아다니는" 방식이 아니라 "사용자가 한 곳에 두고 AI는 그 한 곳만 아는" 방식으로 뒤집었다. 보안 도구가 더 나은 아키텍처를 강제한 사례.
