@@ -319,15 +319,80 @@ async function handleRankBoard(req, env) {
   return json({ entries: top.results ?? [], myRank });
 }
 
+// ---- EVOLUTION (Gemini image editing) ---------------------------------------
+// POST /evolve — multipart { file, gradeKey } → AI-evolved physique photo (base64 JSON).
+// Pass-through only: the photo is never stored server-side. Anti-shame: transformations only ever
+// flatter (progressively heroic per grade) — there is no "downgrade" prompt.
+const EVOLVE_LOOKS = {
+  ordinary: 'a subtle healthy glow, slightly improved posture, fresh energy',
+  rookie: 'a noticeably fitter look with light athletic muscle tone',
+  fighter: 'clearly visible athletic muscle definition and a confident stance',
+  warrior: 'a strong, defined physique with a heroic stance and dramatic gym lighting',
+  beast: 'a powerful muscular build, vascular detail, dramatic rim lighting',
+  monster: 'an elite, imposing physique with intense presence and cinematic lighting',
+  ascendant: 'a legendary heroic physique radiating a faint energy aura, cinematic god-rays',
+};
+
+async function handleEvolve(req, env) {
+  if (!env.GEMINI_API_KEY) return json({ error: 'evolve requires GEMINI_API_KEY secret' }, 500);
+  let form;
+  try {
+    form = await req.formData();
+  } catch {
+    return json({ error: 'expected multipart form-data' }, 400);
+  }
+  const file = form.get('file');
+  if (!file || typeof file === 'string') return json({ error: 'missing file' }, 400);
+  const gradeKey = sanitize(form.get('gradeKey'), 24) || 'rookie';
+  const look = EVOLVE_LOOKS[gradeKey] || EVOLVE_LOOKS.rookie;
+
+  const buf = new Uint8Array(await file.arrayBuffer());
+  let bin = '';
+  for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+  const b64 = btoa(bin);
+
+  const model = env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image';
+  const prompt =
+    `Edit this photo of a person. Keep the SAME person, same identity and face, similar pose, ` +
+    `clothing style and background. Transform their physique to show ${look}. ` +
+    `Photorealistic, respectful, flattering — no caricature, no exaggerated distortion.`;
+
+  let res;
+  try {
+    res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            { parts: [{ text: prompt }, { inline_data: { mime_type: file.type || 'image/jpeg', data: b64 } }] },
+          ],
+        }),
+      },
+    );
+  } catch (e) {
+    return json({ error: 'gemini evolve fetch failed', detail: String(e) }, 502);
+  }
+  if (!res.ok) return json({ error: `gemini evolve ${res.status}`, detail: await res.text().catch(() => '') }, 502);
+  const data = await res.json().catch(() => null);
+  const parts = data?.candidates?.[0]?.content?.parts ?? [];
+  const img = parts.find((p) => p.inlineData?.data || p.inline_data?.data);
+  const out = img?.inlineData ?? img?.inline_data;
+  if (!out?.data) return json({ error: 'no image in response', detail: JSON.stringify(parts).slice(0, 200) }, 502);
+  return json({ image: out.data, mimeType: out.mimeType ?? out.mime_type ?? 'image/png' });
+}
+
 export default {
   async fetch(req, env) {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
-    if (req.method !== 'POST') return json({ error: 'POST only (/parse, /transcribe, /food, /rank/*)' }, 405);
+    if (req.method !== 'POST') return json({ error: 'POST only (/parse, /transcribe, /food, /rank/*, /evolve)' }, 405);
     const { pathname } = new URL(req.url);
     if (pathname === '/transcribe') return handleTranscribe(req, env);
     if (pathname === '/food') return handleFood(req, env);
     if (pathname === '/rank/submit') return handleRankSubmit(req, env);
     if (pathname === '/rank/board') return handleRankBoard(req, env);
+    if (pathname === '/evolve') return handleEvolve(req, env);
     return handleParse(req, env);
   },
 };

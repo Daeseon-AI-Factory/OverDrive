@@ -313,5 +313,18 @@
     "empty": "보드가 비었어 — 크루 코드를 공유해서 채워.",
     "offline": "랭킹 서버에 연결 실패.",
     "selfReport": "Phase 1: 자가신고 점수 · 검증 티어는 추후"
+  },
+  "evolution": {
+    "title": "진화",
+    "intro": "네 사진 한 장 골라 — AI가 네 등급에 맞게 진화시킨다. 오르기만 한다.",
+    "pick": "내 사진 고르기 📸",
+    "evolving": "진화 중…",
+    "tagEvolved": "{grade} 폼 — 탭해서 비교",
+    "tagOriginal": "원본 — 탭해서 복귀",
+    "reEvolve": "{grade}로 재진화 ⚡",
+    "changePhoto": "사진 변경",
+    "fail": "진화 실패 —",
+    "noEndpoint": "AI 엔드포인트(.env) + 워커 GEMINI_API_KEY 필요.",
+    "privacy": "사진은 생성 순간에만 네 서버를 통과 — 저장되지 않음."
   }
 }

@@ -1,3 +1,4 @@
+import { FileSystemUploadType, uploadAsync } from 'expo-file-system/legacy';
 import type { FoodItemInput } from '@/db/repos/foodRepo';
 
 /** Pure: validate + normalize the proxy's loose food JSON. Drops empty/garbage rows. Unit-tested. */
@@ -20,6 +21,18 @@ export function normalizeFoodItems(data: unknown): FoodItemInput[] {
     });
   }
   return out;
+}
+
+/** Meal PHOTO → estimated items, via the Worker's vision path (native multipart upload). */
+export async function parseFoodPhoto(uri: string, endpoint: string): Promise<FoodItemInput[]> {
+  const res = await uploadAsync(`${endpoint.replace(/\/$/, '')}/food`, uri, {
+    httpMethod: 'POST',
+    uploadType: FileSystemUploadType.MULTIPART,
+    fieldName: 'file',
+    mimeType: 'image/jpeg',
+  });
+  if (res.status < 200 || res.status >= 300) throw new Error(`food photo ${res.status}`);
+  return normalizeFoodItems(JSON.parse(res.body));
 }
 
 /** Meal description text → estimated items, via the Worker proxy (Groq; key server-side). */

@@ -13,7 +13,8 @@ import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { Card, Muted, SectionTitle } from '@/ui/primitives';
 import { colors, fontSize, numberFamily, radius, space } from '@/ui/theme/tokens';
-import { normalizeFoodItems, parseFoodText } from './parseFoodAI';
+import * as ImagePicker from 'expo-image-picker';
+import { normalizeFoodItems, parseFoodPhoto, parseFoodText } from './parseFoodAI';
 
 /**
  * 식단 — one line, AI does the rest: type what you ate ("닭가슴살 300그램이랑 밥") → Groq estimates
@@ -40,6 +41,33 @@ export function FoodCard() {
     }, [reload]),
   );
 
+  /** Shared tail for text + photo logging: persist, refresh, protein-target → discipline + pop. */
+  const logItems = async (items: { name: string; kcal: number; proteinG: number }[], source: 'text' | 'photo') => {
+    if (!items || items.length === 0) {
+      setHint(t('food.fail'));
+      return;
+    }
+    const before = today.proteinG;
+    await addFoodItems(db, items, source);
+    setText('');
+    await reload();
+    const after = await getFoodToday(db);
+
+    // Crossing the protein target auto-completes the discipline check → real CP + a pop.
+    if (proteinTargetG && before < proteinTargetG && after.proteinG >= proteinTargetG) {
+      const disc = await getDisciplineToday(db);
+      if (!disc.protein) {
+        const prev = useCombatPowerStore.getState().score;
+        await setDisciplineToday(db, { ...disc, protein: true });
+        const result = await recomputeAndStore(db);
+        useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+        juice.fire(
+          classifyEvent({ kind: 'set', isPr: false, rir: 2, hitTargetReps: true, deltaCp: result.score - prev }),
+        );
+      }
+    }
+  };
+
   const submit = async () => {
     const value = text.trim();
     if (!value || busy) return;
@@ -58,29 +86,23 @@ export function FoodCard() {
       } else {
         items = normalizeFoodItems({ items: [] });
       }
-      if (!items || items.length === 0) {
-        setHint(t('food.fail'));
-        return;
-      }
-      const before = today.proteinG;
-      await addFoodItems(db, items, 'text');
-      setText('');
-      await reload();
-      const after = await getFoodToday(db);
+      await logItems(items, 'text');
+    } catch {
+      setHint(t('food.fail'));
+    } finally {
+      setBusy(false);
+    }
+  };
 
-      // Crossing the protein target auto-completes the discipline check → real CP + a pop.
-      if (proteinTargetG && before < proteinTargetG && after.proteinG >= proteinTargetG) {
-        const disc = await getDisciplineToday(db);
-        if (!disc.protein) {
-          const prev = useCombatPowerStore.getState().score;
-          await setDisciplineToday(db, { ...disc, protein: true });
-          const result = await recomputeAndStore(db);
-          useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
-          juice.fire(
-            classifyEvent({ kind: 'set', isPr: false, rir: 2, hitTargetReps: true, deltaCp: result.score - prev }),
-          );
-        }
-      }
+  /** 📷 — snap/pick a meal photo → Worker vision → logged. */
+  const onPhoto = async () => {
+    if (busy || !QUICKLOG_ENDPOINT) return;
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 }).catch(() => null);
+    if (!res || res.canceled || !res.assets?.[0]?.uri) return;
+    setBusy(true);
+    setHint(null);
+    try {
+      await logItems(await parseFoodPhoto(res.assets[0].uri, QUICKLOG_ENDPOINT), 'photo');
     } catch {
       setHint(t('food.fail'));
     } finally {
@@ -117,6 +139,9 @@ export function FoodCard() {
         ) : null}
 
         <View style={styles.inputRow}>
+          <Pressable onPress={onPhoto} disabled={busy} style={[styles.photoBtn, { opacity: busy ? 0.4 : 1 }]} hitSlop={6}>
+            <Text style={{ fontSize: fontSize.lg }}>📷</Text>
+          </Pressable>
           <TextInput
             value={text}
             onChangeText={(v) => {
@@ -148,6 +173,16 @@ const styles = StyleSheet.create({
   track: { height: 6, borderRadius: 3, backgroundColor: colors.surfaceAlt, overflow: 'hidden', marginTop: space.sm },
   fill: { height: '100%', borderRadius: 3 },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.md },
+  photoBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.violet,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   input: {
     flex: 1,
     color: colors.text,

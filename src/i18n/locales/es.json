@@ -313,5 +313,18 @@
     "empty": "Tabla vacía — comparte tu código de crew.",
     "offline": "No se pudo conectar al ranking.",
     "selfReport": "Fase 1: puntuaciones autoinformadas"
+  },
+  "evolution": {
+    "title": "Evolución",
+    "intro": "Elige una foto tuya — la IA la evoluciona según tu rango. Solo sube.",
+    "pick": "Elegir mi foto 📸",
+    "evolving": "EVOLUCIONANDO…",
+    "tagEvolved": "FORMA {grade} — toca para comparar",
+    "tagOriginal": "ORIGINAL — toca para volver",
+    "reEvolve": "Re-evolucionar como {grade} ⚡",
+    "changePhoto": "Cambiar foto",
+    "fail": "Falló la evolución —",
+    "noEndpoint": "Requiere endpoint AI (.env) + GEMINI_API_KEY.",
+    "privacy": "Tu foto solo pasa por tu servidor para generar — nunca se guarda."
   }
 }

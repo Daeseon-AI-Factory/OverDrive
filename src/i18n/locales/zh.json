@@ -313,5 +313,18 @@
     "empty": "榜单是空的 — 分享你的战队代码。",
     "offline": "无法连接排行榜服务器。",
     "selfReport": "Phase 1: 自报分数 · 验证分级后续推出"
+  },
+  "evolution": {
+    "title": "进化",
+    "intro": "选一张你的照片 — AI 按你的等级进化它。只会变强。",
+    "pick": "选择我的照片 📸",
+    "evolving": "进化中…",
+    "tagEvolved": "{grade} 形态 — 点按对比",
+    "tagOriginal": "原图 — 点按返回",
+    "reEvolve": "以 {grade} 重新进化 ⚡",
+    "changePhoto": "更换照片",
+    "fail": "进化失败 —",
+    "noEndpoint": "需要 AI 端点(.env) + GEMINI_API_KEY。",
+    "privacy": "照片仅在生成时经过你的服务器 — 不会被存储。"
   }
 }

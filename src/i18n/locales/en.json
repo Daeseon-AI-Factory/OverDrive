@@ -255,6 +255,19 @@
     "protein": "🥩 Protein",
     "rest": "😴 Slept well"
   },
+  "evolution": {
+    "title": "Evolution",
+    "intro": "Pick a photo of yourself — the AI evolves it to match your grade. It only ever levels UP.",
+    "pick": "Pick my photo 📸",
+    "evolving": "EVOLVING…",
+    "tagEvolved": "{grade} FORM — tap to compare",
+    "tagOriginal": "ORIGINAL — tap to flip back",
+    "reEvolve": "Re-evolve as {grade} ⚡",
+    "changePhoto": "Change photo",
+    "fail": "Evolution failed —",
+    "noEndpoint": "Needs the AI endpoint (.env) + GEMINI_API_KEY on the worker.",
+    "privacy": "Your photo passes through your own server only for generation — never stored there."
+  },
   "rank": {
     "title": "Rankings",
     "optIn": "Pick a handle to join the global leaderboard. Until then, nothing leaves your device.",
