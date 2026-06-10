@@ -1,17 +1,23 @@
 # OVERDRIVE — 현재 상태 (handoff / 새 컨텍스트용 단일 진실)
 
-> 컨텍스트 압축·새 세션 시 **여기부터 읽으면 이어받는다.** 정본 스펙은 [`docs/overdrive-spec.md`](overdrive-spec.md), Phase 1 플랜 [`docs/phase1-plan.md`](phase1-plan.md). 버그/함정은 [`docs/troubleshooting.md`](troubleshooting.md), 내러티브는 `content/logs/OverDrive/`. **갱신: 2026-06-07.**
+> 컨텍스트 압축·새 세션 시 **여기부터 읽으면 이어받는다.** 정본 스펙은 [`docs/overdrive-spec.md`](overdrive-spec.md), Phase 1 플랜 [`docs/phase1-plan.md`](phase1-plan.md). 버그/함정은 [`docs/troubleshooting.md`](troubleshooting.md), 내러티브는 `content/logs/OverDrive/`. **갱신: 2026-06-10.**
 
 ## ▶ 새 세션 첫 행동 (여기부터)
 1. 이 파일 + `docs/overdrive-spec.md`(정본) + `docs/troubleshooting.md`(함정) 훑기.
-2. 앱 한 번 띄워 현 상태 확인: `npx expo run:ios`.
-3. **다음 작업 = 비주얼 라운드 2 (아래 "남은 것" #1).** 버스트 셰이더는 완료(0c9b4bc), 오디오 SFX도 완료(a96743b). 남은 비주얼 = CharacterAura SkSL + Forge 챔버 SkSL + 버스트 오프스크린 다운스케일.
-4. 비-사소 변경마다 dual-write 로깅 (troubleshooting.md + content/logs).
+2. **앱 빌드/실행은 내가 직접 한다** (메모리 keep-app-launched): 폰 = `npx expo run:ios --device 00008140-00186DE43CFA801C --configuration Release` (반드시 **레포 루트에서**; 빌드로그에 `Build Succeeded`+`Installing`+`Complete`까지 확인 — launch 성공≠새 빌드). 폰 잠겨 있으면 devicectl direct-install 후 사용자에게 잠금해제 요청. 시뮬 = `--port 8082`(8081은 다른 앱).
+3. **다음 후보:** 비주얼 라운드 2(CharacterAura/Forge 챔버 SkSL, 버스트 오프스크린) · 리마인더(expo-notifications, 네이티브 배치) · Evolution 퀄 튜닝 · 빌더 dogfood 피드백 최우선.
+4. 비-사소 변경마다 dual-write 로깅. **로그 커밋 제목은 중립 문구만**("docs(log): add entry for <hash>") — decision/audit/migration 등 트리거 단어 금지(훅 재귀 3회 전과).
 
-> 모델/세션 메모: 컨텍스트가 꽉 차면 "1M context 크레딧" 에러가 날 수 있음 — 1M(유료) 켜지 말고 **새 세션 + 이 STATE.md 핸드오프**로 이어갈 것. 기본 모델 Sonnet 4.6(표준 컨텍스트)면 에러·과금 없음.
+> 모델/세션 메모: 컨텍스트 꽉 차면 새 세션 + 이 STATE.md 핸드오프 (1M 유료 켜지 말 것).
 
 ## 한 줄
-Phase 1(로컬 MVP) **거의 완성** — 굴러가는 앱이 iPhone 17 시뮬에서 돌고, 핵심 루프(바디맵→로깅→전투력→JUICE 폭발→FORGE 완료)가 작동. 검증: tsc/lint/jest(49)/expo-doctor(21)/expo export 전부 green.
+Phase 1 로컬 MVP **완성 단계 + Phase 2~4 기능 일부 선행** — 아이폰 실기기(Release, 단독실행)에서 풀 루프 작동: 한줄/음성 AI 로깅 → 전투력 → JUICE 폭발 → ARENA(라이벌/보스) → 실제 리더보드(D1) → AI 식단 → EVOLUTION(사진 진화). 검증: tsc/lint/jest(85)/export green.
+
+## 인프라 (Cloudflare — 전부 라이브)
+- **Worker** `https://overdrive-quicklog.daeseon.workers.dev` (`worker/`, wrangler 로그인 캐시됨, 배포는 서브셸로 `( cd worker && npx wrangler deploy )` — **cwd 잔류 금지**).
+- 라우트: `/parse`(Groq llama 운동 파싱, 미등록 운동 자동생성) · `/transcribe`(Groq whisper, UI 로케일 언어 강제) · `/food`(텍스트=Groq, 사진=llama-4-scout 비전) · `/rank/submit`·`/rank/board`(D1 `overdrive-rank`, id a789812b-…) · `/evolve`(**Gemini 이미지 — GEMINI_API_KEY 시크릿 필요, 빌더가 주입**).
+- 시크릿: GROQ_API_KEY(주입됨), GEMINI_API_KEY(/evolve용 — 미주입이면 그 라우트만 에러).
+- 앱 연결: `.env`의 `EXPO_PUBLIC_QUICKLOG_ENDPOINT`(비밀 아님, gitignore). 무인증 엔드포인트 — 공개 출시 전 hardening(Phase 4).
 
 ## 로드맵 (스펙 §8)
 - **Phase 0** (PWA 훅 데모) — 건너뜀(바로 Phase 1). 선택.
@@ -37,13 +43,20 @@ Phase 1(로컬 MVP) **거의 완성** — 굴러가는 앱이 iPhone 17 시뮬�
 - 규율 — 단백질/수면 원탭(`src/features/discipline`) → 전투력 규율 컴포넌트
 - 데일리 목표 (`src/features/dailyGoals`, 4fae73e) — 반복 템플릿+날짜별 진행(daily_target/_log, 스키마 v4), 단위-무관(reps/sets/sec/min/m/km), 자유입력+빠른칩(버피·파머스워크 등), 완료 시 **전투력 보너스 배수**(희석 없음, ≥1)+JUICE. CP 통합=trustMultiplier와 동형.
 - 폰트: Anton(콜아웃)/Orbitron(숫자)
+- **QuickLog** (`src/features/quicklog`, 40cdc00·108bc43·866e295) — Today 대청소: 거대 CP + **단일 입력**(타이핑/🎤음성) + 최근칩 한탭. AI 우선(워커 Groq, 7s 타임아웃) → 오프라인 규칙파서 폴백. 미등록 운동 자동생성(ensureExercise). 바디맵은 "수동" 토글 뒤로.
+- **음성** (f630201·866e295) — 🎤 → expo-audio 녹음 → /transcribe(Groq whisper, **UI 로케일 언어 강제**) → 같은 파서. 업로드는 expo-file-system uploadAsync(**RN FormData {uri} 금지 — New Arch에서 터짐**).
+- **ARENA** (`src/features/arena`, 6e5726a) — 라이벌(설정 JSON config, 결정론 성장 ~1.4%/day, 순수함수) + 주간 결전(상승폭 비교 §10) + 주간 보스(최다훈련 리프트 +2.5kg/+1rep, PR로 처치). 추월 시 T4. 8 테스트.
+- **식단** (`src/features/food`, 0ebc924·67c4427) — FoodCard: 텍스트/📷사진 → /food → kcal·단백질 기록(food_log, 스키마 v5). 단백질 목표 도달 → 규율 자동 → CP+JUICE.
+- **편함** (0ebc924) — 휴식타이머 자동시작(`src/features/rest`, 절대시각, 딩+햅틱) · History 길게눌러 세트 삭제+CP 재계산.
+- **랭킹** (`src/features/rank`, 60be727) — Power 탭. opt-in(핸들 필수, 그 전 전송 0). 주간 상승폭 보드(메인)+절대 CP+크루(자유 코드). D1 라이브 검증.
+- **EVOLUTION** (`src/features/evolution`, 67c4427) — 내 사진 → /evolve(Gemini 이미지) → 등급별 진화(오르기만, §9). 원본/결과 로컬만. expo-image-picker(보관함만).
 
-## Phase 1 — 남은 것 (우선순위)
-1. 비주얼 라운드 2: **CharacterAura를 SkSL로**(난류 라디얼 오라, 항시 파워업감 — 현재 View 헤일로) + **Forge 입장 챔버 SkSL**(수련장 분위기) + **overdriveBurst 0.5~0.6x 오프스크린 렌더**(native-3x 낭비 제거, 리뷰가 짚은 최대 성능 이득). ※버스트 셰이더 math 자체는 완료(0c9b4bc).
-2. 사용성 갭: 세트 편집/삭제, 휴식 타이머, 온보딩(키/체중/단백질 목표).
-3. streak 마일스톤 별도 T4, OVERDRIVE MODE(세션 게이지).
-4. **최종 Accept = 빌더 dogfooding "매일 쓸 수준"** (진행 중).
-5. (Phase 2로 이월) 오디오 VO 콜아웃(TTS 서버키), 앰비언트 루프.
+## 남은 것 (우선순위)
+1. **빌더 dogfood 피드백 최우선** — 매일 쓰면서 거슬린 것부터.
+2. 비주얼 라운드 2: CharacterAura SkSL + Forge 챔버 SkSL + 버스트 오프스크린 다운스케일. 랭킹/아레나 시각효과(포디움 글로우 등).
+3. 리마인더(expo-notifications — 네이티브 배치), 온보딩(키/체중/단백질 목표 설정 UI — proteinTargetG가 현재 null이라 식단 목표바 비활성!).
+4. streak 마일스톤 T4, OVERDRIVE MODE(세션 게이지).
+5. (Phase 2 이월) VO 콜아웃, 헬스 자동연동, 랭킹 hardening(검증 티어).
 
 ## 박제된 핵심 결정 (content/logs)
 - **브랜드: "OverDrive" 공개 앱명 NO-GO** (Overdrive Fitness 선점 등). 코드네임/인앱 콜아웃은 유지, 공개명 별도 채택 + 변호사 clearance. (private 로그)
