@@ -222,3 +222,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: 5bc3abf docs(log): add entry for 67c4427 [no-log] -->
 <!-- skipped: 2d5147a docs(state): refresh handoff — arena/rank/voice/food/evolution + infra map [no-log] -->
 <!-- skipped: 0a14cba chore: ignore local secret stores [no-log] -->
+<!-- skipped: 33e0d4e docs(log): add entry for global key-store pattern [no-log] -->
