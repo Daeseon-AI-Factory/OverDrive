@@ -1,6 +1,7 @@
 // User settings (spec §5 User.settings jsonb). Stored as JSON text in the `user` table,
 // mirrored into settingsStore at runtime. → JSONB in Postgres (Phase 2).
 
+import type { WeeklyProgram } from '@/features/program/types';
 import type { UnitSystem } from './units';
 
 export type AestheticPref = 'battle' | 'glow' | 'neon';
@@ -26,6 +27,10 @@ export interface UserSettings {
   rankCrew: string | null;
   /** Stable anonymous device id for rank upserts (generated once). */
   rankDeviceId: string | null;
+  /** User-customized weekly program. null → use the built-in default (defaultProgram.ts). */
+  customProgram: WeeklyProgram | null;
+  /** ISO timestamp when first-run onboarding finished or was skipped. null → not onboarded yet. */
+  onboardedAt: string | null;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -42,6 +47,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   rankHandle: null,
   rankCrew: null,
   rankDeviceId: null,
+  customProgram: null,
+  onboardedAt: null,
 };
 
 /** Tolerant parse of the stored settings JSON — always returns a complete object. */

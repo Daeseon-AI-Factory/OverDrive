@@ -5,6 +5,7 @@ import { Orbitron_700Bold, Orbitron_900Black } from '@expo-google-fonts/orbitron
 import { useSQLiteContext } from 'expo-sqlite';
 import i18n, { DEFAULT_LOCALE, isSupportedLocale, type AppLocale } from '@/i18n';
 import { loadSfx } from '@/features/juice/audio/engine';
+import { OnboardingFlow } from '@/features/onboarding/OnboardingFlow';
 import { recomputeAndStore } from '../../db/repos/combatPowerRepo';
 import { getSettings, getUser, updateLocale } from '../../db/repos/userRepo';
 import { useCombatPowerStore } from '../../stores/combatPowerStore';
@@ -18,6 +19,7 @@ import { colors, fontSize } from '../../ui/theme/tokens';
 export function Boot({ children }: { children: React.ReactNode }) {
   const db = useSQLiteContext();
   const [ready, setReady] = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [fontsLoaded] = useFonts({ Anton_400Regular, Orbitron_700Bold, Orbitron_900Black });
 
   useEffect(() => {
@@ -26,6 +28,7 @@ export function Boot({ children }: { children: React.ReactNode }) {
     (async () => {
       const settings = await getSettings(db);
       useSettingsStore.getState().hydrate(settings);
+      if (alive && !settings.onboardedAt) setNeedsOnboarding(true);
 
       // Resolve UI language from the User row (default 'en'; persist the seed on first run).
       const user = await getUser(db);
@@ -60,6 +63,9 @@ export function Boot({ children }: { children: React.ReactNode }) {
         <ActivityIndicator color={colors.cyan} style={{ marginTop: 16 }} />
       </View>
     );
+  }
+  if (needsOnboarding) {
+    return <OnboardingFlow onDone={() => setNeedsOnboarding(false)} />;
   }
   return <>{children}</>;
 }

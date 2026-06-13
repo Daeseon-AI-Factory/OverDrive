@@ -40,6 +40,9 @@ export function NeonButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
       style={({ pressed }) => [
         styles.button,
         { borderColor: color, shadowColor: color, opacity: disabled ? 0.4 : pressed ? 0.7 : 1 },
@@ -65,6 +68,9 @@ export function Pill({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
       style={[styles.pill, { borderColor: active ? color : colors.line, backgroundColor: active ? color : 'transparent' }]}
     >
       <Text style={[styles.pillLabel, { color: active ? colors.bg : colors.textDim }]}>{label}</Text>

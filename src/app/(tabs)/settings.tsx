@@ -1,27 +1,38 @@
+import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { updateLocale, updateSettings } from '@/db/repos/userRepo';
+import { Stepper } from '@/features/logging/Stepper';
 import i18n, { LOCALE_LABEL, SUPPORTED_LOCALES, type AppLocale } from '@/i18n';
 import type { JuiceIntensity } from '@/lib/settings';
-import type { UnitSystem } from '@/lib/units';
+import { displayToKg, kgToDisplay, weightStepDisplay, weightUnit, type UnitSystem } from '@/lib/units';
 import { currentSettings, useSettingsStore } from '@/stores/settingsStore';
 import { Card, Muted, Pill, Screen, SectionTitle } from '@/ui/primitives';
 import { colors, fontSize, space } from '@/ui/theme/tokens';
+
+const PROTEIN_PER_KG = 1.8;
 
 const INTENSITY: JuiceIntensity[] = ['full', 'mid', 'minimal'];
 const UNIT_SYSTEMS: UnitSystem[] = ['metric', 'imperial'];
 
 export default function SettingsScreen() {
   const db = useSQLiteContext();
+  const router = useRouter();
   const { t } = useTranslation();
   const juiceIntensity = useSettingsStore((s) => s.juiceIntensity);
   const soundOn = useSettingsStore((s) => s.soundOn);
   const weightStep = useSettingsStore((s) => s.weightStep);
   const unitSystem = useSettingsStore((s) => s.unitSystem);
   const locale = useSettingsStore((s) => s.locale);
+  const startWeightKg = useSettingsStore((s) => s.startWeightKg);
+  const proteinTargetG = useSettingsStore((s) => s.proteinTargetG);
+  const customProgram = useSettingsStore((s) => s.customProgram);
   const apply = useSettingsStore((s) => s.apply);
   const setLocale = useSettingsStore((s) => s.setLocale);
+
+  const weightKg = startWeightKg ?? 75;
+  const suggestedProtein = Math.round((weightKg * PROTEIN_PER_KG) / 5) * 5;
 
   const persist = async (patch: Partial<ReturnType<typeof currentSettings>>) => {
     apply(patch);
@@ -63,6 +74,49 @@ export default function SettingsScreen() {
           </View>
         </Card>
 
+        <SectionTitle>{t('settings.profile.section')}</SectionTitle>
+        <Card>
+          <Stepper
+            label={t('settings.profile.bodyweight')}
+            value={kgToDisplay(weightKg, unitSystem)}
+            step={weightStepDisplay(unitSystem, 1)}
+            min={unitSystem === 'imperial' ? 66 : 30}
+            max={unitSystem === 'imperial' ? 660 : 300}
+            precision={unitSystem === 'imperial' ? 0 : 1}
+            unit={weightUnit(unitSystem)}
+            onChange={(v) => persist({ startWeightKg: displayToKg(v, unitSystem) })}
+          />
+          <Stepper
+            label={t('settings.profile.proteinTarget')}
+            value={proteinTargetG ?? suggestedProtein}
+            step={5}
+            min={0}
+            max={400}
+            precision={0}
+            unit={t('settings.profile.proteinUnit')}
+            onChange={(v) => persist({ proteinTargetG: v })}
+          />
+          <Muted style={{ marginTop: space.sm }}>
+            {proteinTargetG == null ? t('settings.profile.proteinSuggested', { value: suggestedProtein }) : t('settings.profile.proteinHint')}
+          </Muted>
+        </Card>
+
+        <SectionTitle>{t('settings.program.section')}</SectionTitle>
+        <Card>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('settings.program.edit')}
+            onPress={() => router.push('/program')}
+            style={({ pressed }) => [styles.navRow, pressed && { opacity: 0.7 }]}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>{t('settings.program.edit')}</Text>
+              <Muted>{customProgram ? t('settings.program.custom') : t('settings.program.default')}</Muted>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+        </Card>
+
         <SectionTitle>{t('settings.juice.section')}</SectionTitle>
         <Card>
           <View style={styles.wrapRow}>
@@ -102,4 +156,6 @@ const styles = StyleSheet.create({
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   label: { color: colors.text, fontSize: fontSize.md, fontWeight: '600' },
+  navRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  chevron: { color: colors.cyan, fontSize: 28, fontWeight: '900' },
 });

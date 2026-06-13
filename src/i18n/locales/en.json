@@ -12,6 +12,40 @@
     "manualShow": "✏️  Manual / by body part",
     "manualHide": "Hide manual"
   },
+  "activeWorkout": {
+    "eyebrow": "TODAY'S WORKOUT",
+    "loading": "Loading today's plan...",
+    "loadFailed": "Couldn't load today's plan.",
+    "restTitle": "Recovery day",
+    "restBody": "No programmed lifts today. Use manual logging only if you train anyway.",
+    "missingProgram": "Today's programmed exercises were not found.",
+    "setProgress": "Set {current} / {total}",
+    "skip": "Skip",
+    "cardioBody": "Use the cardio logger for duration, distance, and effort.",
+    "cardioLast": "Last: {summary}",
+    "cardioRounds": "{rounds} rounds",
+    "cardioPreset": {
+      "easy": "Easy",
+      "zone2": "Zone 2",
+      "hiit": "HIIT"
+    },
+    "repeatCardio": "REPEAT CARDIO",
+    "cardioDetails": "Details / edit",
+    "openCardio": "Log cardio",
+    "weight": "Weight",
+    "reps": "Reps",
+    "rir": "RIR",
+    "rirAuto": "Auto",
+    "saving": "Saving...",
+    "completeSet": "COMPLETE SET",
+    "workoutComplete": "Workout complete. Finish the Forge when done.",
+    "finishWorkout": "FINISH WORKOUT",
+    "autoAdvance": "Logs instantly and advances after the target sets.",
+    "undo": "Undo",
+    "saveFailed": "Couldn't save that set. Try again.",
+    "emptyDayTitle": "No exercises yet",
+    "emptyDayBody": "Add lifts to this day in Settings ▸ Program."
+  },
   "quicklog": {
     "placeholder": "e.g.  bench 100 5",
     "log": "LOG ⚡",
@@ -86,6 +120,20 @@
       "section": "Units",
       "metric": "Metric (kg · km)",
       "imperial": "Imperial (lb · mi)"
+    },
+    "profile": {
+      "section": "Profile",
+      "bodyweight": "Bodyweight",
+      "proteinTarget": "Daily protein target",
+      "proteinUnit": "g",
+      "proteinSuggested": "Tap +/- to set (suggested {value} g).",
+      "proteinHint": "Hit this daily to fuel Combat Power."
+    },
+    "program": {
+      "section": "Program",
+      "edit": "Edit weekly program",
+      "custom": "Custom",
+      "default": "Default (Upper / Lower)"
     }
   },
   "boot": {
@@ -181,6 +229,32 @@
     "rest": {
       "title": "Rest",
       "focus": "Recovery — protein/sleep"
+    },
+    "dayType": {
+      "upper": "Upper body",
+      "lower": "Lower body",
+      "cardio": "Cardio",
+      "rest": "Rest"
+    },
+    "template": {
+      "upperLower": {
+        "title": "Upper / Lower",
+        "desc": "4 strength days + 2 cardio"
+      },
+      "ppl": {
+        "title": "Push / Pull / Legs",
+        "desc": "6 days, each muscle 2x",
+        "push": "Push",
+        "pull": "Pull",
+        "legs": "Legs"
+      },
+      "fullBody": {
+        "title": "Full body",
+        "desc": "3 full-body days + cardio",
+        "dayA": "Full body A",
+        "dayB": "Full body B",
+        "dayC": "Full body C"
+      }
     }
   },
   "cp": {
@@ -298,7 +372,14 @@
     "add": "+ ADD",
     "empty": "Set a daily target and crush it every day. Tap + ADD.",
     "done": "DONE ⚡",
-    "unit": { "reps": "reps", "sets": "sets", "sec": "sec", "min": "min", "m": "m", "km": "km" },
+    "unit": {
+      "reps": "reps",
+      "sets": "sets",
+      "sec": "sec",
+      "min": "min",
+      "m": "m",
+      "km": "km"
+    },
     "suggest": {
       "burpee": "Burpees",
       "pushup": "Push-ups",
@@ -318,6 +399,69 @@
       "target": "Daily target",
       "add": "Add goal ⚡",
       "cancel": "Cancel"
+    }
+  },
+  "common": {
+    "back": "Back"
+  },
+  "onboarding": {
+    "step": "{current} / {total}",
+    "skip": "Skip",
+    "back": "Back",
+    "next": "Next",
+    "start": "Start",
+    "finish": "Start training",
+    "welcomeTitle": "Welcome to OVERDRIVE",
+    "welcomeBody": "A quick setup so every workout logs in one tap.",
+    "units": {
+      "title": "Units",
+      "body": "How should we show weight and distance?"
+    },
+    "weight": {
+      "title": "Bodyweight",
+      "body": "Used for bodyweight lifts and your protein target.",
+      "label": "Bodyweight"
+    },
+    "protein": {
+      "title": "Protein target",
+      "body": "Suggested at {perKg} g per kg. Adjust anytime.",
+      "label": "Daily protein",
+      "unit": "g",
+      "suggested": "Suggested: {value} g"
+    },
+    "split": {
+      "title": "Pick your split",
+      "body": "Start from a template — tweak it later in Settings."
+    }
+  },
+  "programEditor": {
+    "title": "Weekly program",
+    "subtitle": "Set your split, exercises, sets, and rep range.",
+    "templatesLabel": "Templates",
+    "reset": "Reset to default",
+    "weekLabel": "Day",
+    "dayTypeLabel": "Day type",
+    "dayNameLabel": "Day name (optional)",
+    "dayNamePlaceholder": "e.g. Push",
+    "restDay": "Rest day — no exercises.",
+    "empty": "No exercises yet. Add one below.",
+    "addExercise": "+ Add exercise",
+    "setsLabel": "Sets",
+    "repLow": "Min reps",
+    "repHigh": "Max reps",
+    "remove": "Remove",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "pickerTitle": "Add exercise",
+    "alreadyAdded": "Added",
+    "weekday": {
+      "sun": "Sun",
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat"
     }
   }
 }

@@ -12,6 +12,40 @@
     "manualShow": "✏️  Manual / por músculo",
     "manualHide": "Ocultar manual"
   },
+  "activeWorkout": {
+    "eyebrow": "ENTRENO DE HOY",
+    "loading": "Cargando el plan de hoy...",
+    "loadFailed": "No se pudo cargar el plan de hoy.",
+    "restTitle": "Día de recuperación",
+    "restBody": "Hoy no hay levantamientos programados. Usa el registro manual si entrenas igualmente.",
+    "missingProgram": "No se encontraron los ejercicios programados de hoy.",
+    "setProgress": "Serie {current} / {total}",
+    "skip": "Saltar",
+    "cardioBody": "Usa el registro de cardio para duración, distancia y esfuerzo.",
+    "cardioLast": "Último: {summary}",
+    "cardioRounds": "{rounds} rondas",
+    "cardioPreset": {
+      "easy": "Suave",
+      "zone2": "Zona 2",
+      "hiit": "HIIT"
+    },
+    "repeatCardio": "REPETIR CARDIO",
+    "cardioDetails": "Detalles / editar",
+    "openCardio": "Registrar cardio",
+    "weight": "Peso",
+    "reps": "Reps",
+    "rir": "RIR",
+    "rirAuto": "Auto",
+    "saving": "Guardando...",
+    "completeSet": "COMPLETAR SERIE",
+    "workoutComplete": "Entreno completo. Termina la Fragua cuando acabes.",
+    "finishWorkout": "TERMINAR ENTRENO",
+    "autoAdvance": "Registra al instante y avanza al completar las series objetivo.",
+    "undo": "Deshacer",
+    "saveFailed": "No se pudo guardar la serie. Intenta de nuevo.",
+    "emptyDayTitle": "Sin ejercicios",
+    "emptyDayBody": "Añade ejercicios a este día en Ajustes ▸ Programa."
+  },
   "power": {
     "disclaimer": "Fórmula original por diversión · no es una métrica científica",
     "section": {
@@ -62,6 +96,20 @@
       "section": "Unidades",
       "metric": "Métrico (kg · km)",
       "imperial": "Imperial (lb · mi)"
+    },
+    "profile": {
+      "section": "Perfil",
+      "bodyweight": "Peso corporal",
+      "proteinTarget": "Objetivo diario de proteína",
+      "proteinUnit": "g",
+      "proteinSuggested": "Toca +/- para fijar (sugerido {value} g).",
+      "proteinHint": "Cúmplelo a diario para subir tu Poder de Combate."
+    },
+    "program": {
+      "section": "Programa",
+      "edit": "Editar programa semanal",
+      "custom": "Personalizado",
+      "default": "Predeterminado (Superior / Inferior)"
     }
   },
   "boot": {
@@ -157,6 +205,32 @@
     "rest": {
       "title": "Descanso",
       "focus": "Recuperación — proteína/sueño"
+    },
+    "dayType": {
+      "upper": "Tren superior",
+      "lower": "Tren inferior",
+      "cardio": "Cardio",
+      "rest": "Descanso"
+    },
+    "template": {
+      "upperLower": {
+        "title": "Superior / Inferior",
+        "desc": "4 días de fuerza + 2 cardio"
+      },
+      "ppl": {
+        "title": "Empuje / Tirón / Pierna",
+        "desc": "6 días, cada músculo 2x",
+        "push": "Empuje",
+        "pull": "Tirón",
+        "legs": "Pierna"
+      },
+      "fullBody": {
+        "title": "Cuerpo completo",
+        "desc": "3 días cuerpo completo + cardio",
+        "dayA": "Cuerpo completo A",
+        "dayB": "Cuerpo completo B",
+        "dayC": "Cuerpo completo C"
+      }
     }
   },
   "cp": {
@@ -326,5 +400,68 @@
     "fail": "Falló la evolución —",
     "noEndpoint": "Requiere endpoint AI (.env) + GEMINI_API_KEY.",
     "privacy": "Tu foto solo pasa por tu servidor para generar — nunca se guarda."
+  },
+  "common": {
+    "back": "Atrás"
+  },
+  "onboarding": {
+    "step": "{current} / {total}",
+    "skip": "Omitir",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "start": "Empezar",
+    "finish": "Empezar a entrenar",
+    "welcomeTitle": "Bienvenido a OVERDRIVE",
+    "welcomeBody": "Una configuración rápida para registrar cada entreno con un toque.",
+    "units": {
+      "title": "Unidades",
+      "body": "¿Cómo mostramos peso y distancia?"
+    },
+    "weight": {
+      "title": "Peso corporal",
+      "body": "Se usa para ejercicios con peso corporal y tu objetivo de proteína.",
+      "label": "Peso corporal"
+    },
+    "protein": {
+      "title": "Objetivo de proteína",
+      "body": "Sugerido a {perKg} g por kg. Ajústalo cuando quieras.",
+      "label": "Proteína diaria",
+      "unit": "g",
+      "suggested": "Sugerido: {value} g"
+    },
+    "split": {
+      "title": "Elige tu rutina",
+      "body": "Empieza con una plantilla; ajústala luego en Ajustes."
+    }
+  },
+  "programEditor": {
+    "title": "Programa semanal",
+    "subtitle": "Define tu rutina, ejercicios, series y rango de reps.",
+    "templatesLabel": "Plantillas",
+    "reset": "Restablecer",
+    "weekLabel": "Día",
+    "dayTypeLabel": "Tipo de día",
+    "dayNameLabel": "Nombre del día (opcional)",
+    "dayNamePlaceholder": "p. ej. Empuje",
+    "restDay": "Día de descanso, sin ejercicios.",
+    "empty": "Aún no hay ejercicios. Añade abajo.",
+    "addExercise": "+ Añadir ejercicio",
+    "setsLabel": "Series",
+    "repLow": "Reps mín.",
+    "repHigh": "Reps máx.",
+    "remove": "Quitar",
+    "moveUp": "Subir",
+    "moveDown": "Bajar",
+    "pickerTitle": "Añadir ejercicio",
+    "alreadyAdded": "Añadido",
+    "weekday": {
+      "sun": "Dom",
+      "mon": "Lun",
+      "tue": "Mar",
+      "wed": "Mié",
+      "thu": "Jue",
+      "fri": "Vie",
+      "sat": "Sáb"
+    }
   }
 }

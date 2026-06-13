@@ -38,5 +38,7 @@ export function currentSettings(): UserSettings {
     rankHandle: s.rankHandle,
     rankCrew: s.rankCrew,
     rankDeviceId: s.rankDeviceId,
+    customProgram: s.customProgram,
+    onboardedAt: s.onboardedAt,
   };
 }

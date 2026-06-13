@@ -12,6 +12,40 @@
     "manualShow": "✏️  手动 / 按部位",
     "manualHide": "隐藏手动"
   },
+  "activeWorkout": {
+    "eyebrow": "今日训练",
+    "loading": "正在加载今日计划...",
+    "loadFailed": "无法加载今日计划。",
+    "restTitle": "恢复日",
+    "restBody": "今天没有计划中的力量训练。若仍训练，可使用手动记录。",
+    "missingProgram": "未找到今日计划中的动作。",
+    "setProgress": "第 {current} / {total} 组",
+    "skip": "跳过",
+    "cardioBody": "使用有氧记录填写时长、距离和强度。",
+    "cardioLast": "上次：{summary}",
+    "cardioRounds": "{rounds} 轮",
+    "cardioPreset": {
+      "easy": "轻松",
+      "zone2": "Zone 2",
+      "hiit": "HIIT"
+    },
+    "repeatCardio": "重复有氧",
+    "cardioDetails": "详情 / 编辑",
+    "openCardio": "记录有氧",
+    "weight": "重量",
+    "reps": "次数",
+    "rir": "RIR",
+    "rirAuto": "自动",
+    "saving": "保存中...",
+    "completeSet": "完成本组",
+    "workoutComplete": "今日训练完成。结束时完成熔炉。",
+    "finishWorkout": "结束训练",
+    "autoAdvance": "立即记录，并在达到目标组数后自动进入下个动作。",
+    "undo": "撤销",
+    "saveFailed": "保存失败。请重试。",
+    "emptyDayTitle": "暂无动作",
+    "emptyDayBody": "在设置 ▸ 计划中为这天添加动作。"
+  },
   "power": {
     "disclaimer": "趣味原创算法 · 非科学指标",
     "section": {
@@ -62,6 +96,20 @@
       "section": "单位",
       "metric": "公制 (kg · km)",
       "imperial": "英制 (lb · mi)"
+    },
+    "profile": {
+      "section": "个人资料",
+      "bodyweight": "体重",
+      "proteinTarget": "每日蛋白质目标",
+      "proteinUnit": "克",
+      "proteinSuggested": "点击 +/- 设置（建议 {value} 克）。",
+      "proteinHint": "每天达成可提升战斗力。"
+    },
+    "program": {
+      "section": "计划",
+      "edit": "编辑每周计划",
+      "custom": "自定义",
+      "default": "默认（上肢 / 下肢）"
     }
   },
   "boot": {
@@ -157,6 +205,32 @@
     "rest": {
       "title": "休息",
       "focus": "恢复 — 蛋白/睡眠"
+    },
+    "dayType": {
+      "upper": "上肢",
+      "lower": "下肢",
+      "cardio": "有氧",
+      "rest": "休息"
+    },
+    "template": {
+      "upperLower": {
+        "title": "上肢 / 下肢",
+        "desc": "力量4天 + 有氧2天"
+      },
+      "ppl": {
+        "title": "推 / 拉 / 腿",
+        "desc": "每周6天，各部位2次",
+        "push": "推",
+        "pull": "拉",
+        "legs": "腿"
+      },
+      "fullBody": {
+        "title": "全身",
+        "desc": "全身3天 + 有氧",
+        "dayA": "全身 A",
+        "dayB": "全身 B",
+        "dayC": "全身 C"
+      }
     }
   },
   "cp": {
@@ -326,5 +400,68 @@
     "fail": "进化失败 —",
     "noEndpoint": "需要 AI 端点(.env) + GEMINI_API_KEY。",
     "privacy": "照片仅在生成时经过你的服务器 — 不会被存储。"
+  },
+  "common": {
+    "back": "返回"
+  },
+  "onboarding": {
+    "step": "{current} / {total}",
+    "skip": "跳过",
+    "back": "返回",
+    "next": "下一步",
+    "start": "开始",
+    "finish": "开始训练",
+    "welcomeTitle": "欢迎来到 OVERDRIVE",
+    "welcomeBody": "快速设置，让每次训练一键记录。",
+    "units": {
+      "title": "单位",
+      "body": "如何显示重量和距离？"
+    },
+    "weight": {
+      "title": "体重",
+      "body": "用于自重训练和蛋白质目标。",
+      "label": "体重"
+    },
+    "protein": {
+      "title": "蛋白质目标",
+      "body": "建议每公斤 {perKg} 克，可随时调整。",
+      "label": "每日蛋白质",
+      "unit": "克",
+      "suggested": "建议：{value} 克"
+    },
+    "split": {
+      "title": "选择你的分化",
+      "body": "从模板开始——稍后在设置中调整。"
+    }
+  },
+  "programEditor": {
+    "title": "每周计划",
+    "subtitle": "设置分化、动作、组数和次数范围。",
+    "templatesLabel": "模板",
+    "reset": "恢复默认",
+    "weekLabel": "日",
+    "dayTypeLabel": "日类型",
+    "dayNameLabel": "日名称（可选）",
+    "dayNamePlaceholder": "例如：推",
+    "restDay": "休息日——无动作。",
+    "empty": "还没有动作，在下方添加。",
+    "addExercise": "+ 添加动作",
+    "setsLabel": "组数",
+    "repLow": "最少次数",
+    "repHigh": "最多次数",
+    "remove": "移除",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "pickerTitle": "添加动作",
+    "alreadyAdded": "已添加",
+    "weekday": {
+      "sun": "日",
+      "mon": "一",
+      "tue": "二",
+      "wed": "三",
+      "thu": "四",
+      "fri": "五",
+      "sat": "六"
+    }
   }
 }

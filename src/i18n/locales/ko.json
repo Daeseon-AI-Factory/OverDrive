@@ -12,6 +12,40 @@
     "manualShow": "✏️  수동 / 부위별",
     "manualHide": "숨기기"
   },
+  "activeWorkout": {
+    "eyebrow": "오늘의 운동",
+    "loading": "오늘 운동 불러오는 중...",
+    "loadFailed": "오늘 운동을 불러오지 못했어.",
+    "restTitle": "회복일",
+    "restBody": "오늘 예정된 근력 운동은 없어. 그래도 운동하면 수동 기록을 써.",
+    "missingProgram": "오늘 프로그램의 운동을 찾지 못했어.",
+    "setProgress": "{current} / {total}세트",
+    "skip": "넘김",
+    "cardioBody": "시간, 거리, 강도는 유산소 기록으로 남겨.",
+    "cardioLast": "지난 기록: {summary}",
+    "cardioRounds": "{rounds}라운드",
+    "cardioPreset": {
+      "easy": "가볍게",
+      "zone2": "Zone 2",
+      "hiit": "HIIT"
+    },
+    "repeatCardio": "지난 유산소 반복",
+    "cardioDetails": "상세 / 수정",
+    "openCardio": "유산소 기록",
+    "weight": "무게",
+    "reps": "횟수",
+    "rir": "RIR",
+    "rirAuto": "자동",
+    "saving": "저장 중...",
+    "completeSet": "세트 완료",
+    "workoutComplete": "오늘 운동 완료. 끝나면 수련 완료를 눌러.",
+    "finishWorkout": "운동 끝내기",
+    "autoAdvance": "바로 저장하고 목표 세트를 채우면 다음 운동으로 넘어감.",
+    "undo": "되돌리기",
+    "saveFailed": "저장 실패. 다시 시도해.",
+    "emptyDayTitle": "운동이 없다",
+    "emptyDayBody": "설정 ▸ 프로그램에서 이 요일에 운동을 추가하라."
+  },
   "power": {
     "disclaimer": "재미용 자체 산식 · 과학적 지표 아님",
     "section": {
@@ -62,6 +96,20 @@
       "section": "단위",
       "metric": "미터법 (kg · km)",
       "imperial": "야드파운드 (lb · mi)"
+    },
+    "profile": {
+      "section": "프로필",
+      "bodyweight": "체중",
+      "proteinTarget": "하루 단백질 목표",
+      "proteinUnit": "g",
+      "proteinSuggested": "+/-를 눌러 설정 (추천 {value} g).",
+      "proteinHint": "매일 도달하면 전투력에 반영된다."
+    },
+    "program": {
+      "section": "프로그램",
+      "edit": "주간 프로그램 편집",
+      "custom": "커스텀",
+      "default": "기본 (상체 / 하체)"
     }
   },
   "boot": {
@@ -157,6 +205,32 @@
     "rest": {
       "title": "휴식",
       "focus": "회복 — 단백질/수면"
+    },
+    "dayType": {
+      "upper": "상체",
+      "lower": "하체",
+      "cardio": "유산소",
+      "rest": "휴식"
+    },
+    "template": {
+      "upperLower": {
+        "title": "상체 / 하체",
+        "desc": "근력 4일 + 유산소 2일"
+      },
+      "ppl": {
+        "title": "푸시 / 풀 / 레그",
+        "desc": "주6일, 각 부위 주2회",
+        "push": "푸시",
+        "pull": "풀",
+        "legs": "레그"
+      },
+      "fullBody": {
+        "title": "전신",
+        "desc": "전신 3일 + 유산소",
+        "dayA": "전신 A",
+        "dayB": "전신 B",
+        "dayC": "전신 C"
+      }
     }
   },
   "cp": {
@@ -326,5 +400,68 @@
     "fail": "진화 실패 —",
     "noEndpoint": "AI 엔드포인트(.env) + 워커 GEMINI_API_KEY 필요.",
     "privacy": "사진은 생성 순간에만 네 서버를 통과 — 저장되지 않음."
+  },
+  "common": {
+    "back": "뒤로"
+  },
+  "onboarding": {
+    "step": "{current} / {total}",
+    "skip": "건너뛰기",
+    "back": "뒤로",
+    "next": "다음",
+    "start": "시작",
+    "finish": "운동 시작",
+    "welcomeTitle": "OVERDRIVE에 온 걸 환영한다",
+    "welcomeBody": "탭 한 번으로 운동이 기록되도록 빠르게 설정하자.",
+    "units": {
+      "title": "단위",
+      "body": "무게와 거리를 어떻게 표시할까?"
+    },
+    "weight": {
+      "title": "체중",
+      "body": "맨몸 운동과 단백질 목표 계산에 쓰인다.",
+      "label": "체중"
+    },
+    "protein": {
+      "title": "단백질 목표",
+      "body": "체중 1kg당 {perKg}g 추천. 언제든 조정 가능.",
+      "label": "하루 단백질",
+      "unit": "g",
+      "suggested": "추천: {value} g"
+    },
+    "split": {
+      "title": "스플릿 선택",
+      "body": "템플릿으로 시작 — 나중에 설정에서 수정."
+    }
+  },
+  "programEditor": {
+    "title": "주간 프로그램",
+    "subtitle": "스플릿·운동·세트·rep 범위를 설정한다.",
+    "templatesLabel": "템플릿",
+    "reset": "기본값으로 초기화",
+    "weekLabel": "요일",
+    "dayTypeLabel": "운동 유형",
+    "dayNameLabel": "요일 이름 (선택)",
+    "dayNamePlaceholder": "예: 푸시",
+    "restDay": "휴식일 — 운동 없음.",
+    "empty": "아직 운동이 없다. 아래에서 추가.",
+    "addExercise": "+ 운동 추가",
+    "setsLabel": "세트",
+    "repLow": "최소 rep",
+    "repHigh": "최대 rep",
+    "remove": "제거",
+    "moveUp": "위로",
+    "moveDown": "아래로",
+    "pickerTitle": "운동 추가",
+    "alreadyAdded": "추가됨",
+    "weekday": {
+      "sun": "일",
+      "mon": "월",
+      "tue": "화",
+      "wed": "수",
+      "thu": "목",
+      "fri": "금",
+      "sat": "토"
+    }
   }
 }

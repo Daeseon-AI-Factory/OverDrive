@@ -2,15 +2,16 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
 import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
 import { appendPowerEvent } from '@/db/repos/powerEventRepo';
-import { completeSession, getCompletedSessionDates, startSession } from '@/db/repos/sessionRepo';
+import { completeSession, getCompletedSessionDates, getOpenSessionForDate, getSessionActivitySummary, startSession } from '@/db/repos/sessionRepo';
 import { computeStreak } from '@/features/combat-power/aggregate';
 import { playNamed } from '@/features/juice/audio/engine';
 import { classifyEvent } from '@/features/juice/classifyEvent';
 import { fireHaptic } from '@/features/juice/haptics';
 import { useJuice } from '@/features/juice/JuiceProvider';
-import { todayProgram } from '@/features/program/defaultProgram';
+import { resolveProgramDay } from '@/features/program/resolve';
 import { localDateDaysAgo, todayLocal } from '@/lib/date';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { useSessionStore } from './sessionStore';
 
 /**
@@ -25,16 +26,30 @@ export function useForge() {
   const enter = useCallback(async () => {
     if (useSessionStore.getState().activeSessionId) return;
     const cpAtStart = useCombatPowerStore.getState().score;
-    const s = await startSession(db, { dayType: todayProgram().dayType });
+    const open = await getOpenSessionForDate(db, todayLocal());
+    if (open) {
+      const summary = await getSessionActivitySummary(db, open.id);
+      useSessionStore.getState().resume(open.id, cpAtStart, summary.itemCount, summary.volumeKg);
+      return;
+    }
+    const dayType = resolveProgramDay(useSettingsStore.getState().customProgram, new Date().getDay()).dayType;
+    const s = await startSession(db, { dayType });
     useSessionStore.getState().start(s.id, cpAtStart);
     void fireHaptic(3); // entry thump
     playNamed('forge_enter'); // chamber drone — "entering the training chamber"
   }, [db]);
 
   const finish = useCallback(async () => {
-    const st = useSessionStore.getState();
-    const sid = st.activeSessionId;
-    if (!sid) return;
+    let st = useSessionStore.getState();
+    let sid = st.activeSessionId;
+    if (!sid) {
+      const open = await getOpenSessionForDate(db, todayLocal());
+      if (!open) return;
+      const summary = await getSessionActivitySummary(db, open.id);
+      useSessionStore.getState().resume(open.id, useCombatPowerStore.getState().score, summary.itemCount, summary.volumeKg);
+      st = useSessionStore.getState();
+      sid = open.id;
+    }
 
     await completeSession(db, sid);
     const result = await recomputeAndStore(db); // streak now counts this session (completed_at set)
