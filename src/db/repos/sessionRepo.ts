@@ -36,6 +36,37 @@ export async function getSession(db: SQLiteDatabase, id: string): Promise<Workou
   return db.getFirstAsync<WorkoutSessionRow>('SELECT * FROM workout_session WHERE id = ?', [id]);
 }
 
+export async function getOpenSessionForDate(
+  db: SQLiteDatabase,
+  date: string = todayLocal(),
+  userId: string = LOCAL_USER_ID,
+): Promise<WorkoutSessionRow | null> {
+  return db.getFirstAsync<WorkoutSessionRow>(
+    `SELECT * FROM workout_session
+     WHERE user_id = ? AND date = ? AND completed_at IS NULL
+     ORDER BY started_at DESC LIMIT 1`,
+    [userId, date],
+  );
+}
+
+export async function getSessionActivitySummary(
+  db: SQLiteDatabase,
+  sessionId: string,
+): Promise<{ itemCount: number; volumeKg: number }> {
+  const strength = await db.getFirstAsync<{ n: number; volume: number | null }>(
+    'SELECT COUNT(*) AS n, COALESCE(SUM(weight * reps), 0) AS volume FROM set_log WHERE session_id = ?',
+    [sessionId],
+  );
+  const cardio = await db.getFirstAsync<{ n: number }>(
+    'SELECT COUNT(*) AS n FROM cardio_log WHERE session_id = ?',
+    [sessionId],
+  );
+  return {
+    itemCount: (strength?.n ?? 0) + (cardio?.n ?? 0),
+    volumeKg: strength?.volume ?? 0,
+  };
+}
+
 /** Local dates (yyyy-mm-dd) of completed sessions since `sinceDate`, for streak computation. */
 export async function getCompletedSessionDates(
   db: SQLiteDatabase,

@@ -36,6 +36,43 @@ export async function addCardio(
   return row;
 }
 
+export async function deleteCardio(db: SQLiteDatabase, cardioId: string): Promise<void> {
+  await db.runAsync('DELETE FROM cardio_log WHERE id = ?', [cardioId]);
+}
+
+export async function getLastCardioForModality(
+  db: SQLiteDatabase,
+  modality: string,
+  userId: string = LOCAL_USER_ID,
+): Promise<CardioLogRow | null> {
+  return db.getFirstAsync<CardioLogRow>(
+    `SELECT cl.* FROM cardio_log cl
+     JOIN workout_session ws ON ws.id = cl.session_id
+     WHERE cl.modality = ? AND ws.user_id = ?
+     ORDER BY cl.logged_at DESC LIMIT 1`,
+    [modality, userId],
+  );
+}
+
+/** Cardio item counts for the given modalities on a local calendar date — restores Active Workout progress. */
+export async function getCardioCountsForModalitiesOnDate(
+  db: SQLiteDatabase,
+  modalities: string[],
+  date: string,
+  userId: string = LOCAL_USER_ID,
+): Promise<Record<string, number>> {
+  if (modalities.length === 0) return {};
+  const rows = await db.getAllAsync<{ modality: string; n: number }>(
+    `SELECT cl.modality, COUNT(*) AS n
+     FROM cardio_log cl
+     JOIN workout_session ws ON ws.id = cl.session_id
+     WHERE ws.user_id = ? AND ws.date = ? AND cl.modality IN (${modalities.map(() => '?').join(',')})
+     GROUP BY cl.modality`,
+    [userId, date, ...modalities],
+  );
+  return Object.fromEntries(rows.map((r) => [r.modality, r.n]));
+}
+
 /**
  * Conditioning units since `sinceDate`: Σ min(minutes, 45) · (rpe/6), rpe defaulting to 6.
  * Fun heuristic feeding the Combat Power conditioning sub-score (spec §6.3).

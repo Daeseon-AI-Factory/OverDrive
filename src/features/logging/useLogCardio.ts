@@ -13,6 +13,7 @@ export interface LogCardioInput {
   sessionId: string;
   modality: string; // exercise id (outdoor_run, cycling, …)
   durationSec: number;
+  rounds?: number | null;
   distanceM: number | null;
   rpe: number | null;
 }
@@ -23,13 +24,14 @@ export function useLogCardio() {
   const juice = useJuice();
 
   return useCallback(
-    async (input: LogCardioInput): Promise<{ deltaCp: number; verdict: JuiceVerdict }> => {
+    async (input: LogCardioInput): Promise<{ cardioId: string; deltaCp: number; verdict: JuiceVerdict }> => {
       const prevScore = useCombatPowerStore.getState().score;
 
-      await addCardio(db, {
+      const row = await addCardio(db, {
         sessionId: input.sessionId,
         modality: input.modality,
         durationSec: input.durationSec,
+        rounds: input.rounds,
         distanceM: input.distanceM,
         rpe: input.rpe,
       });
@@ -43,7 +45,7 @@ export function useLogCardio() {
       juice.fire(verdict);
       void appendPowerEvent(db, { tier: verdict.tier, delta: deltaCp, reason: verdict.reason, sessionId: input.sessionId });
 
-      return { deltaCp, verdict };
+      return { cardioId: row.id, deltaCp, verdict };
     },
     [db, juice],
   );

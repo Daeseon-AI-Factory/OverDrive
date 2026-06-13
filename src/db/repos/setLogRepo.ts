@@ -75,6 +75,25 @@ export async function getRecentExercises(
   return rows.map((r) => ({ exerciseId: r.exercise_id, weight: r.weight, reps: r.reps, rir: r.rir }));
 }
 
+/** Set counts for the given exercises on a local calendar date — restores Active Workout progress. */
+export async function getSetCountsForExercisesOnDate(
+  db: SQLiteDatabase,
+  exerciseIds: string[],
+  date: string,
+  userId: string = LOCAL_USER_ID,
+): Promise<Record<string, number>> {
+  if (exerciseIds.length === 0) return {};
+  const rows = await db.getAllAsync<{ exercise_id: string; n: number }>(
+    `SELECT sl.exercise_id, COUNT(*) AS n
+     FROM set_log sl
+     JOIN workout_session ws ON ws.id = sl.session_id
+     WHERE ws.user_id = ? AND ws.date = ? AND sl.exercise_id IN (${exerciseIds.map(() => '?').join(',')})
+     GROUP BY sl.exercise_id`,
+    [userId, date, ...exerciseIds],
+  );
+  return Object.fromEntries(rows.map((r) => [r.exercise_id, r.n]));
+}
+
 /** Best (max) performance score for an exercise — PR comparison baseline. */
 export async function getBestScoreForExercise(
   db: SQLiteDatabase,

@@ -43,8 +43,11 @@ export function QuickLogBar() {
   const onSubmit = async () => {
     if (!text.trim() || busy) return;
     setBusy(true);
-    await runSubmit(text);
-    setBusy(false);
+    try {
+      await runSubmit(text);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const toggleMic = useCallback(async () => {

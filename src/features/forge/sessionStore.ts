@@ -24,7 +24,9 @@ interface SessionState {
   cpAtStart: number;
   ritual: ForgeRitual | null;
   start: (id: string, cpAtStart: number) => void;
+  resume: (id: string, cpAtStart: number, setCount: number, volumeKg: number) => void;
   recordSet: (volumeKg: number) => void;
+  undoSet: (volumeKg: number) => void;
   end: (summary: ForgeSummary) => void;
   clearRitual: () => void;
 }
@@ -47,7 +49,21 @@ export const useSessionStore = create<SessionState>((set) => ({
       cpAtStart,
       ritual: { id: ++ritualId, kind: 'enter' },
     }),
+  resume: (id, cpAtStart, setCount, volumeKg) =>
+    set({
+      activeSessionId: id,
+      startedAt: Date.now(),
+      setCount,
+      volumeKg,
+      cpAtStart,
+      ritual: null,
+    }),
   recordSet: (volumeKg) => set((s) => ({ setCount: s.setCount + 1, volumeKg: s.volumeKg + volumeKg })),
+  undoSet: (volumeKg) =>
+    set((s) => ({
+      setCount: Math.max(0, s.setCount - 1),
+      volumeKg: Math.max(0, s.volumeKg - volumeKg),
+    })),
   end: (summary) => set({ activeSessionId: null, startedAt: null, ritual: { id: ++ritualId, kind: 'complete', summary } }),
   clearRitual: () => set({ ritual: null }),
 }));

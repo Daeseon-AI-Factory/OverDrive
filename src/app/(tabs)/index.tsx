@@ -27,6 +27,7 @@ import { CardioLoggerSheet } from '@/features/logging/CardioLoggerSheet';
 import { ExerciseRegionSheet, type RegionPicker } from '@/features/logging/ExerciseRegionSheet';
 import { SetLoggerSheet } from '@/features/logging/SetLoggerSheet';
 import { QuickLogBar } from '@/features/quicklog/QuickLogBar';
+import { ActiveWorkoutCard } from '@/features/workout/ActiveWorkoutCard';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { Muted, Screen } from '@/ui/primitives';
 import { colors, displayFamily, fontSize, numberFamily, space } from '@/ui/theme/tokens';
@@ -97,7 +98,10 @@ export default function TodayScreen() {
           {item === 'food' ? <FoodCard /> : null}
           {item === 'discipline' ? <DisciplineCard /> : null}
           {item === 'manual' ? (
-            <MyCharacter activeRegion={activeRegion} onRegionPress={onRegionPress} onCardioPress={onCardioPress} />
+            <>
+              <QuickLogBar />
+              <MyCharacter activeRegion={activeRegion} onRegionPress={onRegionPress} onCardioPress={onCardioPress} />
+            </>
           ) : null}
         </ScrollView>
       </View>
@@ -116,7 +120,7 @@ export default function TodayScreen() {
         <Text style={[styles.grade, { color: colors.cyan }]}>{t(`grade.${grade.key}`)}</Text>
       </View>
 
-      <QuickLogBar />
+      <ActiveWorkoutCard ensureSession={ensureSession} onOpenCardio={(exercise) => setActiveExercise(exercise)} onFinishWorkout={finish} />
       <RestTimerBar />
       <ForgeBar onEnter={enter} onFinish={finish} />
 

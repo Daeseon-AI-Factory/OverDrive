@@ -34,10 +34,10 @@ export function useLogSet() {
   const juice = useJuice();
 
   return useCallback(
-    async (input: LogSetInput): Promise<{ isPr: boolean; deltaCp: number; verdict: JuiceVerdict }> => {
+    async (input: LogSetInput): Promise<{ setId: string; isPr: boolean; deltaCp: number; verdict: JuiceVerdict }> => {
       const prevScore = useCombatPowerStore.getState().score;
 
-      const { isPr } = await addSet(db, {
+      const { row, isPr } = await addSet(db, {
         sessionId: input.sessionId,
         exerciseId: input.exerciseId,
         weight: input.weight,
@@ -68,7 +68,7 @@ export function useLogSet() {
         sessionId: input.sessionId,
       });
 
-      return { isPr, deltaCp, verdict };
+      return { setId: row.id, isPr, deltaCp, verdict };
     },
     [db, juice],
   );
