@@ -1,0 +1,55 @@
+---
+title: "온보딩 + 커스텀 주간 프로그램 — 코덱스 Active Workout 위에 얹기"
+date: "2026-06-13"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "코덱스가 핸드오프한 Active Workout(1탭 로깅) 위에, 첫실행 온보딩 + 사용자가 split·운동·세트·rep range를 탭으로 편집하는 커스텀 주간 프로그램을 올렸다. 프로그램은 DB 테이블 없이 settings JSON에 저장(슬롯별 타깃이 카탈로그 기본값 override). 단백질 목표 UI(OD-FR-006)·공용 컨트롤 a11y(OD-FR-008)도 닫음. 24-에이전트 적대적 리뷰로 15건 확정 → 8개 이슈 수정."
+tags: ["phase-1", "onboarding", "program", "settings", "a11y", "review"]
+---
+
+## 시작점 — 코덱스 핸드오프
+
+코덱스가 "타이핑하면 안 쓰는 앱"이라는 방향으로 **Active Workout 중심 UX**를 먼저 깔아놨다(`docs/active-workout-blueprint.md`). 오늘 프로그램을 띄우고, 큰 버튼 한 번으로 현재 세트를 완료하고, 자동으로 휴식 타이머가 돌고 다음 운동으로 넘어간다. 타이핑은 탈출구. 커밋 `bda2526`(C1)로 그 슬라이스(repo 쿼리 헬퍼·훅 id 반환·세션 resume/undo·QuickLog busy 픽스·progress 헬퍼·Today 상단 승격)를 박제했다.
+
+내 차례 = 그 위에 **프로그램을 사용자 것으로 만들기 + 첫 실행 세팅**. 커밋 `896a30c`(C2).
+
+## 결정 — 커스텀 프로그램을 어디에 저장하나 (T2)
+
+빌더와 대화로 3택 중 골랐다.
+
+- **Context**: 기존 프로그램은 `defaultProgram.ts`의 코드 상수(스키마 주석도 "Program is a code constant, not a table"). 소비처는 `ActiveWorkoutCard`·`useForge` 단 둘. Phase 1은 온디바이스 단일 유저.
+- **Options**: ① settings JSON(`customProgram`) ② 전용 DB 테이블(`program_day`/`program_slot`, v6 마이그) ③ do nothing(코드 상수 유지).
+- **Chosen + Why**: ① settings JSON. Boot에서 동기 하이드레이트되므로 `ActiveWorkoutCard`의 동기 로딩을 비동기로 갈아엎지 않아도 되고, 마이그레이션이 없다. 슬롯별 `targetSets/repLow/repHigh`가 exercise 카탈로그 기본값을 override.
+- **Trade-off**: 프로그램이 1급 엔티티인데 config blob에 들어가는 건 "덜 정규화". 단 Phase 1 규모(7일×~6운동)엔 과함.
+- **Reversibility**: 높음. `WeeklyProgram` JSON은 Phase 2에서 settings jsonb와 함께 이동하거나, 그때 정규화 테이블로 마이그레이션 가능.
+- **Verified by**: tsc/lint/jest/expo export 그린(아래).
+
+## 올린 것
+
+- **온보딩**(`src/features/onboarding/OnboardingFlow.tsx`, Boot 게이트 `settings.onboardedAt`): 단위 → 체중 → 단백질 목표(체중×1.8 자동 제안) → 스플릿 템플릿. 전 단계 **스킵 가능**, 전부 스테퍼/칩 탭(자유 타이핑 없음).
+- **프로그램 모델**(`src/features/program/*`): `WeeklyProgram` 타입, 리졸버(`resolveProgramDay`/`slotTargetsById`), 큐레이트 템플릿 3종(상하체/PPL/풀바디), `useTodayProgram()`.
+- **편집기**(`ProgramEditorScreen` + `app/program.tsx` 라우트 + `ProgramExercisePicker`): 요일별 dayType·운동 추가/제거/재정렬·슬롯별 세트·rep range를 탭으로 편집. 템플릿 적용 / 기본값 리셋.
+- **Active Workout 통합**: `ActiveWorkoutCard`가 슬롯 타깃을 완료 판정·진행·prefill에 반영(카탈로그 기본값 override). `useForge`는 store의 customProgram에서 dayType 해석.
+- **설정**: 프로필(체중·단백질 목표 스테퍼) + 프로그램 편집 진입. → **OD-FR-006**(단백질 목표 UI 부재로 food 진행바 비활성) 닫음.
+- **요일명 현지화**: 템플릿/기본 요일명을 i18n `labelKey`로 저장 → 언어 전환 시 반응(Push/Pull/Legs 구분 유지). 사용자 자유 입력 `label`이 우선.
+
+## 적대적 리뷰 → 수정
+
+구현 후 24개 에이전트 워크플로로 4개 차원(정확성·타이핑최소화·i18n/a11y·데이터모델/Phase2)을 점검하고 각 발견을 회의적으로 검증 → **20건 중 15 확정 / 5 기각**(기각은 효율성 nit·현재 발생 불가한 Phase-2 가정). 확정 15건을 8개 이슈로 통합해 전부 수정:
+
+- 편집기 `Upper/Lower` 템플릿이 null로 round-trip(온보딩·리셋과 일치 → 설정이 "기본"으로 표시).
+- 요일명 언어-고정 → `labelKey`로 현지화.
+- 편집기 draft를 7일 완전체로 정규화(부분 customProgram 크래시 방지).
+- 빈 비휴식일이 "휴식" UI로 보이던 모순 → "운동 추가" 안내로 분기.
+- 공용 `Pill`/`NeonButton` + 편집기 재정렬 버튼 + AdjustButton a11y(role/state/label) → **OD-FR-008** 레포 전역 해소.
+- fire-and-forget `updateSettings`에 `.catch`(코드베이스 패턴 일치).
+
+가장 실질적인 버그(렌더마다 load effect 재실행 → 진행도 리셋)는 `troubleshooting.md`에 별도 기록(원인: React Compiler에서 메모 identity 불안정 → 내용 기반 `slotsKey` 문자열로 고정).
+
+## 검증 (이번 세션 실행)
+
+`tsc --noEmit` 0 · `expo lint` 0 · `jest --runInBand` 15스위트/108테스트 · `expo export` 0 · i18n en/ko/es/zh 331키 패리티 0 missing/0 extra.
+
+커밋: C1 `bda2526`(코덱스 Active Workout 슬라이스) · C2 `896a30c`(온보딩 + 커스텀 프로그램). 둘 다 main, 미커밋이던 working-tree를 인증 기준으로 분리.

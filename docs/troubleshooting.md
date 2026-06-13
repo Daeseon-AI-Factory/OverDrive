@@ -215,6 +215,14 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: Reset cwd to the project root before `expo run:ios`; removed the worker junk artifacts; always run app builds from root. Verified via the build log showing real `Bundled … modules` + `Build Succeeded` + `Installing`.
 - **Commit**: 866e295
 - **Pattern**: `cd` in one Bash call persists to later calls. After `cd`-ing into a subdir for one command, return to root (or use absolute `--config`/`--prefix`). A green "launch" ≠ a fresh build — confirm `Build Succeeded` + `Installing` in the build log, not just that the app opened.
+
+## Active Workout progress reset every render (effect re-ran on unstable deps)
+
+- **Symptom**: While wiring per-slot set/rep targets, the Active Workout card stopped accumulating sets — tapping COMPLETE SET logged the set (`useLogSet` fired) but the count never advanced and the workout never reached "complete". A component-test debug run showed the load effect re-firing repeatedly (`setLoadFailed(false)` / `setLoggedCounts({})` logged ~32× across renders), wiping `loggedCounts` back to 0 on every render.
+- **Cause**: `useTodayProgram()` returns a fresh `slots` array every render (the built-in default path rebuilds it). The load effect depended on the derived `exerciseIds` / `slotTargets` **memos**, whose referential identity is not reliably stable across renders under React Compiler — so the effect re-ran each render and reset progress. (In the RTL test this was compounded by a mock `useSQLiteContext` that returned a new `db` object per render; fixed separately by giving the test a stable `db` ref.)
+- **Fix**: `src/features/workout/ActiveWorkoutCard.tsx` — derive a content-stable string key `slotsKey` (`exerciseId:targetSets:repLow:repHigh` joined) and key the load effect, the slot-target memo, and the prefill effect on that **string** instead of array/object identity. The effect now re-runs only when the program content actually changes. The adversarial review confirmed this would manifest in the real app (not just the test), since `db` is stable in production but the memo identity was not.
+- **Commit**: 896a30c
+- **Pattern**: When an effect depends on a value that a hook/selector rebuilds fresh each render (array/object), depend on a content-derived **primitive** key, not the reference — especially under React Compiler, where manual `useMemo` identity can't be assumed stable.
 <!-- skipped: fd583b0 docs(log): record voice end-to-end fixes + cwd/FormData traps (866e295) [no-log] -->
 <!-- skipped: 7de255a docs(log): record ARENA + AI food + comfort glue (6e5726a, 0ebc924) [no-log] -->
 <!-- override-trigger: c3d3ad4 docs(log): record real leaderboards decision (60be727) [no-log] — log-commit recursion again: c3d3ad4 IS the T2 decision narrative itself (content/logs/OverDrive/2026-06-09-real-rankings.mdx contains the full Context/Options/Trade-off/Reversibility/Verified-by template for 60be727). The trigger word "decision" is only in the log-commit's subject. Recurring footgun noted twice already — log-commit subjects must avoid trigger keywords; switching to neutral subjects like "docs(log): add entry for <hash>" from now on. -->
@@ -223,3 +231,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: 2d5147a docs(state): refresh handoff — arena/rank/voice/food/evolution + infra map [no-log] -->
 <!-- skipped: 0a14cba chore: ignore local secret stores [no-log] -->
 <!-- skipped: 33e0d4e docs(log): add entry for global key-store pattern [no-log] -->
+<!-- skipped: d5654bd docs(log): correct hash reference to 7434504 [no-log] -->
