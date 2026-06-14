@@ -223,6 +223,71 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: `src/features/workout/ActiveWorkoutCard.tsx` — derive a content-stable string key `slotsKey` (`exerciseId:targetSets:repLow:repHigh` joined) and key the load effect, the slot-target memo, and the prefill effect on that **string** instead of array/object identity. The effect now re-runs only when the program content actually changes. The adversarial review confirmed this would manifest in the real app (not just the test), since `db` is stable in production but the memo identity was not.
 - **Commit**: 896a30c
 - **Pattern**: When an effect depends on a value that a hook/selector rebuilds fresh each render (array/object), depend on a content-derived **primitive** key, not the reference — especially under React Compiler, where manual `useMemo` identity can't be assumed stable.
+
+## EVOLUTION fails with a "key" error while text logging works (GROQ vs GEMINI provider split)
+
+- **Symptom**: On the phone, EVOLUTION (photo → evolved physique) showed a key/endpoint error. Hitting the worker directly:
+  ```
+  POST /parse  -> HTTP 200   {"sets":[{"exerciseId":"BenchPress",...}]}   # text works
+  POST /evolve -> HTTP 500   {"error":"evolve requires GEMINI_API_KEY secret"}
+  ```
+- **Cause**: The QuickLog worker (`worker/src/index.js`) auto-selects provider — `GROQ_API_KEY` → Groq for ALL text (`/parse`, `/food`, `/transcribe`), `GEMINI_API_KEY` → Gemini. Image editing (`/evolve`, model `gemini-2.5-flash-image`) is Gemini-only and hard-requires `GEMINI_API_KEY` (`index.js:337`). `wrangler secret list` showed **only `GROQ_API_KEY`** set → text worked, EVOLUTION 500'd. The in-app "endpoint/key needed" message was the same root, masked further by a stale phone bundle.
+- **Fix**: Piped the key from the central store into the worker secret (no repo change, value never printed): `grep '^GEMINI_API_KEY=' ~/.secrets/api-keys.env | cut -d= -f2- | npx wrangler secret put GEMINI_API_KEY`. Verified `wrangler secret list` then showed both `GEMINI_API_KEY` + `GROQ_API_KEY`.
+- **Commit**: — (Cloudflare Worker secret deploy; no repo change)
+- **Pattern**: A `200` on one route (`/parse` via Groq) does NOT validate a different provider's route (`/evolve` via Gemini). Test the actual failing endpoint, not a sibling.
+
+## EVOLUTION still 429s after the key is set — Gemini free tier image quota is 0
+
+- **Symptom**: After setting `GEMINI_API_KEY`, `POST /evolve` no longer 500'd but returned:
+  ```
+  HTTP 502   {"error":"gemini evolve 429", "detail": ...}
+  code: 429  status: RESOURCE_EXHAUSTED
+  * Quota exceeded ... "limit: 0", model: gemini-2.5-flash-preview-image
+  ```
+- **Cause**: The Gemini **free tier allows ZERO image-generation requests** (`limit: 0`) for `gemini-2.5-flash-preview-image`. This is permanent on free tier, not a resetting rate limit (the "retry in 7s" is misleading). The worker wraps Gemini's 429 as an outer 502.
+- **Fix**: NONE in code — requires enabling **paid Gemini billing** on the Google AI project (https://ai.dev/rate-limit). Key wiring is correct; app is otherwise fine (text features run on Groq). **Unresolved** pending the billing decision.
+- **Commit**: — (external billing; no code fix)
+- **Pattern**: "Key accepted" ≠ "model usable". A working API key can still have `limit: 0` quota for a specific (paid-only) model.
+
+## Phone stuck on "Finding Dev Servers" — a Debug build overwrote the working Release standalone
+
+- **Symptom**: The iPhone app, which previously "just opened and ran", got stuck on the Expo dev launcher's **`Finding Dev Servers`** screen and never loaded. (The simulator path earlier showed the parallel symptoms: `No development servers found` and an un-tappable `Open in "OverDrive"?` dialog.)
+- **Cause**: To deploy new JS I ran `expo run:ios --device` with no `--configuration`, which **defaults to Debug** (build log: `Debug-iphoneos`). With `expo-dev-client` installed, a Debug build does NOT embed JS — it expects a live metro and shows "Finding Dev Servers" when it can't auto-discover one. A physical device cannot be handed the dev-server URL from the host (there is no `devicectl openurl`, unlike the simulator's `simctl openurl`), and LAN auto-discovery was failing. Worse, this Debug build **overwrote the user's prior Release standalone** (DerivedData held `Release-iphoneos/OverDrive.app/main.jsbundle`, 4.8 MB, built Jun 11 14:34) which embeds JS and runs with no metro — i.e. the "걍 아이폰에 바로 떴다" build.
+- **Fix**: Rebuild standalone: `npx expo run:ios --device "00008140-00186DE43CFA801C" --configuration Release` → JS embedded, runs by tapping the icon, no metro, no launcher. (No repo change.)
+- **Commit**: — (build/deploy config; no repo change)
+- **Pattern**: Physical-iPhone dogfooding = **Release** (embedded JS, standalone). Debug + metro live-reload is a **simulator-only** workflow. Check what kind of build is already installed before overwriting it.
+
+## `expo run:ios --device <id>` — "No device UDID or name matching"
+
+- **Symptom**:
+  ```
+  CommandError: No device UDID or name matching "dd394f75-bfac-50f6-bf99-ec47bc2e77b5"
+  ```
+- **Cause**: That id is the **`devicectl` coredevice UUID** (`xcrun devicectl list devices` → Identifier). Expo/xcodebuild match a different value — the classic device **UDID** from `xcrun xctrace list devices`.
+- **Fix**: Get the right UDID: `xcrun xctrace list devices` → `Daeseon's iPhone (26.5) (00008140-00186DE43CFA801C)`; pass `--device "00008140-00186DE43CFA801C"`.
+- **Commit**: — (tooling; no repo change)
+- **Pattern**: `devicectl` Identifier ≠ `xctrace` UDID. For `expo run:ios --device`, use the `xctrace` UDID.
+
+## Release build: "Cannot launch … because the device is locked" (install still succeeded)
+
+- **Symptom**:
+  ```
+  › Installing …/Release-iphoneos/OverDrive.app
+  ✔ Complete 100%
+  CommandError: Cannot launch OverDrive on Daeseon's iPhone because the device is locked.
+  ```
+- **Cause**: The build + install (`✔ Complete 100%`) finished, but the phone was screen-locked at the final auto-launch step.
+- **Fix**: Unlock the phone, then tap the icon (Release runs standalone) or `xcrun devicectl device process launch --device <udid> com.anonymous.overdrive`.
+- **Commit**: — (runtime; no repo change)
+- **Pattern**: A `run:ios` error AFTER `Installing … ✔ Complete 100%` means the install succeeded — only the launch failed. Don't rebuild; just launch.
+
+## Home "Daily Goals" card shows tiny / can't be found by scrolling down (OPEN)
+
+- **Symptom** (user, verbatim): "Daily Goals 영역이 존나 작고 스크롤 내려도 안 보임."
+- **Cause**: `src/app/(tabs)/index.tsx` renders Today as a **horizontal** snap-pager (`FlatList horizontal`, pages `arena → goals → food → discipline → manual`) — `goals` is the 2nd page, reached by swiping sideways, not scrolling down. The deck is `flex: 1`, so a tall fixed zone above it (Combat Power header + `ActiveWorkoutCard` + RestTimerBar + ForgeBar) leaves the deck a thin strip → cards look tiny. The horizontal "one viewing position" deck was a prior builder directive (`index.tsx:41`). (Squish height not yet measured → cause partly `Hypothesis`.)
+- **Fix**: PENDING decision — A: vertical scroll stack (scroll down to see all) vs B: keep horizontal deck, guarantee deck height + add a swipe affordance.
+- **Commit**: (unresolved — fill on fix)
+- **Pattern**: A `flex: 1` scroll region competes with everything above it; if the fixed header grows, the region collapses. Give scroll decks an explicit `minHeight` or shrink the fixed zone.
 <!-- skipped: fd583b0 docs(log): record voice end-to-end fixes + cwd/FormData traps (866e295) [no-log] -->
 <!-- skipped: 7de255a docs(log): record ARENA + AI food + comfort glue (6e5726a, 0ebc924) [no-log] -->
 <!-- override-trigger: c3d3ad4 docs(log): record real leaderboards decision (60be727) [no-log] — log-commit recursion again: c3d3ad4 IS the T2 decision narrative itself (content/logs/OverDrive/2026-06-09-real-rankings.mdx contains the full Context/Options/Trade-off/Reversibility/Verified-by template for 60be727). The trigger word "decision" is only in the log-commit's subject. Recurring footgun noted twice already — log-commit subjects must avoid trigger keywords; switching to neutral subjects like "docs(log): add entry for <hash>" from now on. -->
@@ -232,3 +297,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: 0a14cba chore: ignore local secret stores [no-log] -->
 <!-- skipped: 33e0d4e docs(log): add entry for global key-store pattern [no-log] -->
 <!-- skipped: d5654bd docs(log): correct hash reference to 7434504 [no-log] -->
+<!-- skipped: 9fbd907 docs(log): add entries for 896a30c, bda2526 [no-log] -->

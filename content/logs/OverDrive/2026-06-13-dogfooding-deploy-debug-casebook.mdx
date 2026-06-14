@@ -1,0 +1,81 @@
+---
+title: "도그푸딩 첫 실행 디버그 케이스북 — 폰 배포·워커 키·UI 찌부"
+date: "2026-06-13"
+project: "OverDrive"
+kind: "troubleshoot"
+visibility: "public"
+language: "ko"
+summary: "온보딩+프로그램 슬라이스를 올린 뒤 '이제 진짜 써보자'며 폰에 띄우는 과정에서 줄줄이 터진 6개 케이스를 케이스별로 박제. EVOLUTION의 GROQ/GEMINI 프로바이더 분기, Gemini 무료 티어 이미지 쿼터 0, Debug 빌드가 Release standalone을 덮어써 'Finding Dev Servers'에 갇힌 자책 케이스, 디바이스 UDID 불일치, 잠금 상태 실행 실패, 그리고 아직 열려있는 홈 'Daily Goals' 가로 덱 찌부."
+tags: ["phase-1", "troubleshoot", "deploy", "ios", "worker", "gemini", "ui"]
+---
+
+## 맥락
+
+코드(온보딩 + 커스텀 주간 프로그램)는 그린으로 커밋까지 끝났다. 빌더가 "이제 제대로 써볼 수 있냐"고 물었고, 시뮬 대신 **실기기(아이폰)** 에 올리기로 했다. 거기서부터 코드와 무관한 **배포/환경/외부 API** 벽이 줄줄이 나왔다. 전부 케이스별로 박는다 — 절반 이상이 내 판단 미스였다.
+
+## 케이스 1 — EVOLUTION만 죽는다: GROQ는 있고 GEMINI는 없다
+
+폰에서 EVOLUTION(사진→등급별 진화)이 "키/엔드포인트 필요"를 뱉었다. 워커를 직접 때려서 갈랐다:
+
+```
+POST /parse  -> HTTP 200   {"sets":[{"exerciseId":"BenchPress",...}]}   # 텍스트는 됨
+POST /evolve -> HTTP 500   {"error":"evolve requires GEMINI_API_KEY secret"}
+```
+
+원인은 워커의 **프로바이더 자동선택**이었다(`worker/src/index.js`). `GROQ_API_KEY`가 있으면 텍스트 전부(`/parse`·`/food`·`/transcribe`)를 Groq로 처리하고, 이미지 편집(`/evolve`, `gemini-2.5-flash-image`)만 Gemini 전용이라 `GEMINI_API_KEY`를 강제한다(`index.js:337`). `wrangler secret list`에 **GROQ만** 있었으니 텍스트는 200, EVOLUTION만 500. 키 값은 출력하지 않고 중앙 스토어에서 워커로 바로 파이프했다:
+
+```
+grep '^GEMINI_API_KEY=' ~/.secrets/api-keys.env | cut -d= -f2- | npx wrangler secret put GEMINI_API_KEY
+```
+
+이후 `wrangler secret list`에 GEMINI + GROQ 둘 다 확인. **교훈: 한 라우트(`/parse`)의 200이 다른 프로바이더 라우트(`/evolve`)를 보증하지 않는다.** 옆 라우트 말고 실제로 죽는 라우트를 때려야 한다.
+
+## 케이스 2 — 키를 꽂아도 429: Gemini 무료 티어 이미지 쿼터 = 0
+
+키를 넣자 500은 사라졌지만 이번엔:
+
+```
+HTTP 502   {"error":"gemini evolve 429"}
+code: 429  status: RESOURCE_EXHAUSTED
+* Quota exceeded ... "limit: 0", model: gemini-2.5-flash-preview-image
+```
+
+`limit: 0` — Gemini **무료 티어는 이미지 생성을 0회** 허용한다. 리셋되는 레이트리밋이 아니라 무료론 영구 불가("retry in 7s"는 오해 유발). 코드로 못 고친다. **유료 결제를 켜야** 풀린다. 키 배선은 정상이고 앱의 나머지(텍스트 로깅)는 멀쩡 → **미해결(결제 결정 대기)** 로 남김. 교훈: "키 수락됨" ≠ "모델 사용 가능". 멀쩡한 키도 특정 유료 모델엔 `limit: 0`일 수 있다.
+
+## 케이스 3 — 자책 케이스: Debug 빌드가 Release standalone을 덮어써 "Finding Dev Servers"에 갇힘
+
+폰이 예전엔 "걍 아이콘 누르면 떴는데" 이번엔 Expo dev 런처의 **`Finding Dev Servers`** 에서 무한 대기. (앞서 시뮬에선 같은 병의 다른 증상 — `No development servers found` + 누를 수 없는 `Open in "OverDrive"?` 다이얼로그.)
+
+원인은 내 빌드 실수였다. 새 JS를 올리려고 `expo run:ios --device`를 `--configuration` 없이 돌렸는데 **기본이 Debug**(로그: `Debug-iphoneos`). `expo-dev-client`가 깔린 상태에서 Debug 빌드는 **JS를 앱에 안 넣고** 라이브 metro를 기대 → 못 찾으면 "Finding Dev Servers". 실기기는 **호스트에서 dev서버 URL을 못 밀어넣는다**(`devicectl`엔 `openurl` 부재, 시뮬의 `simctl openurl`과 다름) + LAN 자동탐색도 실패. 결정적으로 이 Debug 빌드가 빌더가 쓰던 **Release standalone을 덮어썼다** — DerivedData에 `Release-iphoneos/OverDrive.app/main.jsbundle`(4.8MB, 6/11 14:34 빌드)가 내내 있었고, 그게 JS 내장 = metro 없이 도는 "걍 뜨던" 그 앱이었다.
+
+복구: `npx expo run:ios --device "00008140-00186DE43CFA801C" --configuration Release` → JS 내장, 아이콘만 눌러도 standalone 실행. **교훈: 실기기 도그푸딩 = Release(내장). Debug+metro 라이브리로드는 시뮬 전용 워크플로다. 그리고 덮어쓰기 전에 이미 깔린 빌드가 뭔지 확인하라.**
+
+근본 원인은 그 위에 있었다 — **"그냥 쓸 거냐(→Release) vs 코드 실시간 편집할 거냐(→metro)"를 먼저 안 물었다.** 메모리에 박힌 "시뮬 8082 metro" 습관을 실기기에 그대로 적용해 빙 돌았다.
+
+## 케이스 4 — `--device`가 디바이스를 못 찾음: 두 개의 UDID
+
+```
+CommandError: No device UDID or name matching "dd394f75-bfac-50f6-bf99-ec47bc2e77b5"
+```
+
+내가 넘긴 건 `xcrun devicectl list devices`의 **coredevice UUID**였다. Expo/xcodebuild는 다른 값 — `xcrun xctrace list devices`의 클래식 **UDID**(`00008140-00186DE43CFA801C`)를 매칭한다. 교훈: `devicectl` Identifier ≠ `xctrace` UDID.
+
+## 케이스 5 — Release 빌드: "device is locked"인데 설치는 됐다
+
+```
+› Installing …/Release-iphoneos/OverDrive.app
+✔ Complete 100%
+CommandError: Cannot launch OverDrive on Daeseon's iPhone because the device is locked.
+```
+
+빌드+설치(`✔ Complete 100%`)는 끝났고 **마지막 자동실행만** 폰이 잠겨서 실패. 잠금 풀고 아이콘 탭(또는 `devicectl device process launch …`)이면 끝. 교훈: `Installing … ✔ Complete 100%` **뒤에** 뜬 에러는 설치 성공 = 재빌드 말고 실행만.
+
+## 케이스 6 — (열림) 홈 "Daily Goals"가 작고 스크롤 내려도 안 보임
+
+빌더 그대로: *"Daily Goals 영역이 존나 작고 스크롤 내려도 안 보임."*
+
+`src/app/(tabs)/index.tsx`의 Today는 **가로** snap-pager(`FlatList horizontal`, `arena → goals → food → discipline → manual`)다. `goals`는 2번째라 **옆으로 스와이프**해야 나온다(세로로 안 내려감). 게다가 덱이 `flex: 1`이라 위 고정영역(전투력 헤더 + `ActiveWorkoutCard` + 레스트바 + 포지바)이 크면 덱이 얇은 띠로 찌부 → 카드가 작게 보인다. 이 "한 자리 고정" 가로 덱은 원래 빌더 지시(`index.tsx:41`)라 함부로 못 엎고 결정 대기 중. (찌부 높이는 아직 미측정 → 원인 일부는 가설.) **미해결** — A: 세로 스택 vs B: 가로 유지 + 덱 높이 보장.
+
+## 정리
+
+코드는 그린이었지만 "쓸 수 있게" 만드는 마지막 1마일이 전부 환경/배포/외부 API였다. 가장 비싼 건 케이스 3 — **목표("쓸 거냐 vs 개발할 거냐")를 먼저 안 물어** 시뮬 습관을 실기기에 적용하고 standalone을 Debug로 덮어쓴 것. 재발방지는 메모리에 박았다(실기기=Release, 시뮬=metro). EVOLUTION은 결제, UI는 A/B 결정만 남았다.
