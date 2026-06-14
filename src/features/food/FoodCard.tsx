@@ -9,6 +9,7 @@ import { addFoodItems, getFoodToday } from '@/db/repos/foodRepo';
 import { classifyEvent } from '@/features/juice/classifyEvent';
 import { useJuice } from '@/features/juice/JuiceProvider';
 import { QUICKLOG_ENDPOINT } from '@/features/quicklog/config';
+import { downscaleForUpload } from '@/lib/image';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { Card, Muted, SectionTitle } from '@/ui/primitives';
@@ -102,7 +103,8 @@ export function FoodCard() {
     setBusy(true);
     setHint(null);
     try {
-      await logItems(await parseFoodPhoto(res.assets[0].uri, QUICKLOG_ENDPOINT), 'photo');
+      const uri = await downscaleForUpload(res.assets[0].uri);
+      await logItems(await parseFoodPhoto(uri, QUICKLOG_ENDPOINT), 'photo');
     } catch {
       setHint(t('food.fail'));
     } finally {

@@ -1,5 +1,6 @@
 import { documentDirectory, EncodingType, FileSystemUploadType, copyAsync, getInfoAsync, uploadAsync, writeAsStringAsync } from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
+import { downscaleForUpload } from '@/lib/image';
 
 // EVOLUTION client — pick a photo of yourself, the Worker (Gemini image model, key server-side)
 // returns the AI-evolved physique version for your current grade. The photo is pass-through only
@@ -17,7 +18,8 @@ export async function pickPhoto(): Promise<string | null> {
     aspect: [3, 4],
   });
   if (res.canceled || !res.assets?.[0]?.uri) return null;
-  await copyAsync({ from: res.assets[0].uri, to: ORIGINAL_PATH });
+  const uri = await downscaleForUpload(res.assets[0].uri);
+  await copyAsync({ from: uri, to: ORIGINAL_PATH });
   return ORIGINAL_PATH;
 }
 
