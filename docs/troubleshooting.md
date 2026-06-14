@@ -281,12 +281,12 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: — (runtime; no repo change)
 - **Pattern**: A `run:ios` error AFTER `Installing … ✔ Complete 100%` means the install succeeded — only the launch failed. Don't rebuild; just launch.
 
-## Home "Daily Goals" card shows tiny / can't be found by scrolling down (OPEN)
+## Home "Daily Goals" card shows tiny / can't be found by scrolling down
 
 - **Symptom** (user, verbatim): "Daily Goals 영역이 존나 작고 스크롤 내려도 안 보임."
 - **Cause**: `src/app/(tabs)/index.tsx` renders Today as a **horizontal** snap-pager (`FlatList horizontal`, pages `arena → goals → food → discipline → manual`) — `goals` is the 2nd page, reached by swiping sideways, not scrolling down. The deck is `flex: 1`, so a tall fixed zone above it (Combat Power header + `ActiveWorkoutCard` + RestTimerBar + ForgeBar) leaves the deck a thin strip → cards look tiny. The horizontal "one viewing position" deck was a prior builder directive (`index.tsx:41`). (Squish height not yet measured → cause partly `Hypothesis`.)
-- **Fix**: PENDING decision — A: vertical scroll stack (scroll down to see all) vs B: keep horizontal deck, guarantee deck height + add a swipe affordance.
-- **Commit**: (unresolved — fill on fix)
+- **Fix** (chose A): `src/app/(tabs)/index.tsx` rewritten — removed the horizontal `FlatList` deck (and the page state / dots / `snapToInterval` / `pageW` logic) and put everything in ONE vertical `ScrollView`: Combat Power header → `ActiveWorkoutCard` → RestTimerBar → ForgeBar → ArenaCard → DailyGoalsCard → FoodCard → DisciplineCard → QuickLogBar → MyCharacter. No `flex: 1` scroll region competing for height, nothing behind a sideways swipe. Gates green: tsc 0, lint 0, jest 15 suites/108.
+- **Commit**: 0686460
 - **Pattern**: A `flex: 1` scroll region competes with everything above it; if the fixed header grows, the region collapses. Give scroll decks an explicit `minHeight` or shrink the fixed zone.
 <!-- skipped: fd583b0 docs(log): record voice end-to-end fixes + cwd/FormData traps (866e295) [no-log] -->
 <!-- skipped: 7de255a docs(log): record ARENA + AI food + comfort glue (6e5726a, 0ebc924) [no-log] -->
@@ -298,3 +298,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: 33e0d4e docs(log): add entry for global key-store pattern [no-log] -->
 <!-- skipped: d5654bd docs(log): correct hash reference to 7434504 [no-log] -->
 <!-- skipped: 9fbd907 docs(log): add entries for 896a30c, bda2526 [no-log] -->
+<!-- skipped: 73cdea0 docs(log): dogfooding deploy/debug casebook — 6 cases [no-log] -->
