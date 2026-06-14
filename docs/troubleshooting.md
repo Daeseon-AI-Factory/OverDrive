@@ -288,6 +288,18 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix** (chose A): `src/app/(tabs)/index.tsx` rewritten — removed the horizontal `FlatList` deck (and the page state / dots / `snapToInterval` / `pageW` logic) and put everything in ONE vertical `ScrollView`: Combat Power header → `ActiveWorkoutCard` → RestTimerBar → ForgeBar → ArenaCard → DailyGoalsCard → FoodCard → DisciplineCard → QuickLogBar → MyCharacter. No `flex: 1` scroll region competing for height, nothing behind a sideways swipe. Gates green: tsc 0, lint 0, jest 15 suites/108.
 - **Commit**: 0686460
 - **Pattern**: A `flex: 1` scroll region competes with everything above it; if the fixed header grows, the region collapses. Give scroll decks an explicit `minHeight` or shrink the fixed zone.
+
+## All server-AI dead on the iPhone — Release build didn't inline EXPO_PUBLIC_* from .env
+
+- **Symptom**: On the installed Release (standalone) app, photo upload (EVOLUTION), voice, and food AI all did nothing — only on-device text logging worked. The installed bundle had zero trace of the worker endpoint:
+  ```
+  $ grep -aq "overdrive-quicklog.daeseon.workers.dev" .../Release-iphoneos/OverDrive.app/main.jsbundle; echo $?
+  1   # absent (dev/metro bundle: 25 hits; standalone `expo export:embed` from root: 32 hits)
+  ```
+- **Cause**: `QUICKLOG_ENDPOINT = (process.env.EXPO_PUBLIC_QUICKLOG_ENDPOINT ?? '').trim()` (`src/features/quicklog/config.ts`) resolved to `''` because the **iOS Release build did not inline EXPO_PUBLIC vars**. The metro bundle inlined it and a standalone `expo export:embed` from the project root inlined it — so the bundler is fine; the Xcode "Bundle React Native code and images" build phase ran the embed in an environment where `.env` wasn't picked up, so babel saw no `process.env.EXPO_PUBLIC_*` and emitted empty. Empty endpoint → `/parse` silently falls back to the on-device rule parser (text "works"), but `/evolve`·`/transcribe`·`/food` have no fallback → all dead. (Earlier this was misread as "all AI broken"; text was actually still logging via the fallback.)
+- **Fix**: Added `export EXPO_PUBLIC_QUICKLOG_ENDPOINT="…"` to `ios/.xcode.env.local` (gitignored). The RN "Bundle React Native code and images" phase sources `.xcode.env` + `.xcode.env.local` before bundling (verified in `project.pbxproj:228`), so the var lands in the embed process's env → babel inlines it. Rebuilt Release → installed `main.jsbundle` now contains the endpoint (`grep -aq` → exit 0). Verified at bundle level; in-app voice/food retest pending. (EVOLUTION still blocked separately — Gemini billing, see the 429 entry above.)
+- **Commit**: — (fix lives in gitignored `ios/.xcode.env.local`; no repo change)
+- **Pattern**: EXPO_PUBLIC_* inline for metro/`export:embed` but NOT reliably for the iOS **Release** Xcode bundle phase. Inject them via `ios/.xcode.env.local` (the RN build phase sources it). Always verify by grepping the installed `.app/main.jsbundle` (`grep -a`, treat as text) — a green build ≠ the var is in the bundle.
 <!-- skipped: fd583b0 docs(log): record voice end-to-end fixes + cwd/FormData traps (866e295) [no-log] -->
 <!-- skipped: 7de255a docs(log): record ARENA + AI food + comfort glue (6e5726a, 0ebc924) [no-log] -->
 <!-- override-trigger: c3d3ad4 docs(log): record real leaderboards decision (60be727) [no-log] — log-commit recursion again: c3d3ad4 IS the T2 decision narrative itself (content/logs/OverDrive/2026-06-09-real-rankings.mdx contains the full Context/Options/Trade-off/Reversibility/Verified-by template for 60be727). The trigger word "decision" is only in the log-commit's subject. Recurring footgun noted twice already — log-commit subjects must avoid trigger keywords; switching to neutral subjects like "docs(log): add entry for <hash>" from now on. -->
@@ -299,3 +311,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: d5654bd docs(log): correct hash reference to 7434504 [no-log] -->
 <!-- skipped: 9fbd907 docs(log): add entries for 896a30c, bda2526 [no-log] -->
 <!-- skipped: 73cdea0 docs(log): dogfooding deploy/debug casebook — 6 cases [no-log] -->
+<!-- skipped: 8306b4c docs(log): close Daily Goals case with 0686460 [no-log] -->
