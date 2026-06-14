@@ -300,6 +300,18 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: Added `export EXPO_PUBLIC_QUICKLOG_ENDPOINT="…"` to `ios/.xcode.env.local` (gitignored). The RN "Bundle React Native code and images" phase sources `.xcode.env` + `.xcode.env.local` before bundling (verified in `project.pbxproj:228`), so the var lands in the embed process's env → babel inlines it. Rebuilt Release → installed `main.jsbundle` now contains the endpoint (`grep -aq` → exit 0). Verified at bundle level; in-app voice/food retest pending. (EVOLUTION still blocked separately — Gemini billing, see the 429 entry above.)
 - **Commit**: — (fix lives in gitignored `ios/.xcode.env.local`; no repo change)
 - **Pattern**: EXPO_PUBLIC_* inline for metro/`export:embed` but NOT reliably for the iOS **Release** Xcode bundle phase. Inject them via `ios/.xcode.env.local` (the RN build phase sources it). Always verify by grepping the installed `.app/main.jsbundle` (`grep -a`, treat as text) — a green build ≠ the var is in the bundle.
+
+## Food/EVOLUTION photo upload returns 0 items ("couldn't estimate") — full-res photo overflows Groq's image limit
+
+- **Symptom**: Uploading a real meal photo from the iPhone album to the food card always showed "Couldn't estimate". Live worker logs (`wrangler tail`) showed the requests SUCCEEDING, not erroring:
+  ```
+  POST .../food - Ok    (×6, all HTTP 200)
+  ```
+  So the worker returned 200 but with `items: []` → the client (`FoodCard.tsx:46`) shows the fail message.
+- **Cause**: The food (and EVOLUTION) photo path uploaded the **full-resolution** picked image (`ImagePicker` `quality: 0.7`, no resize). Reproduced against the live worker: a 203 KB food photo → `items: 3`; the SAME photo upscaled to 4032px / **10 MB → HTTP 413 `groq food 413`** (Payload Too Large, wrapped as 502 to the client); mid-size full-res photos are accepted (200) but the vision model returns 0 items. Groq vision caps base64 images (~4 MB). EVOLUTION had the identical latent bug (it would 413 once Gemini billing is on).
+- **Fix**: Added `src/lib/image.ts` `downscaleForUpload(uri, 1024)` (`expo-image-manipulator` `manipulateAsync`, resize width 1024, compress 0.7, JPEG) and call it before upload in `FoodCard.onPhoto` and `evolveClient.pickPhoto`. Proof: the 10 MB photo resized to 1024px / 218 KB → `/food` 200 WITH items. Added `expo-image-manipulator` (native dep → Release rebuild). tsc 0 / lint 0 / jest 108.
+- **Commit**: 996f423
+- **Pattern**: Always downscale a picked photo before sending it to a vision API — full-res phone photos (12 MP, multi-MB) either 413 or silently yield empty results. Triage a "couldn't estimate"-type failure against live worker logs first: `200 + empty` (model saw nothing) vs `502/413` (upload rejected) are different bugs.
 <!-- skipped: fd583b0 docs(log): record voice end-to-end fixes + cwd/FormData traps (866e295) [no-log] -->
 <!-- skipped: 7de255a docs(log): record ARENA + AI food + comfort glue (6e5726a, 0ebc924) [no-log] -->
 <!-- override-trigger: c3d3ad4 docs(log): record real leaderboards decision (60be727) [no-log] — log-commit recursion again: c3d3ad4 IS the T2 decision narrative itself (content/logs/OverDrive/2026-06-09-real-rankings.mdx contains the full Context/Options/Trade-off/Reversibility/Verified-by template for 60be727). The trigger word "decision" is only in the log-commit's subject. Recurring footgun noted twice already — log-commit subjects must avoid trigger keywords; switching to neutral subjects like "docs(log): add entry for <hash>" from now on. -->
@@ -312,3 +324,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: 9fbd907 docs(log): add entries for 896a30c, bda2526 [no-log] -->
 <!-- skipped: 73cdea0 docs(log): dogfooding deploy/debug casebook — 6 cases [no-log] -->
 <!-- skipped: 8306b4c docs(log): close Daily Goals case with 0686460 [no-log] -->
+<!-- skipped: a13f373 docs(log): record Release EXPO_PUBLIC inline gap + .xcode.env.local fix [no-log] -->

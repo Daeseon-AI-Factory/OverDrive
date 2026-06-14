@@ -76,6 +76,14 @@ CommandError: Cannot launch OverDrive on Daeseon's iPhone because the device is 
 
 `src/app/(tabs)/index.tsx`의 Today는 **가로** snap-pager(`FlatList horizontal`, `arena → goals → food → discipline → manual`)다. `goals`는 2번째라 **옆으로 스와이프**해야 나온다(세로로 안 내려감). 게다가 덱이 `flex: 1`이라 위 고정영역(전투력 헤더 + `ActiveWorkoutCard` + 레스트바 + 포지바)이 크면 덱이 얇은 띠로 찌부 → 카드가 작게 보인다. 이 "한 자리 고정" 가로 덱은 원래 빌더 지시(`index.tsx:41`)라 함부로 못 엎고 결정 대기 중. (찌부 높이는 아직 미측정 → 원인 일부는 가설.) **미해결** — A: 세로 스택 vs B: 가로 유지 + 덱 높이 보장.
 
+## 케이스 7 — 음식 사진 올리면 "couldn't estimate" (풀해상도 사진이 비전 한도 초과)
+
+진짜 음식 사진을 올려도 계속 "couldn't estimate". 라이브 워커 로그(`wrangler tail`)를 켜고 보니 업로드는 **전부 성공(`POST /food - Ok` ×6, 200)** — 502도 크래시도 아니었다. 워커가 200을 주는데 `items:[]` → 클라가 실패 메시지를 띄운 것.
+
+직접 재현으로 원인을 못 박았다: 203KB 음식 사진 → items 3개, 같은 사진을 4032px/**10MB로 키우니 → HTTP 413 `groq food 413`**(Payload Too Large). 식단·EVOLUTION 사진 경로가 **리사이즈 없이** 풀해상도 아이폰 사진을 그대로 올려서 Groq 비전 한도(base64 ~4MB)를 넘긴 것. 10MB짜리를 1024px로 줄이니 → 다시 200 + items. 픽스: `src/lib/image.ts` `downscaleForUpload`(expo-image-manipulator, width 1024)를 업로드 직전에 적용(식단 + EVOLUTION 둘 다). 커밋 `996f423`.
+
+**교훈:** 비전 API엔 무조건 사진을 줄여서 보낸다. 그리고 "couldn't estimate" 같은 실패는 **라이브 로그부터** — `200+빈결과`(모델이 못 봄)와 `413/502`(업로드 거부)는 완전 다른 버그다.
+
 ## 정리
 
 코드는 그린이었지만 "쓸 수 있게" 만드는 마지막 1마일이 전부 환경/배포/외부 API였다. 가장 비싼 건 케이스 3 — **목표("쓸 거냐 vs 개발할 거냐")를 먼저 안 물어** 시뮬 습관을 실기기에 적용하고 standalone을 Debug로 덮어쓴 것. 재발방지는 메모리에 박았다(실기기=Release, 시뮬=metro). EVOLUTION은 결제, UI는 A/B 결정만 남았다.
