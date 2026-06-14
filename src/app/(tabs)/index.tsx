@@ -1,15 +1,6 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  FlatList,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { ExerciseRow } from '@/db/types';
 import { ArenaCard } from '@/features/arena/ArenaCard';
 import { gradeForScore } from '@/features/combat-power/grades';
@@ -32,26 +23,21 @@ import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { Muted, Screen } from '@/ui/primitives';
 import { colors, displayFamily, fontSize, numberFamily, space } from '@/ui/theme/tokens';
 
-type PageKey = 'arena' | 'goals' | 'food' | 'discipline' | 'manual';
-const PAGES: PageKey[] = ['arena', 'goals', 'food', 'discipline', 'manual'];
-
 /**
- * Today — fixed top (Combat Power + the ONE input + forge), and below it a snap-paging CARD DECK:
- * swipe horizontally and every card (arena/goals/food/discipline/manual) lands in the exact same
- * viewport spot. Builder directive: no more eyes traveling down a stack — one viewing position.
+ * Today — ONE vertical scroll: Combat Power + the programmed Active Workout up top, then the card
+ * stack (arena → daily goals → food → discipline → manual logging). Scroll down to reach everything.
+ * Replaced the horizontal snap-paging deck: the primary user kept scrolling DOWN for Daily Goals and
+ * the `flex: 1` deck squished each card into a thin strip. A plain vertical stack: nothing hidden
+ * behind a sideways swipe, no scroll region competing with a fixed header for height.
  */
 export default function TodayScreen() {
   const { t } = useTranslation();
-  const { width } = useWindowDimensions();
-  const pageW = width - 2 * space.lg; // Screen horizontal padding
   const score = useCombatPowerStore((s) => s.score);
   const { enter, finish } = useForge();
 
-  const [page, setPage] = useState(0);
   const [activeRegion, setActiveRegion] = useState<BodyRegionId | null>(null);
   const [picker, setPicker] = useState<RegionPicker | null>(null);
   const [activeExercise, setActiveExercise] = useState<ExerciseRow | null>(null);
-  const listRef = useRef<FlatList<PageKey>>(null);
 
   const ensureSession = useCallback(async (): Promise<string> => {
     const active = useSessionStore.getState().activeSessionId;
@@ -81,69 +67,28 @@ export default function TodayScreen() {
     setPicker({ title: t('today.cardioSheetTitle'), exerciseIds: [...CARDIO_EXERCISE_IDS] });
   }, [enter, t]);
 
-  const onPageScrollEnd = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const i = Math.round(e.nativeEvent.contentOffset.x / pageW);
-      setPage(Math.max(0, Math.min(PAGES.length - 1, i)));
-    },
-    [pageW],
-  );
-
-  const renderPage = useCallback(
-    ({ item }: { item: PageKey }) => (
-      <View style={{ width: pageW }}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space.lg }}>
-          {item === 'arena' ? <ArenaCard /> : null}
-          {item === 'goals' ? <DailyGoalsCard /> : null}
-          {item === 'food' ? <FoodCard /> : null}
-          {item === 'discipline' ? <DisciplineCard /> : null}
-          {item === 'manual' ? (
-            <>
-              <QuickLogBar />
-              <MyCharacter activeRegion={activeRegion} onRegionPress={onRegionPress} onCardioPress={onCardioPress} />
-            </>
-          ) : null}
-        </ScrollView>
-      </View>
-    ),
-    [pageW, activeRegion, onRegionPress, onCardioPress],
-  );
-
   const grade = gradeForScore(score);
 
   return (
     <Screen>
-      {/* fixed zone — never moves */}
-      <View style={styles.header}>
-        <Muted>{t('today.combatPowerLabel')}</Muted>
-        <Text style={styles.cpScore}>{score}</Text>
-        <Text style={[styles.grade, { color: colors.cyan }]}>{t(`grade.${grade.key}`)}</Text>
-      </View>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <Muted>{t('today.combatPowerLabel')}</Muted>
+          <Text style={styles.cpScore}>{score}</Text>
+          <Text style={[styles.grade, { color: colors.cyan }]}>{t(`grade.${grade.key}`)}</Text>
+        </View>
 
-      <ActiveWorkoutCard ensureSession={ensureSession} onOpenCardio={(exercise) => setActiveExercise(exercise)} onFinishWorkout={finish} />
-      <RestTimerBar />
-      <ForgeBar onEnter={enter} onFinish={finish} />
+        <ActiveWorkoutCard ensureSession={ensureSession} onOpenCardio={(exercise) => setActiveExercise(exercise)} onFinishWorkout={finish} />
+        <RestTimerBar />
+        <ForgeBar onEnter={enter} onFinish={finish} />
 
-      {/* card deck — every card snaps to this exact spot */}
-      <FlatList
-        ref={listRef}
-        data={PAGES}
-        keyExtractor={(k) => k}
-        renderItem={renderPage}
-        horizontal
-        snapToInterval={pageW}
-        decelerationRate="fast"
-        disableIntervalMomentum
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={onPageScrollEnd}
-        style={styles.deck}
-      />
-
-      <View style={styles.dots}>
-        {PAGES.map((k, i) => (
-          <View key={k} style={[styles.dot, i === page && styles.dotActive]} />
-        ))}
-      </View>
+        <ArenaCard />
+        <DailyGoalsCard />
+        <FoodCard />
+        <DisciplineCard />
+        <QuickLogBar />
+        <MyCharacter activeRegion={activeRegion} onRegionPress={onRegionPress} onCardioPress={onCardioPress} />
+      </ScrollView>
 
       <ExerciseRegionSheet
         picker={picker}
@@ -176,11 +121,9 @@ export default function TodayScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { alignItems: 'center', marginTop: space.md },
+  scroll: { flex: 1 },
+  content: { paddingTop: space.md, paddingBottom: space.xxl },
+  header: { alignItems: 'center' },
   cpScore: { color: colors.text, fontFamily: numberFamily, fontSize: fontSize.odometer, lineHeight: fontSize.odometer + 6 },
   grade: { fontFamily: displayFamily, fontSize: fontSize.lg, letterSpacing: 3 },
-  deck: { flex: 1, marginTop: space.sm },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 8, paddingVertical: space.sm },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.line },
-  dotActive: { backgroundColor: colors.cyan, width: 18 },
 });
