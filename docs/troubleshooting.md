@@ -312,6 +312,20 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: Added `src/lib/image.ts` `downscaleForUpload(uri, 1024)` (`expo-image-manipulator` `manipulateAsync`, resize width 1024, compress 0.7, JPEG) and call it before upload in `FoodCard.onPhoto` and `evolveClient.pickPhoto`. Proof: the 10 MB photo resized to 1024px / 218 KB → `/food` 200 WITH items. Added `expo-image-manipulator` (native dep → Release rebuild). tsc 0 / lint 0 / jest 108.
 - **Commit**: 996f423
 - **Pattern**: Always downscale a picked photo before sending it to a vision API — full-res phone photos (12 MP, multi-MB) either 413 or silently yield empty results. Triage a "couldn't estimate"-type failure against live worker logs first: `200 + empty` (model saw nothing) vs `502/413` (upload rejected) are different bugs.
+
+## App crashes instantly on launch (signal 6) after adding expo-image-manipulator — native version skew
+
+- **Symptom**: After adding `expo-image-manipulator` for photo downscaling, the Release app died the instant it opened ("앱 키자마자 꺼진다"). Device console (`devicectl … process launch --console`):
+  ```
+  dyld: Symbol not found: _$s15ExpoModulesCore6RecordPAAE4from10dictionary10appContext…
+    Referenced from: .../OverDrive.app/Frameworks/ExpoImageManipulator.framework/ExpoImageManipulator
+    Expected in:     .../ExpoModulesCore.framework/ExpoModulesCore
+  App terminated due to signal 6.
+  ```
+- **Cause**: `npx expo install expo-image-manipulator` resolved **56.0.18**, but the project's `expo-modules-core` is **56.0.14** (the whole project trails the SDK's expected versions — `expo install --check` flagged ~16 packages). ImageManipulator 56.0.18's compiled Swift references an ExpoModulesCore symbol (`Record.from(dictionary:appContext:)`) absent in 56.0.14 → dyld abort at process start, before any JS/UI runs.
+- **Fix**: Pinned `expo-image-manipulator@56.0.14` to match `expo-modules-core@56.0.14` (same release train → symbol-compatible), `npx pod-install` (Podfile.lock → ExpoImageManipulator 56.0.14), rebuilt Release. App now launches and stays running (process alive >10 s). tsc 0.
+- **Commit**: 54e0c7b
+- **Pattern**: When `expo install <module>` resolves a version NEWER than the project's `expo-modules-core`, native Swift symbols mismatch → instant signal-6 crash — invisible to tsc/lint/jest (it's a native link error, not JS). Match a new Expo native module to the installed `expo-modules-core`, or `expo install --fix` the whole set. Diagnose launch crashes with `devicectl device process launch --console`.
 <!-- skipped: fd583b0 docs(log): record voice end-to-end fixes + cwd/FormData traps (866e295) [no-log] -->
 <!-- skipped: 7de255a docs(log): record ARENA + AI food + comfort glue (6e5726a, 0ebc924) [no-log] -->
 <!-- override-trigger: c3d3ad4 docs(log): record real leaderboards decision (60be727) [no-log] — log-commit recursion again: c3d3ad4 IS the T2 decision narrative itself (content/logs/OverDrive/2026-06-09-real-rankings.mdx contains the full Context/Options/Trade-off/Reversibility/Verified-by template for 60be727). The trigger word "decision" is only in the log-commit's subject. Recurring footgun noted twice already — log-commit subjects must avoid trigger keywords; switching to neutral subjects like "docs(log): add entry for <hash>" from now on. -->
@@ -325,3 +339,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: 73cdea0 docs(log): dogfooding deploy/debug casebook — 6 cases [no-log] -->
 <!-- skipped: 8306b4c docs(log): close Daily Goals case with 0686460 [no-log] -->
 <!-- skipped: a13f373 docs(log): record Release EXPO_PUBLIC inline gap + .xcode.env.local fix [no-log] -->
+<!-- skipped: 5caab0a docs(log): record photo-too-large food/evolution bug + resize fix (996f423) [no-log] -->
