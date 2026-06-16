@@ -334,6 +334,14 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: Added `persistSettings(db)` in `src/stores/settingsStore.ts` — awaits `updateSettings`, `console.error`s + returns `false` on failure (never throws). Replaced the 4 silent sites (`OnboardingFlow.tsx`, `ProgramEditorScreen.tsx`, `useArena.ts`, `RankSection.tsx`); the program editor now also shows `Alert(t('common.saveFailed'))` (added to en/ko/es/zh). Genuinely harmless swallows (haptics, audio, image-picker cancel, file-existence checks) were left as-is. tsc 0 / lint 0 / jest 108.
 - **Commit**: c59ac04
 - **Pattern**: `.catch(() => {})` on a persistence call is invisible data loss. Route writes through a helper that logs (and surfaces, for user-initiated saves). Reserve silent catches for truly non-data side effects (haptics/audio/cancel/existence-checks).
+
+## Goals/discipline writes failed silently; empty program day had no way out (audit follow-up)
+
+- **Symptom**: Audit follow-up (reliability + UX). (1) `useDailyGoals` bump/reset/add/remove `await`ed DB writes with no try/catch — a failed write was an unhandled rejection (tap did nothing, no feedback). (2) `DisciplineCard.toggle` set the optimistic pill state BEFORE the write but had no `catch` — on failure the pill stayed toggled while the DB never saved (UI/DB mismatch). (3) An empty (non-rest) program day showed "No exercises yet" with NO way to fix it — the user had to dig into Settings ▸ Program.
+- **Cause**: Missing error handling on the goals hook + discipline toggle; the empty-state block was read-only text.
+- **Fix**: (1) wrapped all four `useDailyGoals` writes in try/catch + `console.error`. (2) `DisciplineCard.toggle` now has a `catch` that reverts the optimistic toggle to its pre-tap value + logs. (3) `ActiveWorkoutCard` empty (non-rest) state now renders an `activeWorkout.editProgram` Pressable → `router.push('/program')` (key added to en/ko/es/zh). tsc 0 / lint 0 / jest 108.
+- **Commit**: 92bdfed (reliability), 7cb2c41 (empty-day CTA)
+- **Pattern**: An optimistic UI write needs a `catch` that REVERTS the optimistic state, not just logs — otherwise the screen lies about what's persisted. Every dead-end empty state should offer the action that resolves it.
 <!-- skipped: fd583b0 docs(log): record voice end-to-end fixes + cwd/FormData traps (866e295) [no-log] -->
 <!-- skipped: 7de255a docs(log): record ARENA + AI food + comfort glue (6e5726a, 0ebc924) [no-log] -->
 <!-- override-trigger: c3d3ad4 docs(log): record real leaderboards decision (60be727) [no-log] — log-commit recursion again: c3d3ad4 IS the T2 decision narrative itself (content/logs/OverDrive/2026-06-09-real-rankings.mdx contains the full Context/Options/Trade-off/Reversibility/Verified-by template for 60be727). The trigger word "decision" is only in the log-commit's subject. Recurring footgun noted twice already — log-commit subjects must avoid trigger keywords; switching to neutral subjects like "docs(log): add entry for <hash>" from now on. -->
@@ -351,3 +359,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: 69d7aad docs(log): record launch-crash from image-manipulator version skew (54e0c7b) [no-log] -->
 <!-- skipped: 1d74c15 docs(log): EVOLUTION direction switch to stylized hero character (fdccae7) [no-log] -->
 <!-- skipped: 6f9aa93 docs(log): body-type honesty refinement for EVOLUTION (67466ab) [no-log] -->
+<!-- skipped: 245c0f1 docs(log): record silent-persist data-loss fix (c59ac04) [no-log] -->
