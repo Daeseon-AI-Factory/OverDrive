@@ -61,3 +61,11 @@ Android는 대칭으로 `react-native-health-connect`.
 - 게이트: tsc 0 / lint 0 / jest 111. 커밋 `88d0d38`.
 
 남은 일: ③ 재빌드 후 폰 권한 허용 → CP 실측, ④ Android Health Connect. (verifiedRatio가 실제로 trust 보너스를 올리는지는 폰에서 권한 허용 + 헬스 워크아웃 있을 때 확인 — 코드/게이트 레벨은 검증됨.)
+
+## Update — 연동 화면 불투명 수정 (e9a8c7b)
+
+빌더 피드백: "연동했는데 뭐 어쩌라고? 뭐가 연동된 건데 sync now 동작 안 하고." 원인 두 겹: (1) **iOS는 READ 권한 허용 여부를 앱에 안 알려줌**(프라이버시) → `connected`=물어봄일 뿐. (2) Apple 건강에 최근 운동 데이터가 없으면(애플워치/피트니스 앱 미사용) 읽을 게 0 → verifiedRatio 0 → CP 불변. 게다가 내 Settings UI가 **숫자 하나(workouts)만 + 동기화 피드백 0** 이라 "죽은 것처럼" 보임.
+
+수정(`src/app/(tabs)/settings.tsx`): 연동 시 **실제 읽은 값**(최근7일 운동·체중·체지방·VO2max)을 표기, 데이터 0이면 **"Apple 건강에 최근 데이터 없음 — 애플워치/피트니스 앱 기록 필요"** 안내, Sync 버튼에 **"동기화 중…" 피드백**(busy state). i18n `read`/`empty`/`syncing` 4로케일. tsc 0 / lint 0 / jest 111. 커밋 `e9a8c7b`.
+
+교훈: 연동/동기화처럼 "백그라운드로 뭔가 한" UX는 **읽은 결과를 보여주고 진행 피드백을 줘야** 한다 — 안 그러면 정상 동작도 고장으로 읽힌다(직전 silent-persist 교훈과 동형).
