@@ -10,6 +10,7 @@ import { dailyGoalsCompletedSince } from './dailyGoalRepo';
 import { disciplineCountSince } from './disciplineRepo';
 import { countCompletedSessionsSince, getCompletedSessionDates } from './sessionRepo';
 import { strengthVolumeSince } from './setLogRepo';
+import { getSettings } from './userRepo';
 
 const WINDOW_DAYS = 7;
 const STREAK_LOOKBACK_DAYS = 90;
@@ -21,18 +22,23 @@ const STREAK_LOOKBACK_DAYS = 90;
  */
 export async function buildInput(db: SQLiteDatabase, userId: string = LOCAL_USER_ID): Promise<CombatPowerInput> {
   const since = localDateDaysAgo(WINDOW_DAYS - 1);
-  const [strengthVolume7d, sessions7d, conditioningUnits7d, streakDates, disc, goals] = await Promise.all([
+  const [strengthVolume7d, sessions7d, conditioningUnits7d, streakDates, disc, goals, settings] = await Promise.all([
     strengthVolumeSince(db, since, userId),
     countCompletedSessionsSince(db, since, userId),
     conditioningUnitsSince(db, since, userId),
     getCompletedSessionDates(db, localDateDaysAgo(STREAK_LOOKBACK_DAYS), userId),
     disciplineCountSince(db, since, userId),
     dailyGoalsCompletedSince(db, since, userId),
+    getSettings(db, userId),
   ]);
   // Discipline activates only once the user starts tracking it (else renormalized out — anti-shame).
   const discipline = disc.days > 0 ? { proteinDays: disc.proteinDays, restOkDays: disc.restOkDays } : null;
   // Daily-goals component activates only once the user sets at least one target.
   const dailyGoals = goals.hasTargets ? { completed7d: goals.completed } : null;
+  // HealthKit/Health Connect = sensor-verified activity → trust bonus (never a penalty §9).
+  // Ratio = share of this week's logged sessions corroborated by a health-platform workout, capped 1.
+  const h = settings.health;
+  const verifiedRatio = h?.connected && sessions7d > 0 ? Math.max(0, Math.min(1, h.workouts7d / sessions7d)) : 0;
   return {
     strengthVolume7d,
     sessions7d,
@@ -40,7 +46,7 @@ export async function buildInput(db: SQLiteDatabase, userId: string = LOCAL_USER
     streakDays: computeStreak(streakDates, todayLocal()),
     discipline,
     dailyGoals,
-    verifiedRatio: 0,
+    verifiedRatio,
   };
 }
 

@@ -31,6 +31,20 @@ export interface UserSettings {
   customProgram: WeeklyProgram | null;
   /** ISO timestamp when first-run onboarding finished or was skipped. null → not onboarded yet. */
   onboardedAt: string | null;
+  /**
+   * Apple Health / Health Connect sync state. null until the user connects. Sensor-verified data —
+   * feeds Combat Power's verifiedRatio (trust bonus only, never a penalty §9). Game numbers are
+   * never written back to Health (§4).
+   */
+  health: {
+    connected: boolean;
+    /** Health-platform workouts in the last 7 days at last sync. */
+    workouts7d: number;
+    vo2Max: number | null;
+    bodyMassKg: number | null;
+    bodyFatFraction: number | null;
+    syncedAt: string | null;
+  } | null;
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -49,6 +63,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   rankDeviceId: null,
   customProgram: null,
   onboardedAt: null,
+  health: null,
 };
 
 /** Tolerant parse of the stored settings JSON — always returns a complete object. */

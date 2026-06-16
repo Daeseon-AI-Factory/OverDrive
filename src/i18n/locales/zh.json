@@ -111,6 +111,15 @@
       "edit": "编辑每周计划",
       "custom": "自定义",
       "default": "默认（上肢 / 下肢）"
+    },
+    "health": {
+      "section": "Apple 健康",
+      "explainer": "连接 Apple 健康，让传感器验证的训练和身体指标提升你的战斗力（信任加成，绝不扣分）。健康数据仅保留在你的设备上。",
+      "connect": "连接 Apple 健康",
+      "connected": "已连接 Apple 健康",
+      "summary": "最近 7 天有 {workouts} 次已验证训练。",
+      "sync": "立即同步",
+      "disconnect": "断开连接"
     }
   },
   "boot": {

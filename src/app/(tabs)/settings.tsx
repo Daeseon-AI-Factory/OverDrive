@@ -3,12 +3,13 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { updateLocale, updateSettings } from '@/db/repos/userRepo';
+import { useHealth } from '@/features/health/useHealth';
 import { Stepper } from '@/features/logging/Stepper';
 import i18n, { LOCALE_LABEL, SUPPORTED_LOCALES, type AppLocale } from '@/i18n';
 import type { JuiceIntensity } from '@/lib/settings';
 import { displayToKg, kgToDisplay, weightStepDisplay, weightUnit, type UnitSystem } from '@/lib/units';
 import { currentSettings, useSettingsStore } from '@/stores/settingsStore';
-import { Card, Muted, Pill, Screen, SectionTitle } from '@/ui/primitives';
+import { Card, Muted, NeonButton, Pill, Screen, SectionTitle } from '@/ui/primitives';
 import { colors, fontSize, space } from '@/ui/theme/tokens';
 
 const PROTEIN_PER_KG = 1.8;
@@ -30,6 +31,7 @@ export default function SettingsScreen() {
   const customProgram = useSettingsStore((s) => s.customProgram);
   const apply = useSettingsStore((s) => s.apply);
   const setLocale = useSettingsStore((s) => s.setLocale);
+  const hk = useHealth();
 
   const weightKg = startWeightKg ?? 75;
   const suggestedProtein = Math.round((weightKg * PROTEIN_PER_KG) / 5) * 5;
@@ -116,6 +118,31 @@ export default function SettingsScreen() {
             <Text style={styles.chevron}>›</Text>
           </Pressable>
         </Card>
+
+        {hk.available ? (
+          <>
+            <SectionTitle>{t('settings.health.section')}</SectionTitle>
+            <Card>
+              {hk.connected ? (
+                <>
+                  <Text style={styles.label}>{t('settings.health.connected')}</Text>
+                  <Muted style={{ marginTop: space.xs }}>{t('settings.health.summary', { workouts: hk.health?.workouts7d ?? 0 })}</Muted>
+                  <View style={[styles.wrapRow, { marginTop: space.md }]}>
+                    <Pill label={t('settings.health.sync')} color={colors.cyan} onPress={() => void hk.sync()} />
+                    <Pill label={t('settings.health.disconnect')} color={colors.energyLo} onPress={() => void hk.disconnect()} />
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Muted>{t('settings.health.explainer')}</Muted>
+                  <View style={{ marginTop: space.md }}>
+                    <NeonButton label={t('settings.health.connect')} color={colors.cyan} onPress={() => void hk.connect()} />
+                  </View>
+                </>
+              )}
+            </Card>
+          </>
+        ) : null}
 
         <SectionTitle>{t('settings.juice.section')}</SectionTitle>
         <Card>

@@ -57,5 +57,6 @@ export function currentSettings(): UserSettings {
     rankDeviceId: s.rankDeviceId,
     customProgram: s.customProgram,
     onboardedAt: s.onboardedAt,
+    health: s.health,
   };
 }

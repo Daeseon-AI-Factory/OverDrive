@@ -135,6 +135,15 @@
       "edit": "Edit weekly program",
       "custom": "Custom",
       "default": "Default (Upper / Lower)"
+    },
+    "health": {
+      "section": "Apple Health",
+      "explainer": "Connect Apple Health so your sensor-verified workouts and body metrics raise your Combat Power (a trust bonus — never a penalty). Your health data stays on your device.",
+      "connect": "Connect Apple Health",
+      "connected": "Apple Health connected",
+      "summary": "{workouts} verified workouts in the last 7 days.",
+      "sync": "Sync now",
+      "disconnect": "Disconnect"
     }
   },
   "boot": {

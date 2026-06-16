@@ -111,6 +111,15 @@
       "edit": "주간 프로그램 편집",
       "custom": "커스텀",
       "default": "기본 (상체 / 하체)"
+    },
+    "health": {
+      "section": "Apple 건강",
+      "explainer": "Apple 건강을 연동하면 센서로 검증된 운동·체성분이 전투력을 올려줘 (신뢰 보너스 — 감점은 절대 없음). 건강 데이터는 기기에만 남아.",
+      "connect": "Apple 건강 연동",
+      "connected": "Apple 건강 연동됨",
+      "summary": "최근 7일 검증된 운동 {workouts}회.",
+      "sync": "지금 동기화",
+      "disconnect": "연동 해제"
     }
   },
   "boot": {

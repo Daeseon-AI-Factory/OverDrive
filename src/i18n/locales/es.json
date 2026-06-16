@@ -111,6 +111,15 @@
       "edit": "Editar programa semanal",
       "custom": "Personalizado",
       "default": "Predeterminado (Superior / Inferior)"
+    },
+    "health": {
+      "section": "Apple Health",
+      "explainer": "Conecta Apple Health para que tus entrenamientos verificados por sensores y tus métricas corporales suban tu Poder de Combate (bonificación de confianza, nunca una penalización). Tus datos de salud se quedan en tu dispositivo.",
+      "connect": "Conectar Apple Health",
+      "connected": "Apple Health conectado",
+      "summary": "{workouts} entrenamientos verificados en los últimos 7 días.",
+      "sync": "Sincronizar",
+      "disconnect": "Desconectar"
     }
   },
   "boot": {
