@@ -44,19 +44,23 @@ export function useDailyGoals() {
 
   const bump = useCallback(
     async (goal: TodayGoal, amount: number) => {
-      const prev = useCombatPowerStore.getState().score;
-      const res = await addProgress(db, { targetId: goal.target.id, amount, target: goal.target.target });
-      setGoals((gs) =>
-        gs.map((g) => (g.target.id === goal.target.id ? { ...g, progress: res.progress, done: res.done } : g)),
-      );
-      if (res.justCompleted) {
-        // Completing a goal moves Combat Power → recompute, then celebrate with the real delta.
-        const result = await recomputeAndStore(db);
-        useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
-        // rir:2 + hitTargetReps lands the 'solid' T2 tier (a satisfying, earned pop — not a max event).
-        juice.fire(
-          classifyEvent({ kind: 'set', isPr: false, rir: 2, hitTargetReps: true, deltaCp: result.score - prev }),
+      try {
+        const prev = useCombatPowerStore.getState().score;
+        const res = await addProgress(db, { targetId: goal.target.id, amount, target: goal.target.target });
+        setGoals((gs) =>
+          gs.map((g) => (g.target.id === goal.target.id ? { ...g, progress: res.progress, done: res.done } : g)),
         );
+        if (res.justCompleted) {
+          // Completing a goal moves Combat Power → recompute, then celebrate with the real delta.
+          const result = await recomputeAndStore(db);
+          useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+          // rir:2 + hitTargetReps lands the 'solid' T2 tier (a satisfying, earned pop — not a max event).
+          juice.fire(
+            classifyEvent({ kind: 'set', isPr: false, rir: 2, hitTargetReps: true, deltaCp: result.score - prev }),
+          );
+        }
+      } catch (e) {
+        console.error('[dailyGoals] bump failed', e);
       }
     },
     [db, juice],
@@ -64,29 +68,41 @@ export function useDailyGoals() {
 
   const reset = useCallback(
     async (goal: TodayGoal) => {
-      await resetProgress(db, goal.target.id);
-      setGoals((gs) => gs.map((g) => (g.target.id === goal.target.id ? { ...g, progress: 0, done: false } : g)));
-      // Un-completing can lower CP; recompute quietly (no JUICE).
-      const result = await recomputeAndStore(db);
-      useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+      try {
+        await resetProgress(db, goal.target.id);
+        setGoals((gs) => gs.map((g) => (g.target.id === goal.target.id ? { ...g, progress: 0, done: false } : g)));
+        // Un-completing can lower CP; recompute quietly (no JUICE).
+        const result = await recomputeAndStore(db);
+        useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+      } catch (e) {
+        console.error('[dailyGoals] reset failed', e);
+      }
     },
     [db],
   );
 
   const add = useCallback(
     async (input: { label: string; unit: GoalUnit; target: number }) => {
-      await addTarget(db, input);
-      await reload();
+      try {
+        await addTarget(db, input);
+        await reload();
+      } catch (e) {
+        console.error('[dailyGoals] add failed', e);
+      }
     },
     [db, reload],
   );
 
   const remove = useCallback(
     async (targetId: string) => {
-      await removeTarget(db, targetId);
-      await reload();
-      const result = await recomputeAndStore(db);
-      useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+      try {
+        await removeTarget(db, targetId);
+        await reload();
+        const result = await recomputeAndStore(db);
+        useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+      } catch (e) {
+        console.error('[dailyGoals] remove failed', e);
+      }
     },
     [db, reload],
   );

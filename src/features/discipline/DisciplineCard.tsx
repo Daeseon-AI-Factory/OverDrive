@@ -57,6 +57,11 @@ export function DisciplineCard() {
             classifyEvent({ kind: 'set', isPr: false, rir: null, hitTargetReps: false, deltaCp: result.score - prev }),
           );
         }
+      } catch (e) {
+        // Revert the optimistic toggle so the UI matches what's actually in the DB.
+        console.error('[discipline] toggle failed', e);
+        if (key === 'protein') setProtein(protein);
+        else setRest(rest);
       } finally {
         setBusy(false);
       }
