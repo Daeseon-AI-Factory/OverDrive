@@ -1,4 +1,5 @@
 import { useSQLiteContext } from 'expo-sqlite';
+import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -131,6 +132,7 @@ export function ActiveWorkoutCard({
   onFinishWorkout: () => void;
 }) {
   const db = useSQLiteContext();
+  const router = useRouter();
   const { t } = useTranslation();
   const logSet = useLogSet();
   const logCardio = useLogCardio();
@@ -479,6 +481,16 @@ export function ActiveWorkoutCard({
         <View style={styles.emptyBlock}>
           <Text style={styles.emptyTitle}>{today.dayType === 'rest' ? t('activeWorkout.restTitle') : t('activeWorkout.emptyDayTitle')}</Text>
           <Muted>{today.dayType === 'rest' ? t('activeWorkout.restBody') : t('activeWorkout.emptyDayBody')}</Muted>
+          {today.dayType !== 'rest' ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('activeWorkout.editProgram')}
+              onPress={() => router.push('/program')}
+              hitSlop={8}
+            >
+              <Text style={styles.ctaLink}>{t('activeWorkout.editProgram')}</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
@@ -666,6 +678,7 @@ const styles = StyleSheet.create({
   errorText: { color: colors.energyLo, marginTop: space.sm },
   emptyBlock: { marginTop: space.lg, gap: space.xs },
   emptyTitle: { color: colors.text, fontSize: fontSize.lg, fontWeight: '900' },
+  ctaLink: { color: colors.cyan, fontSize: fontSize.sm, fontWeight: '800', letterSpacing: 1, marginTop: space.sm },
   exerciseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.md, marginTop: space.lg },
   exerciseNameWrap: { flex: 1 },
   exerciseName: { color: colors.text, fontSize: fontSize.lg, fontWeight: '900' },

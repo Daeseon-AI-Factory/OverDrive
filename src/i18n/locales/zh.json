@@ -44,7 +44,8 @@
     "undo": "撤销",
     "saveFailed": "保存失败。请重试。",
     "emptyDayTitle": "暂无动作",
-    "emptyDayBody": "在设置 ▸ 计划中为这天添加动作。"
+    "emptyDayBody": "在设置 ▸ 计划中为这天添加动作。",
+    "editProgram": "编辑计划 ▸"
   },
   "power": {
     "disclaimer": "趣味原创算法 · 非科学指标",

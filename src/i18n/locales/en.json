@@ -44,7 +44,8 @@
     "undo": "Undo",
     "saveFailed": "Couldn't save that set. Try again.",
     "emptyDayTitle": "No exercises yet",
-    "emptyDayBody": "Add lifts to this day in Settings ▸ Program."
+    "emptyDayBody": "Add lifts to this day in Settings ▸ Program.",
+    "editProgram": "Edit program ▸"
   },
   "quicklog": {
     "placeholder": "e.g.  bench 100 5",

@@ -44,7 +44,8 @@
     "undo": "되돌리기",
     "saveFailed": "저장 실패. 다시 시도해.",
     "emptyDayTitle": "운동이 없다",
-    "emptyDayBody": "설정 ▸ 프로그램에서 이 요일에 운동을 추가하라."
+    "emptyDayBody": "설정 ▸ 프로그램에서 이 요일에 운동을 추가하라.",
+    "editProgram": "프로그램 편집 ▸"
   },
   "power": {
     "disclaimer": "재미용 자체 산식 · 과학적 지표 아님",

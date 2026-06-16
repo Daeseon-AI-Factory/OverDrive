@@ -44,7 +44,8 @@
     "undo": "Deshacer",
     "saveFailed": "No se pudo guardar la serie. Intenta de nuevo.",
     "emptyDayTitle": "Sin ejercicios",
-    "emptyDayBody": "Añade ejercicios a este día en Ajustes ▸ Programa."
+    "emptyDayBody": "Añade ejercicios a este día en Ajustes ▸ Programa.",
+    "editProgram": "Editar programa ▸"
   },
   "power": {
     "disclaimer": "Fórmula original por diversión · no es una métrica científica",
