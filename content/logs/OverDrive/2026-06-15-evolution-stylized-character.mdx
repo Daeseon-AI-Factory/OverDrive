@@ -1,0 +1,43 @@
+---
+title: "EVOLUTION 방향 전환 — 사진 보정 → 스타일라이즈드 히어로 캐릭터"
+date: "2026-06-15"
+project: "OverDrive"
+kind: "decision"
+visibility: "public"
+language: "ko"
+summary: "EVOLUTION을 '내 실제 사진의 체형을 사실적으로 살짝 보정'에서 '나를 알아볼 수 있는 채로 개쩌는 오리지널 히어로 캐릭터로 변신'으로 전환. 빌더 피드백('이게 그냥 사진 변형이지 개쩌는 캐릭터로 안 됨') + Gemini가 실제 체형 변형을 정책상 거부한 사실이 근거. 워커 프롬프트만 교체(서버 변경, 앱 재빌드 불필요). 커밋 fdccae7, 배포 db109ebd."
+tags: ["phase-1", "evolution", "decision", "worker", "gemini"]
+---
+
+## Context
+
+결제를 켜서 EVOLUTION의 마지막 벽(Gemini 무료 이미지 쿼터=0, 429)은 해소됐다. 그런데 결과가 "병신같다" — 빌더 평: **"이게 내 사진을 그냥 좀 변형하는 거지, 뭔가 개쩌는 캐릭터로 안 한다."** 기존 워커 프롬프트는 정확히 그 반대로 박혀 있었다: `Photorealistic, respectful, no exaggeration, keep clothing & background` + 낮은 등급은 `subtle glow / light tone`(거의 안 보임). 게다가 실제 체형을 사실적으로 바꾸는 건 Gemini가 정책상 거부하기도 했다("unable to alter a person's physique").
+
+## Options
+
+1. **사진 보정 강화(A)** — 사실적 변형을 더 세게. 단 body-image 민감(§9), Gemini 거부 위험, 헬스앱 before/after 톤.
+2. **스타일라이즈드 히어로 캐릭터(B, 선택)** — 나를 알아볼 수 있게 두되 오리지널 히어로 캐릭터(게임/애니 스플래시 아트, 등급별 오라 에스컬레이션)로 변신.
+3. **do nothing** — 밋밋한 현상 유지.
+
+## Chosen + Why (B)
+
+- **앱 정체성 일치:** 전투력·오라·뽕맛(스펙 §7)과 맞는다. 사실적 보정은 김샌다.
+- **안티수치심 + 정책 안전(§9):** 진짜 몸을 평가/변형하는 게 아니라 "히어로 버전"이라 body-image 지뢰와 Gemini의 physique-거부를 동시에 회피.
+- **모델 강점:** Gemini는 사실적 신체 변형보다 스타일화를 더 잘한다(위 거부 사례가 방증).
+- **공유각:** "오라 파밍 샷"으로서 캐릭터가 압도적.
+
+## Guardrails (사수)
+
+- **정체성 유지** — 같은 얼굴/닮음. "내가 히어로 됨"이어야 동기부여 훅.
+- **오리지널 IP only(§5)** — 프롬프트에 "기존 프랜차이즈/캐릭터/로고/상표 스타일 모방 금지" 명시.
+- **안티수치심(§9)** — "flattering, heroic only, never mocking".
+
+## Trade-off / Reversibility
+
+- 트레이드오프: "실제의 나"라는 사실감은 줄어든다(판타지 쪽). 대신 뽕맛·안전·공유성↑.
+- 가역성: 높음 — 워커 프롬프트(EVOLVE_LOOKS + prompt) 한 곳만 바꾸면 A로 복귀 가능. 앱 변경 0.
+
+## Verified by
+
+- 워커 프롬프트 교체 `worker/src/index.js` (EVOLVE_LOOKS 7등급 각성→god-tier, 캐릭터 프롬프트 + IP 가드). 커밋 `fdccae7`, `wrangler deploy` → Version `db109ebd` (서버 변경, 앱 재빌드 불필요).
+- 실제 캐릭터 결과 품질은 빌더가 본인 사진으로 폰에서 검증 예정(미확정). 추가로 진짜 "쌈빡함"은 앱 자체 Skia 오라 카드 연출(§7)이 절반을 차지 — 별도 작업.
