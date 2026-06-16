@@ -40,7 +40,7 @@ export function DailyGoalsCard() {
               <View key={g.target.id} style={styles.goalRow}>
                 <View style={styles.goalMain}>
                   <View style={styles.goalTop}>
-                    <Pressable onLongPress={() => remove(g.target.id)} hitSlop={6}>
+                    <Pressable accessibilityHint={t('goals.removeHint')} onLongPress={() => remove(g.target.id)} hitSlop={6}>
                       <Text style={[styles.goalLabel, g.done && styles.dim]}>{g.target.label}</Text>
                     </Pressable>
                     <Text style={styles.goalProgress}>
@@ -80,6 +80,8 @@ export function DailyGoalsCard() {
         )}
       </Card>
 
+      {goals.length > 0 ? <Muted style={styles.removeHint}>{t('goals.removeHint')}</Muted> : null}
+
       <DailyGoalEditorSheet visible={editorOpen} onClose={() => setEditorOpen(false)} onAdd={add} />
     </View>
   );
@@ -87,6 +89,7 @@ export function DailyGoalsCard() {
 
 const styles = StyleSheet.create({
   wrap: { marginTop: space.xs },
+  removeHint: { fontSize: fontSize.xs, marginTop: space.xs },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   addLink: { color: colors.cyan, fontSize: fontSize.sm, fontWeight: '800', letterSpacing: 1 },
   goalRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: space.sm },

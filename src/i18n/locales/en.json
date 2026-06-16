@@ -373,6 +373,7 @@
     "add": "+ ADD",
     "empty": "Set a daily target and crush it every day. Tap + ADD.",
     "done": "DONE ⚡",
+    "removeHint": "Long-press a goal to remove it.",
     "unit": {
       "reps": "reps",
       "sets": "sets",

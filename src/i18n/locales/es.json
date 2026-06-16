@@ -311,6 +311,7 @@
     "add": "+ AÑADIR",
     "empty": "Fija una meta diaria y aplástala cada día. Pulsa + AÑADIR.",
     "done": "HECHO ⚡",
+    "removeHint": "Mantén pulsado un objetivo para eliminarlo.",
     "unit": {
       "reps": "reps",
       "sets": "series",
