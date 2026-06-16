@@ -350,6 +350,14 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: Added `accessibilityLabel` to every `TextInput`, reusing the existing placeholder/field-label i18n key (no new strings). Stepper's type-it-in field uses its `label` prop. (Buttons/Pills already had roles/labels from the earlier OD-FR-008 pass.) tsc 0 / lint 0 / jest 108.
 - **Commit**: f3aae1b
 - **Pattern**: A `placeholder` is not an accessible name — every `TextInput` needs an explicit `accessibilityLabel` (reuse the placeholder/label key so it stays localized and DRY).
+
+## Voice/photo/evolve uploads could hang forever — uploadAsync has no timeout (audit follow-up)
+
+- **Symptom**: UX/architecture audit. The `fetch`-based AI calls (`/parse`, `/food` text) had AbortController timeouts (7–9 s), but the three `expo-file-system` `uploadAsync` calls — voice `/transcribe`, food-photo `/food`, `/evolve` — had NONE. A slow or stuck server would spin the mic / photo / evolve UI indefinitely with no failure and no fallback.
+- **Cause**: `uploadAsync` exposes no `AbortSignal`, so the usual `fetch(..., { signal })` timeout pattern can't be applied; the calls were left unbounded.
+- **Fix**: Added `src/lib/async.ts` `withTimeout(p, ms, label)` (races the promise against a rejecting timer; unit-tested, 3 cases). Wrapped the three uploads: `transcribe` + food photo at 20 s, `evolve` at 60 s (image gen is slow). On timeout the existing try/catch turns it into a graceful failure (voice/text falls back to the rule parser; photo/evolve show their error). tsc 0 / lint 0 / jest 16 suites / 111.
+- **Commit**: 19f9298
+- **Pattern**: `uploadAsync` (and any awaitable with no AbortSignal) must be wrapped in a timeout race — otherwise a hung server hangs the UI forever. Pick the bound from the work: short for voice/photo, longer for generation.
 <!-- skipped: fd583b0 docs(log): record voice end-to-end fixes + cwd/FormData traps (866e295) [no-log] -->
 <!-- skipped: 7de255a docs(log): record ARENA + AI food + comfort glue (6e5726a, 0ebc924) [no-log] -->
 <!-- override-trigger: c3d3ad4 docs(log): record real leaderboards decision (60be727) [no-log] — log-commit recursion again: c3d3ad4 IS the T2 decision narrative itself (content/logs/OverDrive/2026-06-09-real-rankings.mdx contains the full Context/Options/Trade-off/Reversibility/Verified-by template for 60be727). The trigger word "decision" is only in the log-commit's subject. Recurring footgun noted twice already — log-commit subjects must avoid trigger keywords; switching to neutral subjects like "docs(log): add entry for <hash>" from now on. -->
@@ -369,3 +377,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: 6f9aa93 docs(log): body-type honesty refinement for EVOLUTION (67466ab) [no-log] -->
 <!-- skipped: 245c0f1 docs(log): record silent-persist data-loss fix (c59ac04) [no-log] -->
 <!-- skipped: 8e8e50d docs(log): record goals/discipline reliability + empty-day CTA (92bdfed, 7cb2c41) [no-log] -->
+<!-- skipped: 600095a docs(log): record text-input a11y labels (f3aae1b) [no-log] -->
