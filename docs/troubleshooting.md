@@ -342,6 +342,14 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: (1) wrapped all four `useDailyGoals` writes in try/catch + `console.error`. (2) `DisciplineCard.toggle` now has a `catch` that reverts the optimistic toggle to its pre-tap value + logs. (3) `ActiveWorkoutCard` empty (non-rest) state now renders an `activeWorkout.editProgram` Pressable → `router.push('/program')` (key added to en/ko/es/zh). tsc 0 / lint 0 / jest 108.
 - **Commit**: 92bdfed (reliability), 7cb2c41 (empty-day CTA)
 - **Pattern**: An optimistic UI write needs a `catch` that REVERTS the optimistic state, not just logs — otherwise the screen lies about what's persisted. Every dead-end empty state should offer the action that resolves it.
+
+## Text inputs had no screen-reader names (a11y audit follow-up)
+
+- **Symptom**: UX audit — all 7 `TextInput`s (QuickLogBar, FoodCard, ProgramEditorScreen day name, RankSection handle + crew, DailyGoalEditorSheet, Stepper edit) had no `accessibilityLabel`. A screen reader announces an unlabeled text field as just "text field", so a VoiceOver/TalkBack user can't tell what to type.
+- **Cause**: Inputs relied on `placeholder` only — placeholders aren't read once a field has content, and aren't a reliable accessible name.
+- **Fix**: Added `accessibilityLabel` to every `TextInput`, reusing the existing placeholder/field-label i18n key (no new strings). Stepper's type-it-in field uses its `label` prop. (Buttons/Pills already had roles/labels from the earlier OD-FR-008 pass.) tsc 0 / lint 0 / jest 108.
+- **Commit**: f3aae1b
+- **Pattern**: A `placeholder` is not an accessible name — every `TextInput` needs an explicit `accessibilityLabel` (reuse the placeholder/label key so it stays localized and DRY).
 <!-- skipped: fd583b0 docs(log): record voice end-to-end fixes + cwd/FormData traps (866e295) [no-log] -->
 <!-- skipped: 7de255a docs(log): record ARENA + AI food + comfort glue (6e5726a, 0ebc924) [no-log] -->
 <!-- override-trigger: c3d3ad4 docs(log): record real leaderboards decision (60be727) [no-log] — log-commit recursion again: c3d3ad4 IS the T2 decision narrative itself (content/logs/OverDrive/2026-06-09-real-rankings.mdx contains the full Context/Options/Trade-off/Reversibility/Verified-by template for 60be727). The trigger word "decision" is only in the log-commit's subject. Recurring footgun noted twice already — log-commit subjects must avoid trigger keywords; switching to neutral subjects like "docs(log): add entry for <hash>" from now on. -->
@@ -360,3 +368,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: 1d74c15 docs(log): EVOLUTION direction switch to stylized hero character (fdccae7) [no-log] -->
 <!-- skipped: 6f9aa93 docs(log): body-type honesty refinement for EVOLUTION (67466ab) [no-log] -->
 <!-- skipped: 245c0f1 docs(log): record silent-persist data-loss fix (c59ac04) [no-log] -->
+<!-- skipped: 8e8e50d docs(log): record goals/discipline reliability + empty-day CTA (92bdfed, 7cb2c41) [no-log] -->
