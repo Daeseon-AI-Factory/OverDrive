@@ -54,6 +54,14 @@
           "cameraPermission": false,
           "microphonePermission": false
         }
+      ],
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "OVERDRIVE reads your workouts, energy, heart rate, and body metrics on your device to calculate your Combat Power score.",
+          "NSHealthUpdateUsageDescription": "OVERDRIVE saves the strength workouts you log so they appear in Apple Health.",
+          "background": false
+        }
       ]
     ],
     "experiments": {
