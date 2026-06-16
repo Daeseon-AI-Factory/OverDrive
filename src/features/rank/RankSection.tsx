@@ -4,14 +4,13 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { getScoreOnOrBefore } from '@/db/repos/combatPowerRepo';
-import { updateSettings } from '@/db/repos/userRepo';
 import { newUuid } from '@/db/uuid';
 import { addDays, weekStartLocal } from '@/features/arena/rival';
 import { QUICKLOG_ENDPOINT } from '@/features/quicklog/config';
 import { CP_FLOOR } from '@/features/combat-power/constants';
 import { todayLocal } from '@/lib/date';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
-import { currentSettings, useSettingsStore } from '@/stores/settingsStore';
+import { persistSettings, useSettingsStore } from '@/stores/settingsStore';
 import { Card, Muted, Pill, SectionTitle } from '@/ui/primitives';
 import { colors, fontSize, numberFamily, radius, space } from '@/ui/theme/tokens';
 import { fetchBoard, submitRank, type RankBoard, type RankSort } from './rankClient';
@@ -39,7 +38,7 @@ export function RankSection() {
   const [err, setErr] = useState(false);
 
   const persist = useCallback(async () => {
-    await updateSettings(db, currentSettings()).catch(() => {});
+    await persistSettings(db);
   }, [db]);
 
   const join = async () => {

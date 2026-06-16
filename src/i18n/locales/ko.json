@@ -402,7 +402,8 @@
     "privacy": "사진은 생성 순간에만 네 서버를 통과 — 저장되지 않음."
   },
   "common": {
-    "back": "뒤로"
+    "back": "뒤로",
+    "saveFailed": "저장 실패 — 다시 시도해줘."
   },
   "onboarding": {
     "step": "{current} / {total}",

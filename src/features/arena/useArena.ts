@@ -3,13 +3,12 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getScoreOnOrBefore } from '@/db/repos/combatPowerRepo';
 import { bossCandidates, hasPrSince } from '@/db/repos/setLogRepo';
-import { updateSettings } from '@/db/repos/userRepo';
 import { CP_FLOOR } from '@/features/combat-power/constants';
 import { classifyEvent } from '@/features/juice/classifyEvent';
 import { useJuice } from '@/features/juice/JuiceProvider';
 import { localDateDaysAgo, todayLocal } from '@/lib/date';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
-import { currentSettings, useSettingsStore } from '@/stores/settingsStore';
+import { persistSettings, useSettingsStore } from '@/stores/settingsStore';
 import { addDays, createRival, rivalCpOn, rivalGainOn, weekStartLocal, type RivalConfig } from './rival';
 import { pickWeeklyBoss, type WeeklyBoss } from './weeklyBoss';
 
@@ -50,7 +49,7 @@ export function useArena(): ArenaState {
     spawning.current = true;
     const cfg = createRival(score, today);
     apply({ rival: cfg });
-    void updateSettings(db, currentSettings()).catch(() => {});
+    void persistSettings(db);
   }, [rival, score, today, apply, db]);
 
   const reload = useCallback(async () => {

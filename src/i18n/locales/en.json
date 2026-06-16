@@ -402,7 +402,8 @@
     }
   },
   "common": {
-    "back": "Back"
+    "back": "Back",
+    "saveFailed": "Couldn't save — please try again."
   },
   "onboarding": {
     "step": "{current} / {total}",

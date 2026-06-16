@@ -402,7 +402,8 @@
     "privacy": "Tu foto solo pasa por tu servidor para generar — nunca se guarda."
   },
   "common": {
-    "back": "Atrás"
+    "back": "Atrás",
+    "saveFailed": "No se pudo guardar — inténtalo de nuevo."
   },
   "onboarding": {
     "step": "{current} / {total}",

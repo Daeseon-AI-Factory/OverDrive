@@ -402,7 +402,8 @@
     "privacy": "照片仅在生成时经过你的服务器 — 不会被存储。"
   },
   "common": {
-    "back": "返回"
+    "back": "返回",
+    "saveFailed": "保存失败 — 请重试。"
   },
   "onboarding": {
     "step": "{current} / {total}",

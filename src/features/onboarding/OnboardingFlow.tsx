@@ -2,13 +2,12 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { updateSettings } from '@/db/repos/userRepo';
 import { Stepper } from '@/features/logging/Stepper';
 import { SPLIT_TEMPLATES, templateByKey } from '@/features/program/templates';
 import { nowIso } from '@/lib/date';
 import type { UserSettings } from '@/lib/settings';
 import { displayToKg, kgToDisplay, weightStepDisplay, weightUnit, type UnitSystem } from '@/lib/units';
-import { currentSettings, useSettingsStore } from '@/stores/settingsStore';
+import { persistSettings, useSettingsStore } from '@/stores/settingsStore';
 import { Muted, NeonButton, Screen } from '@/ui/primitives';
 import { colors, displayFamily, fontSize, radius, space } from '@/ui/theme/tokens';
 
@@ -59,7 +58,7 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
       patch.customProgram = templateKey === 'upperLower' ? null : (templateByKey(templateKey)?.build() ?? null);
     }
     apply(patch);
-    void updateSettings(db, currentSettings()).catch(() => {});
+    void persistSettings(db); // logs on failure; store already has it for this session
     onDone();
   };
 

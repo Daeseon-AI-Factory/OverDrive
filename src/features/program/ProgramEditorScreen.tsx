@@ -2,10 +2,9 @@ import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { DayType } from '@/db/types';
-import { currentSettings, useSettingsStore } from '@/stores/settingsStore';
-import { updateSettings } from '@/db/repos/userRepo';
+import { persistSettings, useSettingsStore } from '@/stores/settingsStore';
 import { Card, Muted, Screen } from '@/ui/primitives';
 import { colors, fontSize, numberFamily, radius, space } from '@/ui/theme/tokens';
 import { defaultWeeklyProgram, slotFromExerciseId } from './defaultProgram';
@@ -87,7 +86,9 @@ export function ProgramEditorScreen() {
 
   const save = (next: WeeklyProgram | null) => {
     apply({ customProgram: next });
-    void updateSettings(db, currentSettings()).catch(() => {});
+    void persistSettings(db).then((ok) => {
+      if (!ok) Alert.alert(t('common.saveFailed'));
+    });
   };
 
   const persist = (next: WeeklyProgram) => {
