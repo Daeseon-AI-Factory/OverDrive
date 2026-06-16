@@ -119,7 +119,10 @@
       "connected": "Apple Health conectado",
       "summary": "{workouts} entrenamientos verificados en los últimos 7 días.",
       "sync": "Sincronizar",
-      "disconnect": "Desconectar"
+      "disconnect": "Desconectar",
+      "read": "Últimos 7 días: {workouts} entrenos · peso {weight} · grasa {bodyFat} · VO2max {vo2}",
+      "empty": "Sin datos recientes en Apple Health — necesitas entrenamientos registrados (p. ej. Apple Watch / app de fitness) para que aplique la bonificación.",
+      "syncing": "Sincronizando…"
     }
   },
   "boot": {

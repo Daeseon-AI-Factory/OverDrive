@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { updateLocale, updateSettings } from '@/db/repos/userRepo';
@@ -32,9 +33,28 @@ export default function SettingsScreen() {
   const apply = useSettingsStore((s) => s.apply);
   const setLocale = useSettingsStore((s) => s.setLocale);
   const hk = useHealth();
+  const [syncing, setSyncing] = useState(false);
+  const onSyncHealth = async () => {
+    setSyncing(true);
+    try {
+      await hk.sync();
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const weightKg = startWeightKg ?? 75;
   const suggestedProtein = Math.round((weightKg * PROTEIN_PER_KG) / 5) * 5;
+
+  // What Apple Health actually returned — shown so "connected" isn't an opaque no-op.
+  const h = hk.health;
+  const healthHasData = !!h && (h.workouts7d > 0 || h.bodyMassKg != null || h.bodyFatFraction != null || h.vo2Max != null);
+  const healthRead = {
+    workouts: h?.workouts7d ?? 0,
+    weight: h?.bodyMassKg != null ? `${h.bodyMassKg.toFixed(1)}kg` : '—',
+    bodyFat: h?.bodyFatFraction != null ? `${Math.round(h.bodyFatFraction <= 1 ? h.bodyFatFraction * 100 : h.bodyFatFraction)}%` : '—',
+    vo2: h?.vo2Max != null ? h.vo2Max.toFixed(0) : '—',
+  };
 
   const persist = async (patch: Partial<ReturnType<typeof currentSettings>>) => {
     apply(patch);
@@ -126,9 +146,15 @@ export default function SettingsScreen() {
               {hk.connected ? (
                 <>
                   <Text style={styles.label}>{t('settings.health.connected')}</Text>
-                  <Muted style={{ marginTop: space.xs }}>{t('settings.health.summary', { workouts: hk.health?.workouts7d ?? 0 })}</Muted>
+                  <Muted style={{ marginTop: space.xs }}>
+                    {healthHasData ? t('settings.health.read', healthRead) : t('settings.health.empty')}
+                  </Muted>
                   <View style={[styles.wrapRow, { marginTop: space.md }]}>
-                    <Pill label={t('settings.health.sync')} color={colors.cyan} onPress={() => void hk.sync()} />
+                    <Pill
+                      label={syncing ? t('settings.health.syncing') : t('settings.health.sync')}
+                      color={colors.cyan}
+                      onPress={() => void onSyncHealth()}
+                    />
                     <Pill label={t('settings.health.disconnect')} color={colors.energyLo} onPress={() => void hk.disconnect()} />
                   </View>
                 </>

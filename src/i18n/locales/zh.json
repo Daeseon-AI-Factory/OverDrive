@@ -119,7 +119,10 @@
       "connected": "已连接 Apple 健康",
       "summary": "最近 7 天有 {workouts} 次已验证训练。",
       "sync": "立即同步",
-      "disconnect": "断开连接"
+      "disconnect": "断开连接",
+      "read": "近 7 天：训练 {workouts} 次 · 体重 {weight} · 体脂 {bodyFat} · VO2max {vo2}",
+      "empty": "Apple 健康暂无近期数据 — 需要有训练记录（如 Apple Watch / 健身 App）加成才会生效。",
+      "syncing": "同步中…"
     }
   },
   "boot": {

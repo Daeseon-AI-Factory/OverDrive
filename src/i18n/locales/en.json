@@ -143,7 +143,10 @@
       "connected": "Apple Health connected",
       "summary": "{workouts} verified workouts in the last 7 days.",
       "sync": "Sync now",
-      "disconnect": "Disconnect"
+      "disconnect": "Disconnect",
+      "read": "Last 7d: {workouts} workouts · weight {weight} · body fat {bodyFat} · VO2max {vo2}",
+      "empty": "No recent data in Apple Health — you need workouts logged (e.g. Apple Watch / a fitness app) for the bonus to apply.",
+      "syncing": "Syncing…"
     }
   },
   "boot": {
