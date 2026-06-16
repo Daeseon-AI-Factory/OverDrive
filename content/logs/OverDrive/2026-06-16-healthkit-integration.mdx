@@ -69,3 +69,13 @@ Android는 대칭으로 `react-native-health-connect`.
 수정(`src/app/(tabs)/settings.tsx`): 연동 시 **실제 읽은 값**(최근7일 운동·체중·체지방·VO2max)을 표기, 데이터 0이면 **"Apple 건강에 최근 데이터 없음 — 애플워치/피트니스 앱 기록 필요"** 안내, Sync 버튼에 **"동기화 중…" 피드백**(busy state). i18n `read`/`empty`/`syncing` 4로케일. tsc 0 / lint 0 / jest 111. 커밋 `e9a8c7b`.
 
 교훈: 연동/동기화처럼 "백그라운드로 뭔가 한" UX는 **읽은 결과를 보여주고 진행 피드백을 줘야** 한다 — 안 그러면 정상 동작도 고장으로 읽힌다(직전 silent-persist 교훈과 동형).
+
+## Update — 쓰기(write-back) A: 운동 → Apple 건강 (ce57560)
+
+빌더: "내 운동한 게 애플에도 연동돼야 하는 거 아닌가." 맞음 — 그동안 READ만이라 OverDrive→Apple 쓰기가 0이었음. **A 구현(실제 데이터만, §4):**
+- `requestHealthAuthorization`에 **`toShare`**(HKWorkoutType, bodyMass) 추가 → 쓰기 권한 요청.
+- `writeWorkout(start,end)` = `saveWorkoutSample(WorkoutActivityType.traditionalStrengthTraining, [], start, end)` (enum이라 string 아님 — tsc가 잡아 교정), `writeBodyMass(kg)` = `saveQuantitySample('HKQuantityTypeIdentifierBodyMass','kg',...)`.
+- **세션 finish 시**(`useForge.finish`) 연동돼 있으면 방금 끝낸 세션을 HKWorkout으로 기록(startedAt~now). **전투력 등 게임 숫자는 절대 안 씀.**
+- 체중 쓰기는 설정 스테퍼가 매 틱 발화라 스팸 위험 → **B(인바디 화면)의 명시적 저장**에서 처리하기로(함수만 준비). tsc 0 / lint 0 / jest 111. 커밋 `ce57560`.
+
+다음: **B — 인바디 입력 화면**(체중/체지방/근육량 입력 → Apple 건강 bodyMass/bodyFat/leanBodyMass 쓰기). 그리고 재빌드 후 폰에서 "세션 끝 → Apple 건강에 워크아웃 뜨는지" 실측. ④ Android는 SDK 환경.
