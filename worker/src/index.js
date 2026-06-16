@@ -323,14 +323,16 @@ async function handleRankBoard(req, env) {
 // POST /evolve — multipart { file, gradeKey } → AI-evolved physique photo (base64 JSON).
 // Pass-through only: the photo is never stored server-side. Anti-shame: transformations only ever
 // flatter (progressively heroic per grade) — there is no "downgrade" prompt.
+// Stylized HERO-CHARACTER transformation per grade (not a photoreal tweak). Escalates from
+// "awakening" to "god-tier". Original IP only — generic epic hero, never any named franchise.
 const EVOLVE_LOOKS = {
-  ordinary: 'a subtle healthy glow, slightly improved posture, fresh energy',
-  rookie: 'a noticeably fitter look with light athletic muscle tone',
-  fighter: 'clearly visible athletic muscle definition and a confident stance',
-  warrior: 'a strong, defined physique with a heroic stance and dramatic gym lighting',
-  beast: 'a powerful muscular build, vascular detail, dramatic rim lighting',
-  monster: 'an elite, imposing physique with intense presence and cinematic lighting',
-  ascendant: 'a legendary heroic physique radiating a faint energy aura, cinematic god-rays',
+  ordinary: 'a newly awakened hero — clean stylized hero art, athletic build, a faint glowing energy outline, determined expression',
+  rookie: 'a rising fighter — dynamic anime/game hero art, fit muscular build, a forming energy aura, bold dramatic lighting',
+  fighter: 'a battle-hardened warrior — bold splash-art style, strong defined physique, crackling energy aura, intense glare',
+  warrior: 'an elite champion — epic game splash art, powerful heroic physique, radiant energy aura, glowing eyes, cinematic VFX',
+  beast: 'an unstoppable powerhouse — high-impact stylized hero art, massive muscular build, explosive energy aura, particle effects, lightning',
+  monster: 'a legendary force of nature — over-the-top epic character art, godlike physique, enormous swirling energy aura, shattering ground, electric storm',
+  ascendant: 'a transcendent god-tier hero in ultimate form — maximum stylization, blinding radiant aura, cosmic energy, glowing runes, otherworldly presence',
 };
 
 async function handleEvolve(req, env) {
@@ -353,9 +355,13 @@ async function handleEvolve(req, env) {
 
   const model = env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image';
   const prompt =
-    `Edit this photo of a person. Keep the SAME person, same identity and face, similar pose, ` +
-    `clothing style and background. Transform their physique to show ${look}. ` +
-    `Photorealistic, respectful, flattering — no caricature, no exaggerated distortion.`;
+    `Reimagine the person in this photo as an EPIC ORIGINAL HERO CHARACTER — stylized digital ` +
+    `splash art / anime-game key art, NOT a photorealistic edit. This is a heroic power-up portrait. ` +
+    `Crucially, KEEP their face and likeness clearly recognizable so it still looks like the SAME person, ` +
+    `but transform everything else into: ${look}. Make them look genuinely badass, powerful and awe-inspiring ` +
+    `(flattering and heroic only — never mocking or unflattering). Dramatic composition, bold colors, ` +
+    `strong rim lighting and energy effects, portrait orientation. ` +
+    `ORIGINAL design only — do NOT copy or imitate any existing franchise, named character, logo, mascot, or trademarked art style.`;
 
   let res;
   try {
