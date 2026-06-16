@@ -84,6 +84,7 @@ export function Stepper({ value, step, min = 0, max = 9999, precision = 0, unit,
         {editing ? (
           <TextInput
             autoFocus
+            accessibilityLabel={label}
             value={text}
             onChangeText={setText}
             onBlur={commitText}

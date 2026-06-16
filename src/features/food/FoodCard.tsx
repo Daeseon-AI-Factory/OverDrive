@@ -151,6 +151,7 @@ export function FoodCard() {
               if (hint) setHint(null);
             }}
             placeholder={t('food.placeholder')}
+            accessibilityLabel={t('food.placeholder')}
             placeholderTextColor={colors.textDim}
             style={styles.input}
             onSubmitEditing={submit}

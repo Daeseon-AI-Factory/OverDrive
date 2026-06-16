@@ -78,6 +78,7 @@ export function DailyGoalEditorSheet({
           value={label}
           onChangeText={setLabel}
           placeholder={t('goals.editor.labelPlaceholder')}
+          accessibilityLabel={t('goals.editor.label')}
           placeholderTextColor={colors.textDim}
           style={styles.input}
         />

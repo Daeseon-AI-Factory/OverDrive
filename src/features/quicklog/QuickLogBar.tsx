@@ -128,6 +128,7 @@ export function QuickLogBar() {
             if (hint) setHint(null);
           }}
           placeholder={t('quicklog.placeholder')}
+          accessibilityLabel={t('quicklog.placeholder')}
           placeholderTextColor={colors.textDim}
           style={styles.input}
           onSubmitEditing={onSubmit}

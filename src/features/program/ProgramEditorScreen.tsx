@@ -221,6 +221,7 @@ export function ProgramEditorScreen() {
                 value={day.label ?? (day.labelKey ? t(day.labelKey) : '')}
                 onChangeText={setLabel}
                 placeholder={t('programEditor.dayNamePlaceholder')}
+                accessibilityLabel={t('programEditor.dayNameLabel')}
                 placeholderTextColor={colors.textDim}
                 style={styles.nameInput}
                 maxLength={24}

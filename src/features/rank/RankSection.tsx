@@ -95,6 +95,7 @@ export function RankSection() {
                 value={draftHandle}
                 onChangeText={setDraftHandle}
                 placeholder={t('rank.handlePlaceholder')}
+                accessibilityLabel={t('rank.handlePlaceholder')}
                 placeholderTextColor={colors.textDim}
                 autoCapitalize="characters"
                 autoCorrect={false}
@@ -124,6 +125,7 @@ export function RankSection() {
                   value={draftCrew}
                   onChangeText={setDraftCrew}
                   placeholder={t('rank.crewPlaceholder')}
+                  accessibilityLabel={t('rank.crewPlaceholder')}
                   placeholderTextColor={colors.textDim}
                   autoCapitalize="characters"
                   autoCorrect={false}
