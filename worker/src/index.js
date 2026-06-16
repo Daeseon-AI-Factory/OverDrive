@@ -323,16 +323,18 @@ async function handleRankBoard(req, env) {
 // POST /evolve — multipart { file, gradeKey } → AI-evolved physique photo (base64 JSON).
 // Pass-through only: the photo is never stored server-side. Anti-shame: transformations only ever
 // flatter (progressively heroic per grade) — there is no "downgrade" prompt.
-// Stylized HERO-CHARACTER transformation per grade (not a photoreal tweak). Escalates from
-// "awakening" to "god-tier". Original IP only — generic epic hero, never any named franchise.
+// Stylized HERO-CHARACTER transformation per grade (not a photoreal tweak, and NOT a weight-loss
+// edit). The power/aura/gear escalates with grade — the person's real body type is preserved (a
+// larger build = a mighty juggernaut, not slimmed). Original IP only — generic epic hero, never a
+// named franchise.
 const EVOLVE_LOOKS = {
-  ordinary: 'a newly awakened hero — clean stylized hero art, athletic build, a faint glowing energy outline, determined expression',
-  rookie: 'a rising fighter — dynamic anime/game hero art, fit muscular build, a forming energy aura, bold dramatic lighting',
-  fighter: 'a battle-hardened warrior — bold splash-art style, strong defined physique, crackling energy aura, intense glare',
-  warrior: 'an elite champion — epic game splash art, powerful heroic physique, radiant energy aura, glowing eyes, cinematic VFX',
-  beast: 'an unstoppable powerhouse — high-impact stylized hero art, massive muscular build, explosive energy aura, particle effects, lightning',
-  monster: 'a legendary force of nature — over-the-top epic character art, godlike physique, enormous swirling energy aura, shattering ground, electric storm',
-  ascendant: 'a transcendent god-tier hero in ultimate form — maximum stylization, blinding radiant aura, cosmic energy, glowing runes, otherworldly presence',
+  ordinary: 'a newly awakened hero — clean stylized hero art, a faint glowing energy outline, determined expression, heroic lighting',
+  rookie: 'a rising fighter — dynamic anime/game hero art, light battle gear, a forming energy aura, bold dramatic lighting',
+  fighter: 'a battle-hardened warrior — bold splash-art style, rugged armor, crackling energy aura, intense glare',
+  warrior: 'an elite champion — epic game splash art, ornate heroic armor, radiant energy aura, glowing eyes, cinematic VFX',
+  beast: 'an unstoppable powerhouse — high-impact stylized hero art, heavy battle armor, explosive energy aura, particle effects, lightning',
+  monster: 'a legendary force of nature — over-the-top epic character art, imposing armor, enormous swirling energy aura, shattering ground, electric storm',
+  ascendant: 'a transcendent god-tier hero in ultimate form — maximum stylization, divine armor, blinding radiant aura, cosmic energy, glowing runes',
 };
 
 async function handleEvolve(req, env) {
@@ -357,9 +359,12 @@ async function handleEvolve(req, env) {
   const prompt =
     `Reimagine the person in this photo as an EPIC ORIGINAL HERO CHARACTER — stylized digital ` +
     `splash art / anime-game key art, NOT a photorealistic edit. This is a heroic power-up portrait. ` +
-    `Crucially, KEEP their face and likeness clearly recognizable so it still looks like the SAME person, ` +
-    `but transform everything else into: ${look}. Make them look genuinely badass, powerful and awe-inspiring ` +
-    `(flattering and heroic only — never mocking or unflattering). Dramatic composition, bold colors, ` +
+    `KEEP their face and likeness clearly recognizable (must still look like the SAME person) AND keep ` +
+    `their real body type and build — do NOT slim them down, do NOT bulk or fatten them, do NOT change ` +
+    `their body shape. A larger or heavier build must be rendered as a MIGHTY, imposing juggernaut/tank ` +
+    `hero — any body type can look powerful and badass. Transform the styling into: ${look}. ` +
+    `Make them look genuinely badass, powerful and awe-inspiring (flattering and heroic only — never ` +
+    `mocking, never unflattering, and never a weight-loss "after" shot). Dramatic composition, bold colors, ` +
     `strong rim lighting and energy effects, portrait orientation. ` +
     `ORIGINAL design only — do NOT copy or imitate any existing franchise, named character, logo, mascot, or trademarked art style.`;
 
