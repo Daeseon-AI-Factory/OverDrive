@@ -8,6 +8,7 @@ import { playNamed } from '@/features/juice/audio/engine';
 import { classifyEvent } from '@/features/juice/classifyEvent';
 import { fireHaptic } from '@/features/juice/haptics';
 import { useJuice } from '@/features/juice/JuiceProvider';
+import { writeWorkout } from '@/features/health/health';
 import { resolveProgramDay } from '@/features/program/resolve';
 import { localDateDaysAgo, todayLocal } from '@/lib/date';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
@@ -54,6 +55,12 @@ export function useForge() {
     await completeSession(db, sid);
     const result = await recomputeAndStore(db); // streak now counts this session (completed_at set)
     useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+
+    // Write the real, just-finished session to Apple Health (HKWorkout) — only if connected. Never
+    // writes game numbers (§4). startedAt is epoch ms from the session store.
+    if (st.startedAt && useSettingsStore.getState().health?.connected) {
+      void writeWorkout(new Date(st.startedAt), new Date());
+    }
 
     const deltaCp = result.score - st.cpAtStart;
     const dates = await getCompletedSessionDates(db, localDateDaysAgo(90));
