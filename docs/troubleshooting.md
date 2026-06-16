@@ -326,6 +326,14 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: Pinned `expo-image-manipulator@56.0.14` to match `expo-modules-core@56.0.14` (same release train → symbol-compatible), `npx pod-install` (Podfile.lock → ExpoImageManipulator 56.0.14), rebuilt Release. App now launches and stays running (process alive >10 s). tsc 0.
 - **Commit**: 54e0c7b
 - **Pattern**: When `expo install <module>` resolves a version NEWER than the project's `expo-modules-core`, native Swift symbols mismatch → instant signal-6 crash — invisible to tsc/lint/jest (it's a native link error, not JS). Match a new Expo native module to the installed `expo-modules-core`, or `expo install --fix` the whole set. Diagnose launch crashes with `devicectl device process launch --console`.
+
+## Settings saves could fail silently — fire-and-forget persist swallowed errors (data-loss risk)
+
+- **Symptom**: Surfaced by the architecture/wiring audit (not a runtime crash). Onboarding completion, program-editor saves, rival spawn, and rank-handle persistence all ran `void updateSettings(db, currentSettings()).catch(() => {})`. A failed write was INVISIBLE — onboarding could re-trigger every launch (lost `onboardedAt`); a reorganized weekly program could silently fail to save with the UI looking fine.
+- **Cause**: `.catch(() => {})` swallowed every persistence error. The in-memory zustand store held the value for the session, so the screen looked correct while the DB never received it.
+- **Fix**: Added `persistSettings(db)` in `src/stores/settingsStore.ts` — awaits `updateSettings`, `console.error`s + returns `false` on failure (never throws). Replaced the 4 silent sites (`OnboardingFlow.tsx`, `ProgramEditorScreen.tsx`, `useArena.ts`, `RankSection.tsx`); the program editor now also shows `Alert(t('common.saveFailed'))` (added to en/ko/es/zh). Genuinely harmless swallows (haptics, audio, image-picker cancel, file-existence checks) were left as-is. tsc 0 / lint 0 / jest 108.
+- **Commit**: c59ac04
+- **Pattern**: `.catch(() => {})` on a persistence call is invisible data loss. Route writes through a helper that logs (and surfaces, for user-initiated saves). Reserve silent catches for truly non-data side effects (haptics/audio/cancel/existence-checks).
 <!-- skipped: fd583b0 docs(log): record voice end-to-end fixes + cwd/FormData traps (866e295) [no-log] -->
 <!-- skipped: 7de255a docs(log): record ARENA + AI food + comfort glue (6e5726a, 0ebc924) [no-log] -->
 <!-- override-trigger: c3d3ad4 docs(log): record real leaderboards decision (60be727) [no-log] — log-commit recursion again: c3d3ad4 IS the T2 decision narrative itself (content/logs/OverDrive/2026-06-09-real-rankings.mdx contains the full Context/Options/Trade-off/Reversibility/Verified-by template for 60be727). The trigger word "decision" is only in the log-commit's subject. Recurring footgun noted twice already — log-commit subjects must avoid trigger keywords; switching to neutral subjects like "docs(log): add entry for <hash>" from now on. -->
@@ -340,3 +348,6 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: 8306b4c docs(log): close Daily Goals case with 0686460 [no-log] -->
 <!-- skipped: a13f373 docs(log): record Release EXPO_PUBLIC inline gap + .xcode.env.local fix [no-log] -->
 <!-- skipped: 5caab0a docs(log): record photo-too-large food/evolution bug + resize fix (996f423) [no-log] -->
+<!-- skipped: 69d7aad docs(log): record launch-crash from image-manipulator version skew (54e0c7b) [no-log] -->
+<!-- skipped: 1d74c15 docs(log): EVOLUTION direction switch to stylized hero character (fdccae7) [no-log] -->
+<!-- skipped: 6f9aa93 docs(log): body-type honesty refinement for EVOLUTION (67466ab) [no-log] -->
