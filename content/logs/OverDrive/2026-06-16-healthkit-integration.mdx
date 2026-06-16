@@ -50,3 +50,14 @@ Android는 대칭으로 `react-native-health-connect`.
 `CombatPowerInput`에 이미 있던 **`verifiedRatio`(검증 데이터 비율 → trust 보너스)** + `fitnessMarkers`(VO2max) + `recomp`(체성분)이 정확한 꽂이 지점 — **보너스 only, 페널티 절대 없음(§9)**, 더블카운트 없음(자가보고 basket에 곱해지는 multiplier). Phase 1에서 verifiedRatio는 0이었는데(전부 자가보고), HealthKit이 그 0을 탈출시킨다.
 
 남은 일: ① `combatPowerRepo.buildInput`에 health 스냅샷 합류 ② Settings "Apple Health 연동" UI(권한 요청+플래그+재계산) ③ 재빌드 후 폰에서 권한 허용 → CP 변화 실측 ④ Android Health Connect(코드/설정, 빌드는 SDK 환경).
+
+## Update — 전투력 통합 + Settings UI 완료 (88d0d38)
+
+①② 구현:
+- **settings에 `health` 객체**(connected/workouts7d/vo2Max/bodyMassKg/bodyFatFraction/syncedAt) 추가(`src/lib/settings.ts`, `settingsStore.currentSettings`).
+- **`combatPowerRepo.buildInput`** 이 `getSettings`(repo→repo)로 health를 읽어 `verifiedRatio = clamp01(health.workouts7d / sessions7d)` 산출 — **매 recompute에서 일관**(깜빡임 없음), 보너스 only.
+- **`useHealth` 훅**: `connect`(권한 요청→스냅샷→settings 저장→재계산), `sync`, `disconnect`(동의 철회→health=null→재계산). 전부 방어적, persist 실패는 persistSettings가 로깅.
+- **Settings "Apple Health" 섹션**(iOS에서만, `hk.available`): 미연동 시 연동 버튼, 연동 시 검증 운동수 요약 + 동기화/연동해제. i18n 4로케일.
+- 게이트: tsc 0 / lint 0 / jest 111. 커밋 `88d0d38`.
+
+남은 일: ③ 재빌드 후 폰 권한 허용 → CP 실측, ④ Android Health Connect. (verifiedRatio가 실제로 trust 보너스를 올리는지는 폰에서 권한 허용 + 헬스 워크아웃 있을 때 확인 — 코드/게이트 레벨은 검증됨.)
