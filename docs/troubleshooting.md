@@ -358,6 +358,14 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: Added `src/lib/async.ts` `withTimeout(p, ms, label)` (races the promise against a rejecting timer; unit-tested, 3 cases). Wrapped the three uploads: `transcribe` + food photo at 20 s, `evolve` at 60 s (image gen is slow). On timeout the existing try/catch turns it into a graceful failure (voice/text falls back to the rule parser; photo/evolve show their error). tsc 0 / lint 0 / jest 16 suites / 111.
 - **Commit**: 19f9298
 - **Pattern**: `uploadAsync` (and any awaitable with no AbortSignal) must be wrapped in a timeout race — otherwise a hung server hangs the UI forever. Pick the bound from the work: short for voice/photo, longer for generation.
+
+## Removing a daily goal was undiscoverable — long-press only, no hint (audit follow-up)
+
+- **Symptom**: UX audit. The ONLY way to delete a daily goal is long-pressing its label (`DailyGoalsCard`), with zero visible affordance — a user can't discover it and is stuck with goals they can't remove.
+- **Cause**: `onLongPress={() => remove(...)}` on the goal label with no hint text and no `accessibilityHint`.
+- **Fix**: Added a subtle `goals.removeHint` line under the goals list (only when goals exist) + an `accessibilityHint` on the goal-label Pressable (key added to en/ko/es/zh). Stepper's long-press "type a value" is left hint-less on purpose — it's an escape hatch and ±/hold already works. tsc 0 / lint 0 / jest 111.
+- **Commit**: 2d7853d
+- **Pattern**: A long-press that is the SOLE way to do something needs a visible hint (and `accessibilityHint`). Long-press is fine as a shortcut, never as the only path.
 <!-- skipped: fd583b0 docs(log): record voice end-to-end fixes + cwd/FormData traps (866e295) [no-log] -->
 <!-- skipped: 7de255a docs(log): record ARENA + AI food + comfort glue (6e5726a, 0ebc924) [no-log] -->
 <!-- override-trigger: c3d3ad4 docs(log): record real leaderboards decision (60be727) [no-log] — log-commit recursion again: c3d3ad4 IS the T2 decision narrative itself (content/logs/OverDrive/2026-06-09-real-rankings.mdx contains the full Context/Options/Trade-off/Reversibility/Verified-by template for 60be727). The trigger word "decision" is only in the log-commit's subject. Recurring footgun noted twice already — log-commit subjects must avoid trigger keywords; switching to neutral subjects like "docs(log): add entry for <hash>" from now on. -->
@@ -378,3 +386,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: 245c0f1 docs(log): record silent-persist data-loss fix (c59ac04) [no-log] -->
 <!-- skipped: 8e8e50d docs(log): record goals/discipline reliability + empty-day CTA (92bdfed, 7cb2c41) [no-log] -->
 <!-- skipped: 600095a docs(log): record text-input a11y labels (f3aae1b) [no-log] -->
+<!-- skipped: b7ecec9 docs(log): record upload timeout resilience (19f9298) [no-log] -->
