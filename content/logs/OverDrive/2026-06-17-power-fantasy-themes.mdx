@@ -1,0 +1,43 @@
+---
+title: "파워 판타지 테마 시스템 — 오라/모굴/프로/스토익"
+date: "2026-06-17"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "빌더 요청: '전사/자기관리 끝판왕 사업가 마초가 된 느낌'을 테마로. 드래곤볼·실존 연예인은 §5(오리지널 IP only)로 불가 → 같은 감성을 오리지널 페르소나 4종으로 재현. 테마 = {콜아웃·티어 컬러·EVOLUTION 페르소나} 한 세트 스왑. 잠들어 있던 settings.aestheticPref 훅 위에 구축. 커밋 0933f13."
+tags: ["phase-1", "theme", "juice", "evolution", "ip"]
+---
+
+## Context
+
+빌더: "전사/자기수양/끝판왕 사업가 마초가 된 듯한 느낌으로 테마 다양하게 — 드래곤볼·연예인·운동선수·사업가·자기수양." 정체성/뽕맛 직결 기능.
+
+## 결정 (§5 — 타협 없음)
+
+- **드래곤볼/사이어인/실존 연예인 = 빌드 불가.** 이름·디자인·콜아웃·초상 전부 상표·저작권·초상권 → 앱스토어 리젝 + 법적 리스크.
+- **선택: 그 "감성"을 오리지널로 재현.** 동일 파워 판타지를 자체 IP 페르소나 4종으로:
+  - `aura` 오라 전사 — 에너지 오라/각성 (드래곤볼 감성의 오리지널). 기존 콜아웃·룩 유지(하위호환).
+  - `mogul` 모굴 — 정장 파워, 골드/블랙.
+  - `pro` 프로 — 스타디움/클러치.
+  - `forged` 스토익 — 단련, 모노+제이드.
+- **Trade-off:** 익숙한 IP의 즉각적 친숙함 포기. 대신 출시 가능 + 너만의 자산. Reversibility: 테마는 데이터(레지스트리)라 추가/수정 자유.
+
+## 구현 (커밋 0933f13)
+
+- **레지스트리** `src/features/theme/themes.ts`: `JuiceTheme = {callouts, overdriveLabel, tierColor(T1–T4), accent}`. `getTheme(id)`는 미지/레거시('battle'/'glow'/'neon')·null → `aura` 폴백(관용 파싱).
+- **설정** `settings.aestheticPref` 타입을 `ThemeId`로(필드명·JSON 키 유지 = 마이그레이션 불필요), 기본 `'aura'`.
+- **소비처는 단 하나** — `JuiceOverlay`가 스토어에서 활성 테마 읽어 색/콜아웃/T3 라벨 적용. 기존 `tierConfig.ts`(정적 맵)는 삭제.
+- **EVOLUTION 테마화**: 클라가 `themeId` 전송 → 워커가 `GRADE_RAMP(강함 정도) × THEME_PERSONA(누구)`로 프롬프트 조립. §4/§9 가드레일 전부 유지(얼굴/체형 보존·슬림화 금지·아첨만·오리지널 IP only).
+- **설정 UI**: 테마 선택 섹션(테마별 accent 컬러 pill) + 태그라인.
+- **i18n**: en/ko/es/zh에 `settings.theme` + `theme.<id>.{name,tagline}`.
+- **테스트** `themes.test.ts`: 각 테마 well-formed, 콜아웃 금칙어(드래곤볼/사이어인…) 없음, 폴백, calloutAt 래핑/음수. tsc0 / lint0 / jest 18 suites·127 통과.
+
+## 정직한 한계
+
+- **EVOLUTION 테마는 워커 배포 전까지 미적용.** 워커 코드는 바꿨지만 프로덕션 deploy는 빌더 승인 대기(자동승인 차단됨). 그때까진 라이브 워커가 `themeId` 무시 → EVOLUTION은 기존 오라 룩 유지(무해·무크래시).
+- **콜아웃/색/테마선택은 100% 클라** → 폰에서 즉시 체감(빌드·설치 완료). 셰이더 색만 바뀌므로 SkSL 재컴파일 리스크 없음.
+
+## 다음
+
+폰에서 테마 바꿔보고(설정→테마) 세트 기록 → 콜아웃/색 느낌 확인. 워커 배포 승인되면 EVOLUTION도 테마별 캐릭터로.
