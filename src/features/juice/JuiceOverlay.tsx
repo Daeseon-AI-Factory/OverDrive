@@ -48,7 +48,7 @@ function JuiceBurst({ burst, onDone }: { burst: Burst; onDone: () => void }) {
   }, []);
 
   const flash = useAnimatedStyle(() => ({
-    opacity: interpolate(p.value, [0, 0.07, 1], [0, 0.3 * intensity, 0]),
+    opacity: interpolate(p.value, [0, 0.07, 1], [0, 0.5 * intensity, 0]),
   }));
 
   const floatWrap = useAnimatedStyle(() => ({
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.hero,
     textAlign: 'center',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 28,
+    textShadowRadius: 40,
   },
   calloutWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingBottom: 200 },
   callout: {
@@ -124,6 +124,6 @@ const styles = StyleSheet.create({
     letterSpacing: 3,
     textAlign: 'center',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 22,
+    textShadowRadius: 34,
   },
 });

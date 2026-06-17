@@ -67,9 +67,9 @@ half4 main(float2 fragCoord) {
   // 40 particle sparks: bright head + one-sided radial motion-blur trail + flicker.
   // One sqrt (from r2) feeds both head and perp — ~40% cheaper than two length() calls.
   float parts = 0.0;
-  for (int i = 0; i < 40; i++) {
+  for (int i = 0; i < 56; i++) {
     float fi = float(i);
-    float pa = (fi / 40.0) * 6.28318 + (hash21(float2(fi, 1.0)) - 0.5) * 0.8;
+    float pa = (fi / 56.0) * 6.28318 + (hash21(float2(fi, 1.0)) - 0.5) * 0.8;
     float speed = 0.5 + hash21(float2(fi, 2.0)) * 1.3;
     float2 dir = float2(cos(pa), sin(pa));
     float2 pp = dir * (t * speed * 1.6);
@@ -82,14 +82,14 @@ half4 main(float2 fragCoord) {
     float flick = 0.7 + 0.3 * sin(uTime * 28.0 + fi);
     parts += (head + trail * 0.55) * decay * flick;
   }
-  parts = clamp(parts, 0.0, 2.0);
+  parts = clamp(parts, 0.0, 2.6);
 
   // two-stage bloom: broad core + tight white-hot center. Steeper core falloff + decay envelope
   // keep a bright center / dark edge (the contrast that reads as a violent explosion, not a wash).
   float core = exp(-dist * 5.5) * decay;
   float hot = exp(-dist * 11.0) * decay;
 
-  float energy = (ring * 1.3 + parts * 1.0 + tendrils * 0.8 + core * 0.7) * uIntensity;
+  float energy = (ring * 1.5 + parts * 1.25 + tendrils * 1.0 + core * 0.85) * uIntensity;
   float alpha = clamp(energy + hot * uIntensity, 0.0, 1.0);
 
   // color ramp: white-hot center → tier color → brighter energy edge, + ring chromatic shimmer

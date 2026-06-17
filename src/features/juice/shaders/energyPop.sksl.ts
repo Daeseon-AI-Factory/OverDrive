@@ -28,21 +28,21 @@ half4 main(float2 fragCoord) {
 
   // 24 light sparks with subtle flicker
   float parts = 0.0;
-  for (int i = 0; i < 24; i++) {
+  for (int i = 0; i < 40; i++) {
     float fi = float(i);
-    float pa = (fi / 24.0) * 6.28318 + (hash21(float2(fi, 3.0)) - 0.5) * 0.6;
-    float speed = 0.45 + hash21(float2(fi, 4.0)) * 0.8;
+    float pa = (fi / 40.0) * 6.28318 + (hash21(float2(fi, 3.0)) - 0.5) * 0.6;
+    float speed = 0.5 + hash21(float2(fi, 4.0)) * 1.0;
     float2 pp = float2(cos(pa), sin(pa)) * (t * speed);
     float flick = 0.75 + 0.25 * sin(uTime * 22.0 + fi);
-    parts += smoothstep(0.028, 0.0, length(uv - pp)) * fade * flick;
+    parts += smoothstep(0.042, 0.0, length(uv - pp)) * fade * flick;
   }
-  parts = clamp(parts, 0.0, 1.2);
+  parts = clamp(parts, 0.0, 1.8);
 
   // two-stage bloom
   float core = exp(-dist * 5.5) * fade;
   float hot = exp(-dist * 12.0) * fade;
 
-  float alpha = clamp((core * 0.7 + ring * 1.3 + parts * 0.8) * uIntensity + hot * uIntensity * 0.6, 0.0, 1.0);
+  float alpha = clamp((core * 0.9 + ring * 1.6 + parts * 1.1) * uIntensity + hot * uIntensity * 0.85, 0.0, 1.0);
   float3 col = mix(uColor, float3(1.0, 1.0, 1.0), clamp(hot * 1.1, 0.0, 1.0));
   col *= 0.85 + 0.15 * sin(uTime * 9.0);
   col = clamp(col, 0.0, 1.0);
