@@ -135,6 +135,19 @@
     "entry": "录入 InBody / 身体成分",
     "entryHint": "体重 + 体脂 → Apple 健康"
   },
+  "plan": {
+    "title": "自动生成计划",
+    "note": "懒人模式：选 3 项，我们就帮你排好一周 — 不用编辑器。",
+    "goalSection": "目标",
+    "goal": { "muscle": "增肌", "strength": "增力", "lean": "减脂 / 体能" },
+    "daysSection": "每周次数",
+    "days": "每周 {n} 次",
+    "equipSection": "器械",
+    "equip": { "gym": "健身房", "bodyweight": "徒手" },
+    "generate": "生成计划 ⚡",
+    "entry": "✨ 自动生成计划",
+    "entryHint": "选目标 + 天数即可"
+  },
   "boot": {
     "brand": "OVERDRIVE"
   },

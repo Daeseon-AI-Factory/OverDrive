@@ -135,6 +135,19 @@
     "entry": "Introducir InBody / composición corporal",
     "entryHint": "Peso + grasa → Apple Health"
   },
+  "plan": {
+    "title": "Crear mi plan automáticamente",
+    "note": "Modo perezoso: elige 3 cosas y te armamos la semana — sin editor.",
+    "goalSection": "Objetivo",
+    "goal": { "muscle": "Ganar músculo", "strength": "Ganar fuerza", "lean": "Definición / cardio" },
+    "daysSection": "Días por semana",
+    "days": "{n}/sem",
+    "equipSection": "Equipo",
+    "equip": { "gym": "Gimnasio", "bodyweight": "Peso corporal" },
+    "generate": "Crear mi plan ⚡",
+    "entry": "✨ Crear plan automático",
+    "entryHint": "Objetivo + días → listo"
+  },
   "boot": {
     "brand": "OVERDRIVE"
   },

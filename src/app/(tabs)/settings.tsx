@@ -127,9 +127,21 @@ export default function SettingsScreen() {
         <Card>
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel={t('plan.entry')}
+            onPress={() => router.push('/plan')}
+            style={({ pressed }) => [styles.navRow, pressed && { opacity: 0.7 }]}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>{t('plan.entry')}</Text>
+              <Muted>{t('plan.entryHint')}</Muted>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
             accessibilityLabel={t('settings.program.edit')}
             onPress={() => router.push('/program')}
-            style={({ pressed }) => [styles.navRow, pressed && { opacity: 0.7 }]}
+            style={({ pressed }) => [styles.navRow, { marginTop: space.md }, pressed && { opacity: 0.7 }]}
           >
             <View style={{ flex: 1 }}>
               <Text style={styles.label}>{t('settings.program.edit')}</Text>

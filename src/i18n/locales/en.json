@@ -159,6 +159,19 @@
     "entry": "Enter InBody / body composition",
     "entryHint": "Weight + body fat → Apple Health"
   },
+  "plan": {
+    "title": "Auto-build my plan",
+    "note": "Lazy mode: pick 3 things and we build your whole week — no editor.",
+    "goalSection": "Goal",
+    "goal": { "muscle": "Build muscle", "strength": "Get strong", "lean": "Lean / conditioning" },
+    "daysSection": "Days per week",
+    "days": "{n}/wk",
+    "equipSection": "Equipment",
+    "equip": { "gym": "Full gym", "bodyweight": "Bodyweight" },
+    "generate": "Build my plan ⚡",
+    "entry": "✨ Auto-build a plan",
+    "entryHint": "Pick goal + days → done"
+  },
   "boot": {
     "brand": "OVERDRIVE"
   },

@@ -135,6 +135,19 @@
     "entry": "인바디 / 체성분 입력",
     "entryHint": "체중 + 체지방 → Apple 건강"
   },
+  "plan": {
+    "title": "자동으로 플랜 짜기",
+    "note": "게으름 모드: 3개만 고르면 일주일 플랜이 뚝딱 — 에디터 안 건드림.",
+    "goalSection": "목표",
+    "goal": { "muscle": "근육 키우기", "strength": "힘 키우기", "lean": "감량 / 체력" },
+    "daysSection": "주 몇 회",
+    "days": "주 {n}회",
+    "equipSection": "장비",
+    "equip": { "gym": "풀짐", "bodyweight": "맨몸" },
+    "generate": "플랜 만들기 ⚡",
+    "entry": "✨ 자동으로 플랜 짜기",
+    "entryHint": "목표 + 요일만 고르면 끝"
+  },
   "boot": {
     "brand": "OVERDRIVE"
   },
