@@ -387,3 +387,10 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: 8e8e50d docs(log): record goals/discipline reliability + empty-day CTA (92bdfed, 7cb2c41) [no-log] -->
 <!-- skipped: 600095a docs(log): record text-input a11y labels (f3aae1b) [no-log] -->
 <!-- skipped: b7ecec9 docs(log): record upload timeout resilience (19f9298) [no-log] -->
+<!-- skipped: be46664 docs(log): HealthKit foundation + read service entry (3c64f57, bf42c93) [no-log] -->
+<!-- skipped: 918efee docs(log): HealthKit Combat Power integration + Settings UI update (88d0d38) [no-log] -->
+<!-- skipped: 48d4c99 docs(log): Apple Health connect-screen clarity fix (e9a8c7b) [no-log] -->
+<!-- skipped: 62fe3ff docs(log): write-back A — workouts to Apple Health (ce57560) [no-log] -->
+<!-- skipped: 4b83a6e docs(log): InBody body-composition screen B (2262cb2) [no-log] -->
+<!-- override-trigger: 57d4e56 docs(log): lazy one-tap auto-plan + value pivot (6524eb0) [no-log] — log-commit recursion: 57d4e56 IS the dual-write log commit (it added content/logs/.../2026-06-17-lazy-auto-plan.mdx, which logs feature commit 6524eb0). "pivot" appears only in the LOG commit's subject, not in a code change. The pivot decision itself is now recorded as a full T1 in content/logs/.../2026-06-17-value-focus-t1.mdx. Recurring footgun (see c3d3ad4 note above): log-commit subjects must avoid trigger keywords. -->
+<!-- skipped: 6524eb0 feat(plan): one-tap auto-generate weekly program — logged in content/logs 2026-06-17-lazy-auto-plan.mdx + value-focus-t1.mdx -->
