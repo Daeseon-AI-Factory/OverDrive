@@ -79,3 +79,13 @@ Android는 대칭으로 `react-native-health-connect`.
 - 체중 쓰기는 설정 스테퍼가 매 틱 발화라 스팸 위험 → **B(인바디 화면)의 명시적 저장**에서 처리하기로(함수만 준비). tsc 0 / lint 0 / jest 111. 커밋 `ce57560`.
 
 다음: **B — 인바디 입력 화면**(체중/체지방/근육량 입력 → Apple 건강 bodyMass/bodyFat/leanBodyMass 쓰기). 그리고 재빌드 후 폰에서 "세션 끝 → Apple 건강에 워크아웃 뜨는지" 실측. ④ Android는 SDK 환경.
+
+## Update — B: 인바디 입력 화면 (2262cb2)
+
+빌더: "인바디 화면도 만들어 제일 심플하게.. 업로드/연동이면 되지." → 맞음, 입력→쓰기.
+- 쓰기 함수 추가: `writeBodyFat(fraction)`(HealthKit % = fraction), `writeLeanBodyMass(kg)`, `writeBodyComposition({weightKg,bodyFatFraction,leanMassKg})`(권한 보장 후 쓰기). WRITE_TYPES에 bodyFatPercentage/leanBodyMass 추가. **단위는 tsc로 검증**(bodyFat '%', lean 'kg').
+- `InBodyScreen`(`src/app/inbody.tsx` 라우트): **제일 심플 — 체중 + 체지방 스테퍼 2개 + 저장.** 저장 시 Apple 건강 업로드(bodyMass+bodyFat) + 프로필 체중(startWeightKg) 갱신 + "저장됨 ✓". 근육량은 심플 위해 생략(함수는 둠).
+- 설정 Health 섹션에 "인바디 입력 ›" 진입. `inbody` i18n 네임스페이스 4로케일.
+- 함정: 새 라우트라 expo-router **typed-routes에 /inbody가 없어 tsc 에러** → metro 잠깐 띄워 `.expo/types/router.d.ts` 재생성하니 통과. tsc 0 / lint 0 / jest 111. 커밋 `2262cb2`.
+
+남은 일: 재빌드 후 폰 실측(세션→워크아웃, 인바디→체중/체지방), ④ Android Health Connect(SDK 환경 필요 — 이 맥 불가).
