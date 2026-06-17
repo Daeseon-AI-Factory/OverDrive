@@ -125,6 +125,16 @@
       "syncing": "동기화 중…"
     }
   },
+  "inbody": {
+    "title": "인바디 / 체성분",
+    "note": "최근 측정값을 입력해 — Apple 건강에 업로드되고 프로필 체중에 반영돼.",
+    "section": "측정값",
+    "bodyFat": "체지방",
+    "save": "저장 + Apple 건강에 동기화",
+    "saved": "저장됨 ✓",
+    "entry": "인바디 / 체성분 입력",
+    "entryHint": "체중 + 체지방 → Apple 건강"
+  },
   "boot": {
     "brand": "OVERDRIVE"
   },

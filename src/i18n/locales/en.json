@@ -149,6 +149,16 @@
       "syncing": "Syncing…"
     }
   },
+  "inbody": {
+    "title": "InBody / Body composition",
+    "note": "Enter your latest measurement — it uploads to Apple Health and updates your profile weight.",
+    "section": "Measurement",
+    "bodyFat": "Body fat",
+    "save": "Save & sync to Apple Health",
+    "saved": "Saved ✓",
+    "entry": "Enter InBody / body composition",
+    "entryHint": "Weight + body fat → Apple Health"
+  },
   "boot": {
     "brand": "OVERDRIVE"
   },

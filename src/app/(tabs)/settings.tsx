@@ -166,6 +166,18 @@ export default function SettingsScreen() {
                   </View>
                 </>
               )}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('inbody.entry')}
+                onPress={() => router.push('/inbody')}
+                style={({ pressed }) => [styles.navRow, { marginTop: space.md }, pressed && { opacity: 0.7 }]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>{t('inbody.entry')}</Text>
+                  <Muted>{t('inbody.entryHint')}</Muted>
+                </View>
+                <Text style={styles.chevron}>›</Text>
+              </Pressable>
             </Card>
           </>
         ) : null}

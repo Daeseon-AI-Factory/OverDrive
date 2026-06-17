@@ -125,6 +125,16 @@
       "syncing": "同步中…"
     }
   },
+  "inbody": {
+    "title": "InBody / 身体成分",
+    "note": "输入你最近的测量值 — 会上传到 Apple 健康并更新你的资料体重。",
+    "section": "测量值",
+    "bodyFat": "体脂",
+    "save": "保存并同步到 Apple 健康",
+    "saved": "已保存 ✓",
+    "entry": "录入 InBody / 身体成分",
+    "entryHint": "体重 + 体脂 → Apple 健康"
+  },
   "boot": {
     "brand": "OVERDRIVE"
   },

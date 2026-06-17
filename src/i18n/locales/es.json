@@ -125,6 +125,16 @@
       "syncing": "Sincronizando…"
     }
   },
+  "inbody": {
+    "title": "InBody / Composición corporal",
+    "note": "Introduce tu última medición — se sube a Apple Health y actualiza el peso de tu perfil.",
+    "section": "Medición",
+    "bodyFat": "Grasa corporal",
+    "save": "Guardar y sincronizar con Apple Health",
+    "saved": "Guardado ✓",
+    "entry": "Introducir InBody / composición corporal",
+    "entryHint": "Peso + grasa → Apple Health"
+  },
   "boot": {
     "brand": "OVERDRIVE"
   },
