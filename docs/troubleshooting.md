@@ -277,7 +277,7 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
   CommandError: Cannot launch OverDrive on Daeseon's iPhone because the device is locked.
   ```
 - **Cause**: The build + install (`✔ Complete 100%`) finished, but the phone was screen-locked at the final auto-launch step.
-- **Fix**: Unlock the phone, then tap the icon (Release runs standalone) or `xcrun devicectl device process launch --device <udid> com.anonymous.overdrive`.
+- **Fix**: Unlock the phone, then tap the icon (Release runs standalone) or `xcrun devicectl device process launch --device <udid> ai.daeseon.reploom`.
 - **Commit**: — (runtime; no repo change)
 - **Pattern**: A `run:ios` error AFTER `Installing … ✔ Complete 100%` means the install succeeded — only the launch failed. Don't rebuild; just launch.
 
@@ -397,3 +397,6 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: 0ed94b3 docs(log): T1 value-focus record + 57d4e56 override note [no-log] -->
 <!-- skipped: add390b docs(log): juice crank — value axis 2 (81c79f0) [no-log] -->
 <!-- override-trigger: 21f2909 docs(log): power-fantasy themes — value + IP decision (0933f13) [no-log] — log-commit recursion (same footgun as 57d4e56): 21f2909 IS the dual-write log commit (it added content/logs/.../2026-06-17-power-fantasy-themes.mdx, which logs feature commit 0933f13). "decision" appears only in the LOG commit's subject describing the §5 IP call, not in any code change — 21f2909 touches one .mdx file. The theme system + §5 decision (Context/Options/Chosen/Trade-off/Reversibility/Verified) is already fully recorded in that .mdx. Reminder: log-commit subjects must avoid trigger keywords. -->
+<!-- skipped: d008bad docs: troubleshooting override note for 21f2909 log-commit [no-log] -->
+<!-- skipped: d15d747 docs(state): refresh handoff for Codex — session work + open/unverified items [no-log] -->
+<!-- override-trigger: f99f867 docs: plain-language stack walkthrough — every dependency, why, tradeoffs [no-log] — LOC trigger (222 LOC) misfired on a pure prose explainer (docs/STACK-EXPLAINED.md). Zero code/behavior change, no new architecture decision (it *explains* existing tech choices for the builder's portfolio/onboarding, it doesn't make one), not a bug → no Symptom/Cause/Fix and nothing to put in a decision-tier log. The >200 LOC rule targets substantive code diffs; a long educational markdown doc is the routine case the rule isn't for. -->
