@@ -53,10 +53,17 @@
     "help": "Type or 🎤 say it: exercise + weight + reps. Or tap a recent lift.",
     "recording": "● Recording… tap to stop",
     "transcribing": "Transcribing…",
+    "startRecording": "Start voice logging",
+    "stopRecording": "Stop voice logging",
+    "repeatRecent": "Repeat {label}",
     "fail": {
       "no_exercise": "Didn't catch the exercise — try: name weight reps (bench 100 5).",
       "no_reps": "Add reps — e.g. bench 100 5.",
+      "log": "Couldn't log that — try again.",
       "voice": "Couldn't transcribe — retry or type it.",
+      "record": "Couldn't start recording — check microphone access.",
+      "no_recording": "No recording captured — tap the mic, speak, then tap stop.",
+      "empty_voice": "Didn't hear anything — speak, then tap stop.",
       "mic_denied": "Voice needs microphone permission.",
       "no_voice": "Voice needs the AI endpoint set (.env)."
     }
@@ -68,7 +75,8 @@
       "verified": "Verified data"
     },
     "empty": "No data yet. Log a set on the Today tab and your Combat Power appears.",
-    "verifiedExplainer": "Verified {pct}% — watch/import/sensor data adds a bonus to Combat Power. In Phase 1 everything is self-reported, so the bonus is 0. (Self-reported data is never penalized.)"
+    "verifiedExplainer": "Verified {pct}% — watch/import/sensor data adds a bonus to Combat Power. In Phase 1 everything is self-reported, so the bonus is 0. (Self-reported data is never penalized.)",
+    "demoFire": "⚡ Replay power burst (for clips)"
   },
   "history": {
     "title": "History",
@@ -88,9 +96,11 @@
   "food": {
     "title": "Fuel",
     "placeholder": "e.g.  chicken breast 300g + rice",
+    "photo": "Estimate food from a photo",
     "log": "LOG",
     "kcal": "{n} kcal",
-    "fail": "Couldn't estimate — try simpler wording."
+    "fail": "Couldn't estimate — try simpler wording.",
+    "photoUnavailable": "Photo estimate needs the AI endpoint set (.env)."
   },
   "rest": {
     "label": "REST"
@@ -113,7 +123,7 @@
       "pill": "{step}kg",
       "explainer": "How much the +/- buttons change the weight per tap in the set logger."
     },
-    "footer": "OVERDRIVE · Phase 1 local MVP. Combat Power is a for-fun original formula.",
+    "footer": "Reploom · local MVP. Combat Power is a for-fun original formula.",
     "language": {
       "section": "Language"
     },
@@ -147,6 +157,10 @@
       "read": "Last 7d: {workouts} workouts · weight {weight} · body fat {bodyFat} · VO2max {vo2}",
       "empty": "No recent data in Apple Health — you need workouts logged (e.g. Apple Watch / a fitness app) for the bonus to apply.",
       "syncing": "Syncing…"
+    },
+    "theme": {
+      "section": "Theme",
+      "explainer": "Your theme swaps the callouts, colors and EVOLUTION character that explode when you log."
     }
   },
   "inbody": {
@@ -156,6 +170,7 @@
     "bodyFat": "Body fat",
     "save": "Save & sync to Apple Health",
     "saved": "Saved ✓",
+    "saveFailed": "Couldn't sync to Apple Health. Check permission and try again.",
     "entry": "Enter InBody / body composition",
     "entryHint": "Weight + body fat → Apple Health"
   },
@@ -163,17 +178,24 @@
     "title": "Auto-build my plan",
     "note": "Lazy mode: pick 3 things and we build your whole week — no editor.",
     "goalSection": "Goal",
-    "goal": { "muscle": "Build muscle", "strength": "Get strong", "lean": "Lean / conditioning" },
+    "goal": {
+      "muscle": "Build muscle",
+      "strength": "Get strong",
+      "lean": "Lean / conditioning"
+    },
     "daysSection": "Days per week",
     "days": "{n}/wk",
     "equipSection": "Equipment",
-    "equip": { "gym": "Full gym", "bodyweight": "Bodyweight" },
+    "equip": {
+      "gym": "Full gym",
+      "bodyweight": "Bodyweight"
+    },
     "generate": "Build my plan ⚡",
     "entry": "✨ Auto-build a plan",
     "entryHint": "Pick goal + days → done"
   },
   "boot": {
-    "brand": "OVERDRIVE"
+    "brand": "REPLOOM"
   },
   "character": {
     "toggle": {
@@ -376,7 +398,9 @@
     "changePhoto": "Change photo",
     "fail": "Evolution failed —",
     "noEndpoint": "Needs the AI endpoint (.env) + GEMINI_API_KEY on the worker.",
-    "privacy": "Your photo passes through your own server only for generation — never stored there."
+    "privacy": "Your photo passes through your own server only for generation — never stored there.",
+    "share": "🔥 Share",
+    "shareCaption": "Combat Power {cp} · {grade} 💥 I evolved my workouts into a hero #fitness #gym #workout"
   },
   "rank": {
     "title": "Rankings",
@@ -449,7 +473,7 @@
     "next": "Next",
     "start": "Start",
     "finish": "Start training",
-    "welcomeTitle": "Welcome to OVERDRIVE",
+    "welcomeTitle": "Welcome to Reploom",
     "welcomeBody": "A quick setup so every workout logs in one tap.",
     "units": {
       "title": "Units",
@@ -500,6 +524,24 @@
       "thu": "Thu",
       "fri": "Fri",
       "sat": "Sat"
+    }
+  },
+  "theme": {
+    "aura": {
+      "name": "Aura Warrior",
+      "tagline": "Energy overload · ascension"
+    },
+    "mogul": {
+      "name": "Mogul",
+      "tagline": "Empire builder · gold"
+    },
+    "pro": {
+      "name": "Pro",
+      "tagline": "Pro athlete · clutch"
+    },
+    "forged": {
+      "name": "Forged",
+      "tagline": "Discipline · stoic"
     }
   }
 }

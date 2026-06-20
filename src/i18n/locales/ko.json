@@ -54,7 +54,8 @@
       "verified": "검증 데이터"
     },
     "empty": "아직 데이터가 없어. 오늘 탭에서 세트를 기록하면 전투력이 나타난다.",
-    "verifiedExplainer": "검증 비율 {pct}% — 워치/임포트/센서 데이터는 전투력에 가중(보너스)된다. Phase 1은 전부 자기보고라 보너스 0. (자기보고도 절대 깎이지 않음.)"
+    "verifiedExplainer": "검증 비율 {pct}% — 워치/임포트/센서 데이터는 전투력에 가중(보너스)된다. Phase 1은 전부 자기보고라 보너스 0. (자기보고도 절대 깎이지 않음.)",
+    "demoFire": "⚡ 전투력 폭발 재생 (클립 녹화용)"
   },
   "history": {
     "title": "기록",
@@ -89,7 +90,7 @@
       "pill": "{step}kg",
       "explainer": "세트 기록에서 +/- 버튼이 한 번에 바꾸는 무게."
     },
-    "footer": "OVERDRIVE · Phase 1 로컬 MVP. 전투력은 재미용 자체 산식이다.",
+    "footer": "Reploom · 로컬 MVP. 전투력은 재미용 자체 산식이다.",
     "language": {
       "section": "언어"
     },
@@ -123,6 +124,10 @@
       "read": "최근 7일: 운동 {workouts}회 · 체중 {weight} · 체지방 {bodyFat} · VO2max {vo2}",
       "empty": "Apple 건강에 최근 데이터가 없어 — 애플워치/피트니스 앱 운동 기록이 있어야 보너스가 붙어.",
       "syncing": "동기화 중…"
+    },
+    "theme": {
+      "section": "테마",
+      "explainer": "기록할 때 터지는 콜아웃·색·EVOLUTION 캐릭터가 테마 따라 바뀐다."
     }
   },
   "inbody": {
@@ -132,6 +137,7 @@
     "bodyFat": "체지방",
     "save": "저장 + Apple 건강에 동기화",
     "saved": "저장됨 ✓",
+    "saveFailed": "Apple 건강 동기화 실패 — 권한 확인 후 다시 시도해줘.",
     "entry": "인바디 / 체성분 입력",
     "entryHint": "체중 + 체지방 → Apple 건강"
   },
@@ -139,17 +145,24 @@
     "title": "자동으로 플랜 짜기",
     "note": "게으름 모드: 3개만 고르면 일주일 플랜이 뚝딱 — 에디터 안 건드림.",
     "goalSection": "목표",
-    "goal": { "muscle": "근육 키우기", "strength": "힘 키우기", "lean": "감량 / 체력" },
+    "goal": {
+      "muscle": "근육 키우기",
+      "strength": "힘 키우기",
+      "lean": "감량 / 체력"
+    },
     "daysSection": "주 몇 회",
     "days": "주 {n}회",
     "equipSection": "장비",
-    "equip": { "gym": "풀짐", "bodyweight": "맨몸" },
+    "equip": {
+      "gym": "풀짐",
+      "bodyweight": "맨몸"
+    },
     "generate": "플랜 만들기 ⚡",
     "entry": "✨ 자동으로 플랜 짜기",
     "entryHint": "목표 + 요일만 고르면 끝"
   },
   "boot": {
-    "brand": "OVERDRIVE"
+    "brand": "REPLOOM"
   },
   "character": {
     "toggle": {
@@ -383,12 +396,19 @@
     "fail": {
       "no_exercise": "운동을 못 알아들었어 — 이름 무게 횟수 (벤치 100 5).",
       "no_reps": "횟수를 넣어줘 — 예: 벤치 100 5.",
+      "log": "기록 실패 — 다시 해봐.",
       "voice": "전사 실패 — 다시 하거나 타이핑.",
+      "record": "녹음 시작 실패 — 마이크 권한을 확인해줘.",
+      "no_recording": "녹음이 안 잡혔어 — 마이크 탭, 말하고, 다시 탭.",
+      "empty_voice": "아무 소리도 못 들었어 — 말하고 탭해서 멈춰.",
       "mic_denied": "음성엔 마이크 권한 필요.",
       "no_voice": "음성은 AI 엔드포인트 설정 필요(.env)."
     },
     "recording": "● 녹음 중… 탭해서 멈춤",
-    "transcribing": "전사 중…"
+    "transcribing": "전사 중…",
+    "startRecording": "음성 기록 시작",
+    "stopRecording": "음성 기록 중지",
+    "repeatRecent": "{label} 다시 기록"
   },
   "arena": {
     "title": "아레나",
@@ -404,9 +424,11 @@
   "food": {
     "title": "식단",
     "placeholder": "예:  닭가슴살 300g + 밥",
+    "photo": "사진으로 식단 추정",
     "log": "기록",
     "kcal": "{n} kcal",
-    "fail": "추정 실패 — 더 간단히 써봐."
+    "fail": "추정 실패 — 더 간단히 써봐.",
+    "photoUnavailable": "사진 추정은 AI 엔드포인트 설정 필요(.env)."
   },
   "rest": {
     "label": "휴식"
@@ -436,7 +458,9 @@
     "changePhoto": "사진 변경",
     "fail": "진화 실패 —",
     "noEndpoint": "AI 엔드포인트(.env) + 워커 GEMINI_API_KEY 필요.",
-    "privacy": "사진은 생성 순간에만 네 서버를 통과 — 저장되지 않음."
+    "privacy": "사진은 생성 순간에만 네 서버를 통과 — 저장되지 않음.",
+    "share": "🔥 공유하기",
+    "shareCaption": "전투력 {cp} · {grade} 💥 내 운동을 캐릭터로 진화시켰다 #운동 #전투력 #헬스"
   },
   "common": {
     "back": "뒤로",
@@ -449,7 +473,7 @@
     "next": "다음",
     "start": "시작",
     "finish": "운동 시작",
-    "welcomeTitle": "OVERDRIVE에 온 걸 환영한다",
+    "welcomeTitle": "Reploom에 온 걸 환영한다",
     "welcomeBody": "탭 한 번으로 운동이 기록되도록 빠르게 설정하자.",
     "units": {
       "title": "단위",
@@ -500,6 +524,24 @@
       "thu": "목",
       "fri": "금",
       "sat": "토"
+    }
+  },
+  "theme": {
+    "aura": {
+      "name": "오라 전사",
+      "tagline": "에너지 폭발 · 각성"
+    },
+    "mogul": {
+      "name": "모굴",
+      "tagline": "끝판왕 사업가 · 골드"
+    },
+    "pro": {
+      "name": "프로",
+      "tagline": "프로 선수 · 클러치"
+    },
+    "forged": {
+      "name": "스토익",
+      "tagline": "단련 · 자기수양"
     }
   }
 }

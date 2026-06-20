@@ -54,7 +54,8 @@
       "verified": "Datos verificados"
     },
     "empty": "Aún no hay datos. Registra una serie en la pestaña Hoy y aparecerá tu Poder de Combate.",
-    "verifiedExplainer": "Verificado {pct}% — los datos del reloj/importados/sensores suman un bonus al Poder de Combate. En la Fase 1 todo es autorreportado, así que el bonus es 0. (Los datos autorreportados nunca se penalizan.)"
+    "verifiedExplainer": "Verificado {pct}% — los datos del reloj/importados/sensores suman un bonus al Poder de Combate. En la Fase 1 todo es autorreportado, así que el bonus es 0. (Los datos autorreportados nunca se penalizan.)",
+    "demoFire": "⚡ Repetir explosión de poder (para clips)"
   },
   "history": {
     "title": "Historial",
@@ -89,7 +90,7 @@
       "pill": "{step}kg",
       "explainer": "Cuánto cambian el peso los botones +/- en cada toque dentro del registro de series."
     },
-    "footer": "OVERDRIVE · MVP local de la Fase 1. El Poder de Combate es una fórmula original por diversión.",
+    "footer": "Reploom · MVP local. El Poder de Combate es una fórmula original por diversión.",
     "language": {
       "section": "Idioma"
     },
@@ -123,6 +124,10 @@
       "read": "Últimos 7 días: {workouts} entrenos · peso {weight} · grasa {bodyFat} · VO2max {vo2}",
       "empty": "Sin datos recientes en Apple Health — necesitas entrenamientos registrados (p. ej. Apple Watch / app de fitness) para que aplique la bonificación.",
       "syncing": "Sincronizando…"
+    },
+    "theme": {
+      "section": "Tema",
+      "explainer": "Tu tema cambia los avisos, colores y el personaje EVOLUTION que explotan al registrar."
     }
   },
   "inbody": {
@@ -132,6 +137,7 @@
     "bodyFat": "Grasa corporal",
     "save": "Guardar y sincronizar con Apple Health",
     "saved": "Guardado ✓",
+    "saveFailed": "No se pudo sincronizar con Apple Health. Revisa permisos e intenta de nuevo.",
     "entry": "Introducir InBody / composición corporal",
     "entryHint": "Peso + grasa → Apple Health"
   },
@@ -139,17 +145,24 @@
     "title": "Crear mi plan automáticamente",
     "note": "Modo perezoso: elige 3 cosas y te armamos la semana — sin editor.",
     "goalSection": "Objetivo",
-    "goal": { "muscle": "Ganar músculo", "strength": "Ganar fuerza", "lean": "Definición / cardio" },
+    "goal": {
+      "muscle": "Ganar músculo",
+      "strength": "Ganar fuerza",
+      "lean": "Definición / cardio"
+    },
     "daysSection": "Días por semana",
     "days": "{n}/sem",
     "equipSection": "Equipo",
-    "equip": { "gym": "Gimnasio", "bodyweight": "Peso corporal" },
+    "equip": {
+      "gym": "Gimnasio",
+      "bodyweight": "Peso corporal"
+    },
     "generate": "Crear mi plan ⚡",
     "entry": "✨ Crear plan automático",
     "entryHint": "Objetivo + días → listo"
   },
   "boot": {
-    "brand": "OVERDRIVE"
+    "brand": "REPLOOM"
   },
   "character": {
     "toggle": {
@@ -383,12 +396,19 @@
     "fail": {
       "no_exercise": "No entendí el ejercicio — prueba: nombre peso reps.",
       "no_reps": "Añade las reps — ej. banca 100 5.",
+      "log": "No se pudo registrar — intenta de nuevo.",
       "voice": "No se pudo transcribir — reintenta o escribe.",
+      "record": "No se pudo iniciar la grabación — revisa el micrófono.",
+      "no_recording": "No se capturó audio — toca el micrófono, habla y toca parar.",
+      "empty_voice": "No se oyó nada — habla y toca parar.",
       "mic_denied": "La voz necesita permiso de micrófono.",
       "no_voice": "La voz necesita el endpoint AI (.env)."
     },
     "recording": "● Grabando… toca para parar",
-    "transcribing": "Transcribiendo…"
+    "transcribing": "Transcribiendo…",
+    "startRecording": "Iniciar registro por voz",
+    "stopRecording": "Detener registro por voz",
+    "repeatRecent": "Repetir {label}"
   },
   "arena": {
     "title": "Arena",
@@ -404,9 +424,11 @@
   "food": {
     "title": "Comida",
     "placeholder": "ej.  pechuga 300g + arroz",
+    "photo": "Estimar comida desde una foto",
     "log": "REGISTRAR",
     "kcal": "{n} kcal",
-    "fail": "No se pudo estimar — simplifica."
+    "fail": "No se pudo estimar — simplifica.",
+    "photoUnavailable": "La estimación por foto necesita el endpoint AI (.env)."
   },
   "rest": {
     "label": "DESCANSO"
@@ -436,7 +458,9 @@
     "changePhoto": "Cambiar foto",
     "fail": "Falló la evolución —",
     "noEndpoint": "Requiere endpoint AI (.env) + GEMINI_API_KEY.",
-    "privacy": "Tu foto solo pasa por tu servidor para generar — nunca se guarda."
+    "privacy": "Tu foto solo pasa por tu servidor para generar — nunca se guarda.",
+    "share": "🔥 Compartir",
+    "shareCaption": "Poder de Combate {cp} · {grade} 💥 evolucioné mis entrenos en un héroe #fitness #gym"
   },
   "common": {
     "back": "Atrás",
@@ -449,7 +473,7 @@
     "next": "Siguiente",
     "start": "Empezar",
     "finish": "Empezar a entrenar",
-    "welcomeTitle": "Bienvenido a OVERDRIVE",
+    "welcomeTitle": "Bienvenido a Reploom",
     "welcomeBody": "Una configuración rápida para registrar cada entreno con un toque.",
     "units": {
       "title": "Unidades",
@@ -500,6 +524,24 @@
       "thu": "Jue",
       "fri": "Vie",
       "sat": "Sáb"
+    }
+  },
+  "theme": {
+    "aura": {
+      "name": "Guerrero Aura",
+      "tagline": "Sobrecarga de energía · ascensión"
+    },
+    "mogul": {
+      "name": "Magnate",
+      "tagline": "Constructor de imperios · oro"
+    },
+    "pro": {
+      "name": "Pro",
+      "tagline": "Atleta de élite · clutch"
+    },
+    "forged": {
+      "name": "Forjado",
+      "tagline": "Disciplina · estoico"
     }
   }
 }

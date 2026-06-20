@@ -7,9 +7,11 @@ import { getLatest } from '@/db/repos/combatPowerRepo';
 import type { CombatPowerComponent } from '@/features/combat-power/combatPower.types';
 import { gradeForScore } from '@/features/combat-power/grades';
 import { EvolutionCard } from '@/features/evolution/EvolutionCard';
+import { useJuice } from '@/features/juice/JuiceProvider';
+import { TIER_DURATION_MS } from '@/features/juice/constants';
 import { RankSection } from '@/features/rank/RankSection';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
-import { Card, Muted, Screen, SectionTitle } from '@/ui/primitives';
+import { Card, Muted, NeonButton, Screen, SectionTitle } from '@/ui/primitives';
 import { colors, displayFamily, fontSize, numberFamily, space } from '@/ui/theme/tokens';
 
 export default function PowerScreen() {
@@ -40,6 +42,20 @@ export default function PowerScreen() {
 
   const grade = gradeForScore(score);
   const active = breakdown.filter((c) => c.active);
+  const juice = useJuice();
+
+  // On-demand T4 supernova — lets you screen-record the hero explosion for a share clip
+  // (normally JUICE only fires on a real log). Pure presentation, writes nothing.
+  const fireDemo = useCallback(() => {
+    juice.fire({
+      tier: 4,
+      reason: 'session',
+      deltaCp: Math.max(150, Math.round(score * 0.04)),
+      intensity01: 1,
+      dismiss: 'tap',
+      durationMs: TIER_DURATION_MS[4],
+    });
+  }, [juice, score]);
 
   return (
     <Screen>
@@ -48,6 +64,7 @@ export default function PowerScreen() {
           <Text style={styles.score}>{score}</Text>
           <Text style={[styles.grade, { color: colors.cyan }]}>{t(`grade.${grade.key}`)}</Text>
           <Text style={styles.disclaimer}>{t('power.disclaimer')}</Text>
+          <NeonButton label={t('power.demoFire')} color={colors.energyHi} onPress={fireDemo} style={{ marginTop: space.md }} />
         </View>
 
         <EvolutionCard />

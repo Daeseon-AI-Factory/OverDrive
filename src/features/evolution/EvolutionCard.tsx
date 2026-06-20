@@ -1,10 +1,12 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { gradeForScore } from '@/features/combat-power/grades';
 import { QUICKLOG_ENDPOINT } from '@/features/quicklog/config';
+import { normalizeThemeId } from '@/features/theme/themes';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { Card, Muted, NeonButton, SectionTitle } from '@/ui/primitives';
 import { colors, fontSize, radius, space } from '@/ui/theme/tokens';
 import { EVOLVED_PATH, ORIGINAL_PATH, evolve, hasEvolved, hasOriginal, pickPhoto } from './evolveClient';
@@ -18,6 +20,7 @@ export function EvolutionCard() {
   const { t } = useTranslation();
   const score = useCombatPowerStore((s) => s.score);
   const grade = gradeForScore(score);
+  const themeId = normalizeThemeId(useSettingsStore((s) => s.aestheticPref));
 
   const [orig, setOrig] = useState(false);
   const [evolved, setEvolved] = useState(false);
@@ -43,7 +46,7 @@ export function EvolutionCard() {
     setBusy(true);
     setErr(null);
     try {
-      await evolve(QUICKLOG_ENDPOINT, grade.key);
+      await evolve(QUICKLOG_ENDPOINT, grade.key, themeId);
       setEvolved(true);
       setShowOriginal(false);
       setCacheBust((n) => n + 1); // bust Image cache for the rewritten file
@@ -52,7 +55,7 @@ export function EvolutionCard() {
     } finally {
       setBusy(false);
     }
-  }, [grade.key, t]);
+  }, [grade.key, themeId, t]);
 
   const onPick = useCallback(async () => {
     setErr(null);
@@ -61,6 +64,19 @@ export function EvolutionCard() {
     setOrig(true);
     await runEvolve();
   }, [runEvolve]);
+
+  // Share the evolved hero image (RN built-in share sheet — no extra native dep). The viral
+  // artifact: "I evolved my workouts into a hero." Caption carries the hook; user adds their own.
+  const onShare = useCallback(async () => {
+    try {
+      await Share.share({
+        url: EVOLVED_PATH,
+        message: t('evolution.shareCaption', { cp: score, grade: t(`grade.${grade.key}`) }),
+      });
+    } catch {
+      // user cancelled or share unavailable — never block
+    }
+  }, [score, grade.key, t]);
 
   return (
     <View>
@@ -96,6 +112,10 @@ export function EvolutionCard() {
             ) : null}
 
             {err ? <Muted style={{ color: colors.energyLo, marginTop: space.sm }}>{err}</Muted> : null}
+
+            {evolved && !busy ? (
+              <NeonButton label={t('evolution.share')} color={colors.energyHi} onPress={onShare} style={{ marginTop: space.md }} />
+            ) : null}
 
             <View style={styles.btnRow}>
               <NeonButton

@@ -54,7 +54,8 @@
       "verified": "已验证数据"
     },
     "empty": "暂无数据。在「今日」记录一组，战斗力随即显现。",
-    "verifiedExplainer": "已验证 {pct}% — 手表/导入/传感器数据会为战斗力加成。Phase 1 全部为自填数据，故加成为 0。（自填数据绝不扣分。）"
+    "verifiedExplainer": "已验证 {pct}% — 手表/导入/传感器数据会为战斗力加成。Phase 1 全部为自填数据，故加成为 0。（自填数据绝不扣分。）",
+    "demoFire": "⚡ 重播战力爆发（录制用）"
   },
   "history": {
     "title": "记录",
@@ -89,7 +90,7 @@
       "pill": "{step}kg",
       "explainer": "记录组数时，每点一次 +/- 按钮改变的重量值。"
     },
-    "footer": "OVERDRIVE · Phase 1 本地 MVP。战斗力为趣味原创算法。",
+    "footer": "Reploom · 本地 MVP。战斗力为趣味原创算法。",
     "language": {
       "section": "语言"
     },
@@ -123,6 +124,10 @@
       "read": "近 7 天：训练 {workouts} 次 · 体重 {weight} · 体脂 {bodyFat} · VO2max {vo2}",
       "empty": "Apple 健康暂无近期数据 — 需要有训练记录（如 Apple Watch / 健身 App）加成才会生效。",
       "syncing": "同步中…"
+    },
+    "theme": {
+      "section": "主题",
+      "explainer": "主题会切换记录时爆发的呼喊、颜色和 EVOLUTION 角色。"
     }
   },
   "inbody": {
@@ -132,6 +137,7 @@
     "bodyFat": "体脂",
     "save": "保存并同步到 Apple 健康",
     "saved": "已保存 ✓",
+    "saveFailed": "无法同步到 Apple 健康。请检查权限后重试。",
     "entry": "录入 InBody / 身体成分",
     "entryHint": "体重 + 体脂 → Apple 健康"
   },
@@ -139,17 +145,24 @@
     "title": "自动生成计划",
     "note": "懒人模式：选 3 项，我们就帮你排好一周 — 不用编辑器。",
     "goalSection": "目标",
-    "goal": { "muscle": "增肌", "strength": "增力", "lean": "减脂 / 体能" },
+    "goal": {
+      "muscle": "增肌",
+      "strength": "增力",
+      "lean": "减脂 / 体能"
+    },
     "daysSection": "每周次数",
     "days": "每周 {n} 次",
     "equipSection": "器械",
-    "equip": { "gym": "健身房", "bodyweight": "徒手" },
+    "equip": {
+      "gym": "健身房",
+      "bodyweight": "徒手"
+    },
     "generate": "生成计划 ⚡",
     "entry": "✨ 自动生成计划",
     "entryHint": "选目标 + 天数即可"
   },
   "boot": {
-    "brand": "OVERDRIVE"
+    "brand": "REPLOOM"
   },
   "character": {
     "toggle": {
@@ -383,12 +396,19 @@
     "fail": {
       "no_exercise": "没听懂动作 — 试试：名称 重量 次数。",
       "no_reps": "加上次数 — 例如 卧推 100 5。",
+      "log": "记录失败 — 请重试。",
       "voice": "转写失败 — 重试或手动输入。",
+      "record": "无法开始录音 — 请检查麦克风权限。",
+      "no_recording": "没有录到音频 — 点麦克风，说话，再点停止。",
+      "empty_voice": "没有听到内容 — 说话后点停止。",
       "mic_denied": "语音需要麦克风权限。",
       "no_voice": "语音需要设置 AI 端点(.env)。"
     },
     "recording": "● 录音中… 点按停止",
-    "transcribing": "转写中…"
+    "transcribing": "转写中…",
+    "startRecording": "开始语音记录",
+    "stopRecording": "停止语音记录",
+    "repeatRecent": "重复 {label}"
   },
   "arena": {
     "title": "竞技场",
@@ -404,9 +424,11 @@
   "food": {
     "title": "饮食",
     "placeholder": "例如  鸡胸肉300克 + 米饭",
+    "photo": "通过照片估算饮食",
     "log": "记录",
     "kcal": "{n} 千卡",
-    "fail": "无法估算 — 试试更简单的描述。"
+    "fail": "无法估算 — 试试更简单的描述。",
+    "photoUnavailable": "照片估算需要设置 AI 端点(.env)。"
   },
   "rest": {
     "label": "休息"
@@ -436,7 +458,9 @@
     "changePhoto": "更换照片",
     "fail": "进化失败 —",
     "noEndpoint": "需要 AI 端点(.env) + GEMINI_API_KEY。",
-    "privacy": "照片仅在生成时经过你的服务器 — 不会被存储。"
+    "privacy": "照片仅在生成时经过你的服务器 — 不会被存储。",
+    "share": "🔥 分享",
+    "shareCaption": "战斗力 {cp} · {grade} 💥 我把训练进化成了英雄 #健身 #撸铁 #运动"
   },
   "common": {
     "back": "返回",
@@ -449,7 +473,7 @@
     "next": "下一步",
     "start": "开始",
     "finish": "开始训练",
-    "welcomeTitle": "欢迎来到 OVERDRIVE",
+    "welcomeTitle": "欢迎来到 Reploom",
     "welcomeBody": "快速设置，让每次训练一键记录。",
     "units": {
       "title": "单位",
@@ -500,6 +524,24 @@
       "thu": "四",
       "fri": "五",
       "sat": "六"
+    }
+  },
+  "theme": {
+    "aura": {
+      "name": "气场战士",
+      "tagline": "能量爆发 · 觉醒"
+    },
+    "mogul": {
+      "name": "巨头",
+      "tagline": "帝国缔造者 · 黄金"
+    },
+    "pro": {
+      "name": "职业选手",
+      "tagline": "顶级运动员 · 关键时刻"
+    },
+    "forged": {
+      "name": "淬炼",
+      "tagline": "自律 · 坚毅"
     }
   }
 }
