@@ -1,6 +1,6 @@
 # OVERDRIVE — 현재 상태 (handoff / 새 컨텍스트용 단일 진실)
 
-> 컨텍스트 압축·새 세션·**Codex 핸드오프 시 여기부터 읽으면 이어받는다.** 정본 스펙은 [`docs/overdrive-spec.md`](overdrive-spec.md), Phase 1 플랜 [`docs/phase1-plan.md`](phase1-plan.md). 버그/함정은 [`docs/troubleshooting.md`](troubleshooting.md), 내러티브는 `content/logs/OverDrive/`. **갱신: 2026-06-17.**
+> 컨텍스트 압축·새 세션·**Codex 핸드오프 시 여기부터 읽으면 이어받는다.** 정본 스펙은 [`docs/overdrive-spec.md`](overdrive-spec.md), Phase 1 플랜 [`docs/phase1-plan.md`](phase1-plan.md). 버그/함정은 [`docs/troubleshooting.md`](troubleshooting.md), 내러티브는 `content/logs/OverDrive/`. **갱신: 2026-06-18.**
 
 ## ▶ 새 세션 첫 행동 (여기부터)
 1. 이 파일 + `docs/overdrive-spec.md`(정본) + `docs/troubleshooting.md`(함정) + 아래 **§열린·미검증** 훑기.
@@ -11,7 +11,7 @@
      -allowProvisioningUpdates build      # expo run:ios는 -allowProvisioningUpdates 안 넘겨 프로비저닝 실패 → 직접 xcodebuild
    # 산출물: ~/Library/Developer/Xcode/DerivedData/OverDrive-*/Build/Products/Release-iphoneos/OverDrive.app
    xcrun devicectl device install app --device 00008140-00186DE43CFA801C <위 .app>
-   xcrun devicectl device process launch --device 00008140-00186DE43CFA801C com.anonymous.overdrive
+	   xcrun devicectl device process launch --device 00008140-00186DE43CFA801C ai.daeseon.reploom
    ```
    - **새 바이너리를 확실히 띄우려면 launch 전에 기존 프로세스 SIGKILL.** `launch`는 떠 있던 옛 인스턴스를 그냥 포그라운드로 올려서 "새로 깔았는데 그대로"가 됨(이번 세션 실제 발생). pid: `devicectl device info processes` → grep `OverDrive.app/OverDrive`.
    - 시뮬 = `--port 8082`(8081은 다른 앱). 폰 잠겨 있으면 install 후 사용자에게 잠금해제 요청.
@@ -20,7 +20,7 @@
 > 모델/세션 메모: 컨텍스트 꽉 차면 새 세션 + 이 STATE.md 핸드오프 (1M 유료 켜지 말 것).
 
 ## 한 줄
-Phase 1 로컬 MVP **완성 + Phase 2~5 기능 다수 선행** — 아이폰 실기기(Release)에서 풀 루프: 한줄/음성 AI 로깅 → 전투력 → JUICE 폭발 → ARENA → 실제 리더보드(D1) → AI 식단 → EVOLUTION → **HealthKit 양방향 + InBody + 1탭 자동플랜 + 온보딩 + 파워판타지 테마 4종.** 게이트: tsc0 / lint0 / **jest 18 suites·127 통과**.
+Phase 1 로컬 MVP **완성 + Phase 2~5 기능 다수 선행** — 아이폰 실기기(Release)에서 풀 루프: 한줄/음성 AI 로깅 → 전투력 → JUICE 폭발 → ARENA → 실제 리더보드(D1) → AI 식단 → EVOLUTION → **HealthKit 양방향 + InBody + 1탭 자동플랜 + 온보딩 + 파워판타지 테마 4종.** 공개 출시 후보 브랜드는 **Reploom**으로 전환됨(`ai.daeseon.reploom`, 아이콘/스플래시/권한문구 반영). 게이트: tsc0 / lint0 / **jest 18 suites·127 통과**.
 
 ## ★ 최근 세션 방향 전환 (2026-06-17) — 코덱스 필독
 빌더 피드백 **"지금 가치가 있냐"** → 인프라(헬스 등) 그만 쌓고 **핵심 가치 2축**으로 선회:
@@ -29,10 +29,10 @@ Phase 1 로컬 MVP **완성 + Phase 2~5 기능 다수 선행** — 아이폰 실
 - 교훈(메모리): 배관 깔기 전에 **가치 적합성부터** 확인. 빌더는 "묻지말고 가" 지향이나, 큰 방향·IP 리스크는 확인.
 
 ## 인프라 (Cloudflare — 라이브)
-- **Worker** `https://overdrive-quicklog.daeseon.workers.dev` (`worker/src/index.js`, wrangler 로그인 캐시됨). 배포: 서브셸 `( cd worker && npx wrangler deploy )` — **cwd 잔류 금지**. ⚠️ **자동승인 차단됨**(프로덕션 deploy) → 빌더 승인 필요.
+- **Worker** `https://overdrive-quicklog.daeseon.workers.dev` (`worker/src/index.js`, wrangler 로그인 캐시됨). 배포: 서브셸 `( cd worker && npx wrangler deploy )` — **cwd 잔류 금지**. 프로덕션 deploy는 빌더의 명시적 승인 필요(자동승인 차단). **최신 배포: 2026-06-20, Version ID 1aef7442-2f7c-4af3-859b-649205f2f906 (테마별 EVOLUTION persona 포함).**
 - 라우트: `/parse`(Groq llama, 미등록 운동 자동생성) · `/transcribe`(Groq whisper, UI 로케일 강제) · `/food`(텍스트=Groq, 사진=llama-4-scout) · `/rank/submit`·`/rank/board`(D1 `overdrive-rank`) · `/evolve`(**Gemini 이미지 — GEMINI_API_KEY 필요, 빌더가 유료 billing까지 충전**).
 - 시크릿: GROQ_API_KEY·GEMINI_API_KEY 둘 다 주입됨. **키는 `~/.secrets/api-keys.env`에서 파이프, 절대 출력/깃 금지.**
-- ⚠️ **worker/src/index.js에 테마별 EVOLUTION persona 변경이 git엔 커밋(0933f13)됐으나 프로덕션 미배포** → 배포 전까진 EVOLUTION이 themeId 무시하고 기존 오라 룩 유지(무해).
+- ✅ **테마별 EVOLUTION persona 배포 완료(2026-06-20, ver 1aef7442).** 전체 루프 연결 검증: 워커 라이브(GET→라우트 405) + 폰 번들에 `themeId` 전송 코드 존재 + 워커가 themeId→THEME_PERSONA 매핑. 남은 건 빌더가 폰에서 테마 골라 EVOLUTION 실행 → 실제 캐릭터 확인(Gemini 호출, 내가 못 함).
 - 앱 연결: `.env`의 `EXPO_PUBLIC_QUICKLOG_ENDPOINT`(gitignore). Release는 `ios/.xcode.env.local`에 export로 인라인(빌드 단계가 .env 안 읽음).
 
 ## 로드맵 (스펙 §8)
@@ -64,9 +64,9 @@ Phase 1 로컬 MVP **완성 + Phase 2~5 기능 다수 선행** — 아이폰 실
 
 ## ★ 열린·미검증 (코덱스 주의 — 추측 금지, 직접 확인)
 1. **테마 폰 렌더 미확인** — 코드/게이트/번들(Hermes, `grep -a`로 'CEO MODE' 확인됨) 다 정상이나 **빌더가 화면에서 테마 섹션/색 전환을 아직 확인 못 함**. 마지막 조치=강제 재설치+콜드런치. 빌더 피드백 대기.
-2. **워커 EVOLUTION persona 미배포** — 배포 승인 나면 `( cd worker && npx wrangler deploy )`. 그 전엔 테마별 캐릭터 안 나옴.
+2. ✅ **워커 EVOLUTION persona 배포됨**(2026-06-20, ver 1aef7442). 남은 미검증=빌더가 폰에서 테마 골라 EVOLUTION 돌려 실제 테마별 캐릭터 이미지 확인(Gemini 호출).
 3. **사운드 약함** — WAV baked-in. 더 키우려면 `scripts/gen-sfx.mjs`로 에셋 재생성(빌더가 못 들으면 보류).
-4. **출시 BLOCKED** — "OverDrive" 공개 앱명 NO-GO(선점 브랜드). 리네임 + 상표 clearance 전엔 App Store 불가. (브랜드 리서치는 `docs/compliance/brand-availability.md`.)
+4. **출시 BLOCKED** — "OverDrive" 공개 앱명은 NO-GO라서 repo의 공개명/번들ID/아이콘은 후보명 **Reploom**으로 바꿨다. 그래도 App Store 제출 전 Reploom 상표 clearance, privacy labels/manifest, dev-client 제거 여부, 워커 배포, 실기기 dogfood, TestFlight 검증이 남아 있다. (체크리스트: `docs/app-store-launch-checklist.md`, 브랜드 리서치: `docs/compliance/brand-availability.md`.)
 5. Android Health Connect 미구현(SDK 부재). 오프라인 배너·DB 통합테스트 미완.
 
 ## 남은 것 (우선순위)
