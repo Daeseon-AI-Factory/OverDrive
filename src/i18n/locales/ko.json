@@ -543,5 +543,16 @@
       "name": "스토익",
       "tagline": "단련 · 자기수양"
     }
+  },
+  "warrior": {
+    "title": "전사 완성도",
+    "axis": {
+      "strength": "근력",
+      "physique": "피지컬",
+      "discipline": "규율"
+    },
+    "measure": "측정",
+    "next": "다음: {axis} 채우기 💪",
+    "complete": "전사 완성 — 다음 등급으로 🔥"
   }
 }

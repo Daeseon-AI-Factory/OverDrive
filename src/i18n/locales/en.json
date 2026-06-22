@@ -543,5 +543,16 @@
       "name": "Forged",
       "tagline": "Discipline · stoic"
     }
+  },
+  "warrior": {
+    "title": "WARRIOR FORGE",
+    "axis": {
+      "strength": "Strength",
+      "physique": "Physique",
+      "discipline": "Discipline"
+    },
+    "measure": "Measure",
+    "next": "Next: forge your {axis} 💪",
+    "complete": "Warrior complete — push the next rank 🔥"
   }
 }

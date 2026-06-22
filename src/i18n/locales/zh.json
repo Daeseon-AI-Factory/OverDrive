@@ -543,5 +543,16 @@
       "name": "淬炼",
       "tagline": "自律 · 坚毅"
     }
+  },
+  "warrior": {
+    "title": "战士铸造",
+    "axis": {
+      "strength": "力量",
+      "physique": "体格",
+      "discipline": "自律"
+    },
+    "measure": "测量",
+    "next": "下一步：锻造你的{axis} 💪",
+    "complete": "战士已成 — 冲下一阶 🔥"
   }
 }

@@ -19,6 +19,7 @@ import { ExerciseRegionSheet, type RegionPicker } from '@/features/logging/Exerc
 import { SetLoggerSheet } from '@/features/logging/SetLoggerSheet';
 import { QuickLogBar } from '@/features/quicklog/QuickLogBar';
 import { ActiveWorkoutCard } from '@/features/workout/ActiveWorkoutCard';
+import { WarriorCard } from '@/features/warrior/WarriorCard';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { Muted, Screen } from '@/ui/primitives';
 import { colors, displayFamily, fontSize, numberFamily, space } from '@/ui/theme/tokens';
@@ -77,6 +78,8 @@ export default function TodayScreen() {
           <Text style={styles.cpScore}>{score}</Text>
           <Text style={[styles.grade, { color: colors.cyan }]}>{t(`grade.${grade.key}`)}</Text>
         </View>
+
+        <WarriorCard />
 
         <ActiveWorkoutCard ensureSession={ensureSession} onOpenCardio={(exercise) => setActiveExercise(exercise)} onFinishWorkout={finish} />
         <RestTimerBar />

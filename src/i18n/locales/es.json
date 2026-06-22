@@ -543,5 +543,16 @@
       "name": "Forjado",
       "tagline": "Disciplina · estoico"
     }
+  },
+  "warrior": {
+    "title": "FORJA DE GUERRERO",
+    "axis": {
+      "strength": "Fuerza",
+      "physique": "Físico",
+      "discipline": "Disciplina"
+    },
+    "measure": "Medir",
+    "next": "Sigue: forja tu {axis} 💪",
+    "complete": "Guerrero completo — sube de rango 🔥"
   }
 }
