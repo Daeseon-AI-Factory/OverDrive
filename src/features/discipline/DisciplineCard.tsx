@@ -9,7 +9,7 @@ import { classifyEvent } from '@/features/juice/classifyEvent';
 import { useJuice } from '@/features/juice/JuiceProvider';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { Card, Pill, SectionTitle } from '@/ui/primitives';
-import { colors, space } from '@/ui/theme/tokens';
+import { space } from '@/ui/theme/tokens';
 
 /**
  * One-tap daily discipline (protein hit / slept well). Feeds the Combat Power discipline component
@@ -74,8 +74,9 @@ export function DisciplineCard() {
       <SectionTitle>{t('discipline.title')}</SectionTitle>
       <Card>
         <View style={styles.row}>
-          <Pill label={t('discipline.protein')} active={protein} color={colors.success} onPress={() => toggle('protein')} />
-          <Pill label={t('discipline.rest')} active={rest} color={colors.success} onPress={() => toggle('rest')} />
+          {/* Active state = persona-accent tint-fill via the Pill primitive — never a solid neon fill. */}
+          <Pill label={t('discipline.protein')} active={protein} onPress={() => toggle('protein')} />
+          <Pill label={t('discipline.rest')} active={rest} onPress={() => toggle('rest')} />
         </View>
       </Card>
     </View>

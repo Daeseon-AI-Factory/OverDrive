@@ -22,8 +22,17 @@ import { QuickLogBar } from '@/features/quicklog/QuickLogBar';
 import { ActiveWorkoutCard } from '@/features/workout/ActiveWorkoutCard';
 import { WarriorCard } from '@/features/warrior/WarriorCard';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
-import { Muted, Screen } from '@/ui/primitives';
-import { colors, displayFamily, fontSize, numberFamily, space } from '@/ui/theme/tokens';
+import { Metric, Screen, useAccent } from '@/ui/primitives';
+import {
+  colors,
+  displayGrade,
+  hangulSafeLetterSpacing,
+  hasHangul,
+  heroTextGlow,
+  space,
+  tracking,
+  typeScale,
+} from '@/ui/theme/tokens';
 
 /**
  * Today — ONE vertical scroll: Combat Power + the programmed Active Workout up top, then the card
@@ -34,6 +43,8 @@ import { colors, displayFamily, fontSize, numberFamily, space } from '@/ui/theme
  */
 export default function TodayScreen() {
   const { t } = useTranslation();
+  // The ONE accent of this view — persona ramp, resolved once at screen level (MONOLITH).
+  const accent = useAccent();
   const score = useCombatPowerStore((s) => s.score);
   const { enter, finish } = useForge();
   const activeSessionId = useSessionStore((s) => s.activeSessionId);
@@ -78,6 +89,8 @@ export default function TodayScreen() {
   }, [enterSilently, t]);
 
   const grade = gradeForScore(score);
+  const cpLabel = t('today.combatPowerLabel');
+  const gradeWord = t(`grade.${grade.key}`);
 
   return (
     <Screen background={<AmbientAura />}>
@@ -88,10 +101,18 @@ export default function TodayScreen() {
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
       >
+        {/* Shrine header — floats directly on the aura, no card chrome. Glow slot 1 of 2: the CP
+            number's textShadow. Grade word is Anton (Latin only) — Korean grades fall back to the
+            system font (Anton renders Hangul as tofu). Disclaimer = spec §8 fun-score label. */}
         <View style={styles.header}>
-          <Muted>{t('today.combatPowerLabel')}</Muted>
-          <Text style={styles.cpScore}>{score}</Text>
-          <Text style={[styles.grade, { color: colors.cyan }]}>{t(`grade.${grade.key}`)}</Text>
+          <Text style={[styles.overline, { letterSpacing: hangulSafeLetterSpacing(cpLabel, tracking.overline) }]}>
+            {cpLabel}
+          </Text>
+          <Metric value={score} unit="CP" size="hero" valueStyle={heroTextGlow(accent)} />
+          <Text style={[hasHangul(gradeWord) ? styles.gradeHangul : styles.grade, { color: accent.solid }]}>
+            {gradeWord}
+          </Text>
+          <Text style={styles.disclaimer}>{t('power.disclaimer')}</Text>
         </View>
 
         <WarriorCard />
@@ -143,8 +164,11 @@ export default function TodayScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  content: { paddingTop: space.md, paddingBottom: space.xxl },
-  header: { alignItems: 'center' },
-  cpScore: { color: colors.text, fontFamily: numberFamily, fontSize: fontSize.odometer, lineHeight: fontSize.odometer + 6 },
-  grade: { fontFamily: displayFamily, fontSize: fontSize.lg, letterSpacing: 3 },
+  content: { paddingTop: space.md, paddingBottom: space.xxxl },
+  header: { alignItems: 'center', marginTop: space.sm },
+  overline: { ...typeScale.overline, marginBottom: space.xs },
+  grade: { ...displayGrade, marginTop: space.xs },
+  // System-font fallback for Hangul grade words (Anton is Latin/digits only).
+  gradeHangul: { fontSize: 20, lineHeight: 26, fontWeight: '600', letterSpacing: tracking.hangulMax, marginTop: space.xs },
+  disclaimer: { ...typeScale.caption, color: colors.text3, marginTop: space.xs },
 });

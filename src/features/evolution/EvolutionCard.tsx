@@ -7,8 +7,8 @@ import { QUICKLOG_ENDPOINT } from '@/features/quicklog/config';
 import { normalizeThemeId } from '@/features/theme/themes';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { Card, Muted, NeonButton, SectionTitle } from '@/ui/primitives';
-import { colors, fontSize, radius, space } from '@/ui/theme/tokens';
+import { Button, Card, Muted, SectionTitle, useAccent } from '@/ui/primitives';
+import { border, colors, radius, space, typeScale } from '@/ui/theme/tokens';
 import { EVOLVED_PATH, EvolveError, ORIGINAL_PATH, evolve, hasEvolved, hasOriginal, pickPhoto } from './evolveClient';
 
 /**
@@ -18,6 +18,7 @@ import { EVOLVED_PATH, EvolveError, ORIGINAL_PATH, evolve, hasEvolved, hasOrigin
  */
 export function EvolutionCard() {
   const { t } = useTranslation();
+  const accent = useAccent();
   const score = useCombatPowerStore((s) => s.score);
   const grade = gradeForScore(score);
   const themeId = normalizeThemeId(useSettingsStore((s) => s.aestheticPref));
@@ -117,14 +118,14 @@ export function EvolutionCard() {
         {!orig ? (
           <>
             <Muted>{t('evolution.intro')}</Muted>
-            <NeonButton
+            <Button
               label={picking ? '…' : t('evolution.pick')}
-              color={colors.violet}
+              variant="secondary"
               disabled={picking}
               onPress={onPick}
               style={{ marginTop: space.md }}
             />
-            {err ? <Muted style={{ color: colors.energyLo, marginTop: space.sm }}>{err}</Muted> : null}
+            {err ? <Muted style={styles.errText}>{err}</Muted> : null}
           </>
         ) : (
           <>
@@ -139,8 +140,8 @@ export function EvolutionCard() {
                 />
                 {busy ? (
                   <View style={styles.busyOverlay}>
-                    <ActivityIndicator color={colors.cyan} size="large" />
-                    <Text style={styles.busyText}>{t('evolution.evolving')}</Text>
+                    <ActivityIndicator color={accent.solid} size="large" />
+                    <Text style={[styles.busyText, { color: accent.solid }]}>{t('evolution.evolving')}</Text>
                     <Text style={styles.busyHint}>{t('evolution.evolvingHint', { defaultValue: 'usually 30–60s' })}</Text>
                     <Pressable
                       onPress={onCancelEvolve}
@@ -160,29 +161,31 @@ export function EvolutionCard() {
               </View>
             </Pressable>
 
-            {err ? <Muted style={{ color: colors.energyLo, marginTop: space.sm }}>{err}</Muted> : null}
+            {err ? <Muted style={styles.errText}>{err}</Muted> : null}
 
             {evolved && !busy ? (
-              <NeonButton label={t('evolution.share')} color={colors.energyHi} onPress={onShare} style={{ marginTop: space.md }} />
+              <Button label={t('evolution.share')} variant="secondary" onPress={onShare} style={{ marginTop: space.md }} />
             ) : null}
 
             <View style={styles.btnRow}>
-              <NeonButton
+              <Button
                 label={busy ? '…' : t('evolution.reEvolve', { grade: t(`grade.${grade.key}`) })}
-                color={colors.cyan}
+                variant="ghost"
+                compact
                 disabled={busy || picking}
                 onPress={runEvolve}
                 style={styles.btn}
               />
-              <NeonButton
+              <Button
                 label={picking ? '…' : t('evolution.changePhoto')}
-                color={colors.violet}
+                variant="ghost"
+                compact
                 disabled={busy || picking}
                 onPress={onPick}
                 style={styles.btn}
               />
             </View>
-            <Muted style={{ marginTop: space.sm, fontSize: 10 }}>{t('evolution.privacy')}</Muted>
+            <Muted style={styles.privacy}>{t('evolution.privacy')}</Muted>
           </>
         )}
       </Card>
@@ -191,7 +194,9 @@ export function EvolutionCard() {
 }
 
 const styles = StyleSheet.create({
-  photo: { width: '100%', aspectRatio: 3 / 4, borderRadius: radius.md, backgroundColor: colors.surfaceAlt },
+  // The hero image is imagery, not chrome — no border, no glow around it.
+  photo: { width: '100%', aspectRatio: 3 / 4, borderRadius: radius.md, backgroundColor: colors.surface2 },
+  errText: { color: colors.warning, marginTop: space.sm },
   busyOverlay: {
     position: 'absolute',
     top: 0,
@@ -200,34 +205,36 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#000000AA',
+    backgroundColor: colors.backdrop,
     borderRadius: radius.md,
   },
-  busyText: { color: colors.cyan, fontSize: fontSize.sm, fontWeight: '800', marginTop: space.sm, letterSpacing: 1 },
-  busyHint: { color: colors.textDim, fontSize: fontSize.xs, marginTop: 4 },
+  // Live status while the AI runs — the one accent-lit text in this card.
+  busyText: { ...typeScale.label, marginTop: space.sm },
+  busyHint: { ...typeScale.caption, color: colors.text3, marginTop: space.xs },
   cancelBtn: {
     marginTop: space.md,
-    borderWidth: 1,
+    height: 30,
+    justifyContent: 'center',
+    backgroundColor: colors.surface2,
+    borderWidth: border.thin,
     borderColor: colors.line,
-    borderRadius: radius.pill,
+    borderRadius: radius.chip,
     paddingHorizontal: space.md,
-    paddingVertical: 6,
   },
-  cancelText: { color: colors.textDim, fontSize: fontSize.xs, fontWeight: '800', letterSpacing: 1 },
+  cancelText: { ...typeScale.label, color: colors.text2 },
   flipHint: {
     position: 'absolute',
     bottom: space.sm,
     alignSelf: 'center',
-    color: colors.flash,
-    fontSize: fontSize.xs,
-    fontWeight: '900',
-    letterSpacing: 1,
-    backgroundColor: '#000000AA',
+    ...typeScale.label,
+    color: colors.text,
+    backgroundColor: colors.backdrop,
     paddingHorizontal: space.sm,
     paddingVertical: 3,
-    borderRadius: radius.pill,
+    borderRadius: radius.chip,
     overflow: 'hidden',
   },
   btnRow: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
   btn: { flex: 1 },
+  privacy: { marginTop: space.sm, color: colors.text3 },
 });

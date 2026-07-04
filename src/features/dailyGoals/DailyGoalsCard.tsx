@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { GoalUnit } from '@/db/types';
-import { Card, Muted, SectionTitle } from '@/ui/primitives';
-import { colors, fontSize, radius, space } from '@/ui/theme/tokens';
+import { Card, Muted, ProgressTrack, SectionTitle, useAccent } from '@/ui/primitives';
+import { border, colors, numType, radius, space, typeScale } from '@/ui/theme/tokens';
 import { DailyGoalEditorSheet } from './DailyGoalEditorSheet';
 import { useDailyGoals } from './useDailyGoals';
 
@@ -14,9 +14,13 @@ const fmt = (n: number) => (n % 1 === 0 ? String(n) : n.toFixed(1));
  * Daily training goals (실제도움 + 성취감 + 단순): recurring targets you crush every day. Tap +step to
  * rack up progress; completing one moves real Combat Power and fires a JUICE pop. Long-press a goal to
  * remove it. Modality-agnostic — burpees (reps), farmer's walk (sets/m), plank (sec) all fit.
+ *
+ * MONOLITH: neutral card; progress = accent fill → positive green at complete (achieved status, §9).
+ * Action squares are ghost chrome (surface2 + line) — semantic green appears only as ≤13pt text.
  */
 export function DailyGoalsCard() {
   const { t } = useTranslation();
+  const accent = useAccent();
   const { goals, bump, reset, add, remove } = useDailyGoals();
   const [editorOpen, setEditorOpen] = useState(false);
 
@@ -25,7 +29,7 @@ export function DailyGoalsCard() {
       <View style={styles.headerRow}>
         <SectionTitle>{t('goals.title')}</SectionTitle>
         <Pressable onPress={() => setEditorOpen(true)} hitSlop={8}>
-          <Text style={styles.addLink}>{t('goals.add')}</Text>
+          <Text style={[styles.addLink, { color: accent.solid }]}>{t('goals.add')}</Text>
         </Pressable>
       </View>
       <Card>
@@ -34,7 +38,6 @@ export function DailyGoalsCard() {
         ) : (
           goals.map((g) => {
             const unit = g.target.unit;
-            const pct = Math.min(100, Math.round((g.progress / g.target.target) * 100));
             const step = stepFor(unit);
             return (
               <View key={g.target.id} style={styles.goalRow}>
@@ -43,30 +46,35 @@ export function DailyGoalsCard() {
                     <Pressable accessibilityHint={t('goals.removeHint')} onLongPress={() => remove(g.target.id)} hitSlop={6}>
                       <Text style={[styles.goalLabel, g.done && styles.dim]}>{g.target.label}</Text>
                     </Pressable>
-                    <Text style={styles.goalProgress}>
-                      {fmt(g.progress)} / {fmt(g.target.target)} {t(`goals.unit.${unit}`)}
-                    </Text>
+                    <View style={styles.goalProgress}>
+                      <Text style={styles.goalProgressNow}>{fmt(g.progress)}</Text>
+                      <Text style={styles.goalProgressMeta}>{` / ${fmt(g.target.target)} ${t(`goals.unit.${unit}`)}`}</Text>
+                    </View>
                   </View>
-                  <View style={styles.track}>
-                    <View
-                      style={[styles.fill, { width: `${pct}%`, backgroundColor: g.done ? colors.success : colors.cyan }]}
-                    />
-                  </View>
+                  <ProgressTrack progress={g.progress / g.target.target} complete={g.done} />
                 </View>
 
                 <View style={styles.actions}>
                   {g.done ? (
-                    <Pressable onPress={() => reset(g)} style={styles.donePill} hitSlop={6}>
+                    <Pressable
+                      onPress={() => reset(g)}
+                      style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]}
+                      hitSlop={6}
+                    >
                       <Text style={styles.doneText}>{t('goals.done')}</Text>
                     </Pressable>
                   ) : (
                     <>
-                      <Pressable onPress={() => bump(g, step)} style={styles.incBtn} hitSlop={6}>
+                      <Pressable
+                        onPress={() => bump(g, step)}
+                        style={({ pressed }) => [styles.actionBtn, styles.incBtn, pressed && styles.actionPressed]}
+                        hitSlop={6}
+                      >
                         <Text style={styles.incText}>+{step}</Text>
                       </Pressable>
                       <Pressable
                         onPress={() => bump(g, g.target.target - g.progress)}
-                        style={styles.checkBtn}
+                        style={({ pressed }) => [styles.actionBtn, styles.checkBtn, pressed && styles.actionPressed]}
                         hitSlop={6}
                       >
                         <Text style={styles.checkText}>✓</Text>
@@ -89,49 +97,34 @@ export function DailyGoalsCard() {
 
 const styles = StyleSheet.create({
   wrap: { marginTop: space.xs },
-  removeHint: { fontSize: fontSize.xs, marginTop: space.xs },
+  removeHint: { marginTop: space.xs, color: colors.text3 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  addLink: { color: colors.cyan, fontSize: fontSize.sm, fontWeight: '800', letterSpacing: 1 },
+  addLink: { ...typeScale.label },
   goalRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: space.sm },
   goalMain: { flex: 1, marginRight: space.md },
-  goalTop: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 },
-  goalLabel: { color: colors.text, fontSize: fontSize.md, fontWeight: '800' },
-  goalProgress: { color: colors.textDim, fontSize: fontSize.sm, fontWeight: '700' },
-  dim: { color: colors.textDim },
-  track: { height: 8, borderRadius: 4, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 4 },
+  goalTop: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: space.sm },
+  goalLabel: { ...typeScale.body, color: colors.text },
+  goalProgress: { flexDirection: 'row', alignItems: 'flex-end' },
+  goalProgressNow: { ...numType.small, color: colors.text },
+  goalProgressMeta: { ...typeScale.caption, color: colors.text3, paddingBottom: 1 },
+  dim: { color: colors.text3 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  incBtn: {
-    minWidth: 52,
+  // Ghost machined block — the shared chrome for +step / ✓ / done-reset.
+  actionBtn: {
     height: 40,
+    minWidth: 44,
     borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.cyan,
-    backgroundColor: colors.surfaceAlt,
+    borderWidth: border.thin,
+    borderColor: colors.line,
+    backgroundColor: colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: space.sm,
   },
-  incText: { color: colors.cyan, fontSize: fontSize.md, fontWeight: '900' },
-  checkBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.success,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkText: { color: colors.success, fontSize: fontSize.lg, fontWeight: '900' },
-  donePill: {
-    paddingHorizontal: space.md,
-    height: 40,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.success,
-    backgroundColor: colors.success,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  doneText: { color: colors.bg, fontSize: fontSize.sm, fontWeight: '900', letterSpacing: 1 },
+  actionPressed: { backgroundColor: colors.surface3 },
+  incBtn: { minWidth: 52 },
+  checkBtn: { width: 44, paddingHorizontal: 0 },
+  incText: { ...numType.small, color: colors.text2 },
+  checkText: { ...typeScale.label, color: colors.positive },
+  doneText: { ...typeScale.label, color: colors.positive },
 });

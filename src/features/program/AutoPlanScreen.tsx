@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { persistSettings, useSettingsStore } from '@/stores/settingsStore';
-import { Card, Muted, NeonButton, Pill, Screen, SectionTitle } from '@/ui/primitives';
-import { colors, fontSize, space } from '@/ui/theme/tokens';
+import { Button, Card, Muted, Pill, Screen, SectionTitle } from '@/ui/primitives';
+import { colors, space, tracking, typeScale } from '@/ui/theme/tokens';
 import { generateProgram, type PlanEquipment, type PlanGoal } from './generate';
 
 const GOALS: PlanGoal[] = ['muscle', 'strength', 'lean'];
@@ -47,7 +47,13 @@ export function AutoPlanScreen() {
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space.xxl }}>
         <View style={styles.topBar}>
-          <Pressable accessibilityRole="button" accessibilityLabel={t('common.back')} onPress={() => router.back()} hitSlop={10}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('common.back')}
+            onPress={() => router.back()}
+            hitSlop={10}
+            style={({ pressed }) => [pressed && { opacity: 0.7 }]}
+          >
             <Text style={styles.back}>‹ {t('common.back')}</Text>
           </Pressable>
         </View>
@@ -58,7 +64,7 @@ export function AutoPlanScreen() {
         <Card>
           <View style={styles.wrapRow}>
             {GOALS.map((g) => (
-              <Pill key={g} label={t(`plan.goal.${g}`)} active={goal === g} color={colors.cyan} onPress={() => setGoal(g)} />
+              <Pill key={g} label={t(`plan.goal.${g}`)} active={goal === g} onPress={() => setGoal(g)} />
             ))}
           </View>
         </Card>
@@ -67,7 +73,7 @@ export function AutoPlanScreen() {
         <Card>
           <View style={styles.wrapRow}>
             {DAYS.map((d) => (
-              <Pill key={d} label={t('plan.days', { n: d })} active={days === d} color={colors.cyan} onPress={() => setDays(d)} />
+              <Pill key={d} label={t('plan.days', { n: d })} active={days === d} onPress={() => setDays(d)} />
             ))}
           </View>
         </Card>
@@ -76,13 +82,14 @@ export function AutoPlanScreen() {
         <Card>
           <View style={styles.wrapRow}>
             {EQUIP.map((e) => (
-              <Pill key={e} label={t(`plan.equip.${e}`)} active={equipment === e} color={colors.cyan} onPress={() => setEquipment(e)} />
+              <Pill key={e} label={t(`plan.equip.${e}`)} active={equipment === e} onPress={() => setEquipment(e)} />
             ))}
           </View>
         </Card>
 
+        {/* THE one solid-accent CTA of this screen. */}
         <View style={{ marginTop: space.lg }}>
-          <NeonButton label={t('plan.generate')} color={colors.energyHi} disabled={busy} onPress={() => void generate()} />
+          <Button label={t('plan.generate')} disabled={busy} onPress={() => void generate()} />
         </View>
       </ScrollView>
     </Screen>
@@ -91,7 +98,8 @@ export function AutoPlanScreen() {
 
 const styles = StyleSheet.create({
   topBar: { marginTop: space.md },
-  back: { color: colors.cyan, fontSize: fontSize.md, fontWeight: '800' },
-  title: { color: colors.text, fontSize: fontSize.xl, fontWeight: '900', marginTop: space.sm },
+  // Nav is chrome, not signal — monochrome text2, no accent.
+  back: { fontSize: 15, fontWeight: '600', letterSpacing: tracking.none, color: colors.text2 },
+  title: { ...typeScale.title, color: colors.text, marginTop: space.sm },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
 });

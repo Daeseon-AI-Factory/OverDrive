@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { GoalUnit } from '@/db/types';
-import { Muted, NeonButton, Pill } from '@/ui/primitives';
-import { colors, fontSize, radius, space } from '@/ui/theme/tokens';
+import { Button, Input, Muted, Pill } from '@/ui/primitives';
+import { colors, hangulSafeLetterSpacing, radius, space, tracking, typeScale } from '@/ui/theme/tokens';
 import { Stepper } from '@/features/logging/Stepper';
 
 const UNITS: GoalUnit[] = ['reps', 'sets', 'sec', 'min', 'm', 'km'];
@@ -32,6 +33,7 @@ export function DailyGoalEditorSheet({
   onAdd: (input: { label: string; unit: GoalUnit; target: number }) => void;
 }) {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [label, setLabel] = useState('');
   const [unit, setUnit] = useState<GoalUnit>('reps');
   const [target, setTarget] = useState(20);
@@ -50,20 +52,26 @@ export function DailyGoalEditorSheet({
     resetAndClose();
   };
 
+  const fieldLabel = (text: string) => (
+    <Text style={[styles.fieldLabel, { letterSpacing: hangulSafeLetterSpacing(text, tracking.overline) }]}>
+      {text}
+    </Text>
+  );
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={resetAndClose}>
       <Pressable style={styles.backdrop} onPress={resetAndClose} />
-      <View style={styles.sheet}>
-        <View style={styles.handle} />
+      <View style={[styles.sheet, { paddingBottom: Math.max(space.lg, insets.bottom) }]}>
+        <View pointerEvents="none" style={styles.sheetEdge} />
+        <View style={styles.grabber} />
         <Text style={styles.title}>{t('goals.editor.title')}</Text>
 
-        <Muted style={{ marginTop: space.xs }}>{t('goals.editor.suggest')}</Muted>
+        {fieldLabel(t('goals.editor.suggest'))}
         <View style={styles.wrapRow}>
           {SUGGESTIONS.map((s) => (
             <Pill
               key={s.key}
               label={t(`goals.suggest.${s.key}`)}
-              color={colors.violet}
               onPress={() => {
                 setLabel(t(`goals.suggest.${s.key}`));
                 setUnit(s.unit);
@@ -73,20 +81,18 @@ export function DailyGoalEditorSheet({
           ))}
         </View>
 
-        <Text style={styles.fieldLabel}>{t('goals.editor.label')}</Text>
-        <TextInput
+        {fieldLabel(t('goals.editor.label'))}
+        <Input
           value={label}
           onChangeText={setLabel}
           placeholder={t('goals.editor.labelPlaceholder')}
           accessibilityLabel={t('goals.editor.label')}
-          placeholderTextColor={colors.textDim}
-          style={styles.input}
         />
 
-        <Text style={styles.fieldLabel}>{t('goals.editor.unit')}</Text>
+        {fieldLabel(t('goals.editor.unit'))}
         <View style={styles.wrapRow}>
           {UNITS.map((u) => (
-            <Pill key={u} label={t(`goals.unit.${u}`)} active={unit === u} color={colors.cyan} onPress={() => setUnit(u)} />
+            <Pill key={u} label={t(`goals.unit.${u}`)} active={unit === u} onPress={() => setUnit(u)} />
           ))}
         </View>
 
@@ -101,12 +107,12 @@ export function DailyGoalEditorSheet({
           onChange={setTarget}
         />
 
-        <NeonButton
+        <Button
           label={t('goals.editor.add')}
-          color={colors.energyHi}
+          variant="primary"
           disabled={!label.trim()}
           onPress={submit}
-          style={{ marginTop: space.lg }}
+          style={{ marginTop: space.xl }}
         />
         <Pressable onPress={resetAndClose} style={styles.closeBtn} hitSlop={8}>
           <Muted>{t('goals.editor.cancel')}</Muted>
@@ -117,31 +123,26 @@ export function DailyGoalEditorSheet({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: '#000000AA' },
+  backdrop: { flex: 1, backgroundColor: colors.backdrop },
   sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    borderTopWidth: 1,
-    borderColor: colors.line,
+    backgroundColor: colors.surface1,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
+    overflow: 'hidden',
     paddingHorizontal: space.lg,
-    paddingBottom: space.xxl,
-    paddingTop: space.sm,
   },
-  handle: { alignSelf: 'center', width: 44, height: 4, borderRadius: 2, backgroundColor: colors.line, marginBottom: space.md },
-  title: { color: colors.text, fontSize: fontSize.lg, fontWeight: '900' },
-  fieldLabel: { color: colors.textDim, fontSize: fontSize.sm, fontWeight: '700', marginTop: space.lg, marginBottom: 6 },
-  wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.sm },
-  input: {
-    color: colors.text,
-    fontSize: fontSize.lg,
-    fontWeight: '700',
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm,
+  sheetEdge: { position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: colors.edgeHi },
+  grabber: {
+    alignSelf: 'center',
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.lineStrong,
+    marginTop: space.sm,
+    marginBottom: space.md,
   },
+  title: { ...typeScale.title, color: colors.text },
+  fieldLabel: { ...typeScale.overline, marginTop: space.xl, marginBottom: space.sm },
+  wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   closeBtn: { alignSelf: 'center', paddingVertical: space.md, marginTop: space.sm },
 });

@@ -11,8 +11,8 @@ import i18n, { LOCALE_LABEL, SUPPORTED_LOCALES, type AppLocale } from '@/i18n';
 import type { JuiceIntensity } from '@/lib/settings';
 import { displayToKg, kgToDisplay, weightUnit, type UnitSystem } from '@/lib/units';
 import { currentSettings, persistSettings, useSettingsStore } from '@/stores/settingsStore';
-import { Card, Muted, NeonButton, Pill, Screen, SectionTitle } from '@/ui/primitives';
-import { colors, fontSize, space } from '@/ui/theme/tokens';
+import { Button, Card, Muted, Pill, Screen, SectionTitle, useAccent } from '@/ui/primitives';
+import { border, colors, radius, space, typeScale } from '@/ui/theme/tokens';
 
 const PROTEIN_PER_KG = 1.8;
 
@@ -34,6 +34,7 @@ export default function SettingsScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
   const { t } = useTranslation();
+  const accent = useAccent();
   const aestheticPref = useSettingsStore((s) => s.aestheticPref);
   const juiceIntensity = useSettingsStore((s) => s.juiceIntensity);
   const soundOn = useSettingsStore((s) => s.soundOn);
@@ -124,7 +125,7 @@ export default function SettingsScreen() {
         <Card>
           <View style={styles.wrapRow}>
             {SUPPORTED_LOCALES.map((l) => (
-              <Pill key={l} label={LOCALE_LABEL[l]} active={locale === l} color={colors.cyan} onPress={() => void changeLanguage(l)} />
+              <Pill key={l} label={LOCALE_LABEL[l]} active={locale === l} onPress={() => void changeLanguage(l)} />
             ))}
           </View>
         </Card>
@@ -133,13 +134,7 @@ export default function SettingsScreen() {
         <Card>
           <View style={styles.wrapRow}>
             {UNIT_SYSTEMS.map((u) => (
-              <Pill
-                key={u}
-                label={t(`settings.units.${u}`)}
-                active={unitSystem === u}
-                color={colors.cyan}
-                onPress={() => persist({ unitSystem: u })}
-              />
+              <Pill key={u} label={t(`settings.units.${u}`)} active={unitSystem === u} onPress={() => persist({ unitSystem: u })} />
             ))}
           </View>
         </Card>
@@ -190,7 +185,7 @@ export default function SettingsScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('settings.program.edit')}
             onPress={() => router.push('/program')}
-            style={({ pressed }) => [styles.navRow, { marginTop: space.md }, pressed && { opacity: 0.7 }]}
+            style={({ pressed }) => [styles.navRow, styles.navRowDivided, pressed && { opacity: 0.7 }]}
           >
             <View style={{ flex: 1 }}>
               <Text style={styles.label}>{t('settings.program.edit')}</Text>
@@ -214,17 +209,16 @@ export default function SettingsScreen() {
                     <Pill
                       label={syncing ? t('settings.health.syncing') : syncedFlash ? `✓ ${t('settings.health.sync')}` : t('settings.health.sync')}
                       active={syncedFlash}
-                      color={colors.cyan}
                       onPress={() => void onSyncHealth()}
                     />
-                    <Pill label={t('settings.health.disconnect')} color={colors.energyLo} onPress={confirmDisconnect} />
+                    <Pill label={t('settings.health.disconnect')} onPress={confirmDisconnect} />
                   </View>
                 </>
               ) : (
                 <>
                   <Muted>{t('settings.health.explainer')}</Muted>
                   <View style={{ marginTop: space.md }}>
-                    <NeonButton label={t('settings.health.connect')} color={colors.cyan} onPress={() => void onConnectHealth()} />
+                    <Button label={t('settings.health.connect')} variant="secondary" onPress={() => void onConnectHealth()} />
                   </View>
                 </>
               )}
@@ -232,7 +226,7 @@ export default function SettingsScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={t('inbody.entry')}
                 onPress={() => router.push('/inbody')}
-                style={({ pressed }) => [styles.navRow, { marginTop: space.md }, pressed && { opacity: 0.7 }]}
+                style={({ pressed }) => [styles.navRow, styles.navRowDivided, pressed && { opacity: 0.7 }]}
               >
                 <View style={{ flex: 1 }}>
                   <Text style={styles.label}>{t('inbody.entry')}</Text>
@@ -246,16 +240,29 @@ export default function SettingsScreen() {
 
         <SectionTitle>{t('settings.theme.section')}</SectionTitle>
         <Card>
+          {/* Persona picker — the ONE place multiple hues may appear, as data (12×12 swatch dots),
+              never as chrome. Cards stay neutral; the selected card borrows the CURRENT accent border. */}
           <View style={styles.wrapRow}>
-            {THEME_IDS.map((id) => (
-              <Pill
-                key={id}
-                label={t(`theme.${id}.name`)}
-                active={activeTheme.id === id}
-                color={THEMES[id].accent}
-                onPress={() => persist({ aestheticPref: id })}
-              />
-            ))}
+            {THEME_IDS.map((id) => {
+              const selected = activeTheme.id === id;
+              return (
+                <Pressable
+                  key={id}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(`theme.${id}.name`)}
+                  accessibilityState={{ selected }}
+                  onPress={() => persist({ aestheticPref: id })}
+                  style={({ pressed }) => [
+                    styles.themeCard,
+                    selected && { borderColor: accent.border },
+                    pressed && { backgroundColor: colors.surface3 },
+                  ]}
+                >
+                  <View style={[styles.swatch, { backgroundColor: THEMES[id].accent }]} />
+                  <Text style={[styles.themeName, selected && { color: colors.text }]}>{t(`theme.${id}.name`)}</Text>
+                </Pressable>
+              );
+            })}
           </View>
           <Muted style={{ marginTop: space.sm }}>
             {t(`theme.${activeTheme.id}.tagline`)} — {t('settings.theme.explainer')}
@@ -266,7 +273,7 @@ export default function SettingsScreen() {
         <Card>
           <View style={styles.wrapRow}>
             {INTENSITY.map((o) => (
-              <Pill key={o} label={t(`settings.juice.${o}`)} active={juiceIntensity === o} color={colors.energyHi} onPress={() => persist({ juiceIntensity: o })} />
+              <Pill key={o} label={t(`settings.juice.${o}`)} active={juiceIntensity === o} onPress={() => persist({ juiceIntensity: o })} />
             ))}
           </View>
           <Muted style={{ marginTop: space.sm }}>{t('settings.juice.explainer')}</Muted>
@@ -276,7 +283,12 @@ export default function SettingsScreen() {
         <Card>
           <View style={styles.switchRow}>
             <Text style={styles.label}>{t('settings.sound.label')}</Text>
-            <Switch value={soundOn} onValueChange={(v) => persist({ soundOn: v })} trackColor={{ true: colors.cyan, false: colors.line }} />
+            <Switch
+              value={soundOn}
+              onValueChange={(v) => persist({ soundOn: v })}
+              trackColor={{ true: accent.solid, false: colors.surface3 }}
+              thumbColor={colors.text}
+            />
           </View>
         </Card>
 
@@ -284,7 +296,7 @@ export default function SettingsScreen() {
         <Card>
           <View style={styles.wrapRow}>
             {[1.25, 2.5, 5].map((w) => (
-              <Pill key={w} label={t('settings.weightStep.pill', { step: w })} active={weightStep === w} color={colors.cyan} onPress={() => persist({ weightStep: w })} />
+              <Pill key={w} label={t('settings.weightStep.pill', { step: w })} active={weightStep === w} onPress={() => persist({ weightStep: w })} />
             ))}
           </View>
           <Muted style={{ marginTop: space.sm }}>{t('settings.weightStep.explainer')}</Muted>
@@ -297,10 +309,33 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { color: colors.text, fontSize: fontSize.xl, fontWeight: '900', marginTop: space.lg },
+  title: { ...typeScale.title, color: colors.text, marginTop: space.lg },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  label: { color: colors.text, fontSize: fontSize.md, fontWeight: '600' },
-  navRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  chevron: { color: colors.cyan, fontSize: 28, fontWeight: '900' },
+  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 32 },
+  // Settings is a quiet monochrome list — rows 52pt, body-weight labels, hairline seams.
+  label: { ...typeScale.body, color: colors.text },
+  navRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  navRowDivided: {
+    marginTop: space.sm,
+    paddingTop: space.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+  },
+  chevron: { color: colors.text3, fontSize: 22, fontWeight: '400' },
+  // Neutral machined cards; only the swatch dot carries a hue (data, not chrome).
+  themeCard: {
+    flexGrow: 1,
+    flexBasis: '45%',
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    paddingHorizontal: space.md,
+    borderRadius: radius.md,
+    borderWidth: border.thin,
+    borderColor: colors.line,
+    backgroundColor: colors.surface2,
+  },
+  swatch: { width: 12, height: 12, borderRadius: 6 },
+  themeName: { ...typeScale.label, color: colors.text2 },
 });

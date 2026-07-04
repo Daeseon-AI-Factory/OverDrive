@@ -15,8 +15,17 @@ import { todayLocal } from '@/lib/date';
 import { displayToKg, formatDistance, formatWeight, kgToDisplay, weightStepDisplay, weightUnit } from '@/lib/units';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { Card, Muted } from '@/ui/primitives';
-import { colors, fontSize, numberFamily, radius, space } from '@/ui/theme/tokens';
+import { Button, Card, IconSquare, LiveDot, Metric, Muted, Pill, useAccent } from '@/ui/primitives';
+import {
+  border,
+  colors,
+  hangulSafeLetterSpacing,
+  numType,
+  radius,
+  space,
+  tracking,
+  typeScale,
+} from '@/ui/theme/tokens';
 import { useSessionStore } from '../forge/sessionStore';
 import { firstIncompleteWorkoutIndex, mergeWorkoutCounts } from './progress';
 
@@ -96,32 +105,12 @@ function cardioPresetsFor(exerciseId: string): CardioPreset[] {
   ];
 }
 
-function AdjustButton({
-  label,
-  onPress,
-  disabled = false,
-  a11yLabel,
-}: {
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-  a11yLabel?: string;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={a11yLabel ?? label}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [styles.adjustBtn, disabled && styles.disabled, pressed && !disabled ? styles.pressed : null]}
-      hitSlop={8}
-    >
-      <Text style={styles.adjustText}>{label}</Text>
-    </Pressable>
-  );
-}
-
+/**
+ * Today's programmed workout — THE live card on the Today screen (MONOLITH: 2pt accent rail +
+ * LiveDot + accent overline mark the one thing that is alive right now). Steppers are machined
+ * IconSquares around Orbitron readouts; the complete-set CTA is the screen's single solid-accent
+ * primary Button. Everything else recedes into the monochrome ladder.
+ */
 export function ActiveWorkoutCard({
   ensureSession,
   onOpenCardio,
@@ -134,6 +123,7 @@ export function ActiveWorkoutCard({
   const db = useSQLiteContext();
   const router = useRouter();
   const { t } = useTranslation();
+  const accent = useAccent();
   const logSet = useLogSet();
   const logCardio = useLogCardio();
   const unitSystem = useSettingsStore((s) => s.unitSystem);
@@ -456,18 +446,31 @@ export function ActiveWorkoutCard({
   };
 
   const lastSetText = draft.lastSet ? t('logger.lastSet', { set: describeSet(draft.lastSet) }) : t('logger.firstSet');
+  const eyebrowLabel = t('activeWorkout.eyebrow');
 
   return (
-    <Card style={styles.card}>
+    <Card live style={styles.card}>
+      {/* Glow slot 2 of 2 (Today screen): LiveDot + accent overline — this card is what's alive. */}
+      <View style={styles.liveRow}>
+        <LiveDot />
+        <Text
+          style={[
+            styles.eyebrow,
+            { color: accent.solid, letterSpacing: hangulSafeLetterSpacing(eyebrowLabel, tracking.overline) },
+          ]}
+        >
+          {eyebrowLabel}
+        </Text>
+      </View>
+
       <View style={styles.topRow}>
         <View style={styles.titleWrap}>
-          <Muted>{t('activeWorkout.eyebrow')}</Muted>
           <Text style={styles.programTitle}>{today.title}</Text>
-          <Muted>{today.focus}</Muted>
+          <Muted style={styles.focus}>{today.focus}</Muted>
         </View>
         {exercises.length > 0 ? (
-          <View style={styles.progressPill}>
-            <Text style={styles.progressText}>
+          <View style={styles.counterChip}>
+            <Text style={styles.counterText}>
               {activeIndex + 1}/{exercises.length}
             </Text>
           </View>
@@ -475,7 +478,7 @@ export function ActiveWorkoutCard({
       </View>
 
       {loading ? <Muted style={styles.bodyText}>{t('activeWorkout.loading')}</Muted> : null}
-      {loadFailed ? <Muted style={styles.errorText}>{t('activeWorkout.loadFailed')}</Muted> : null}
+      {loadFailed ? <Text style={styles.warnText}>{t('activeWorkout.loadFailed')}</Text> : null}
 
       {!loading && !loadFailed && slots.length === 0 ? (
         <View style={styles.emptyBlock}>
@@ -488,18 +491,20 @@ export function ActiveWorkoutCard({
               onPress={() => router.push('/program')}
               hitSlop={8}
             >
-              <Text style={styles.ctaLink}>{t('activeWorkout.editProgram')}</Text>
+              <Text style={[styles.ctaLink, { color: accent.solid }]}>{t('activeWorkout.editProgram')}</Text>
             </Pressable>
           ) : null}
         </View>
       ) : null}
 
       {!loading && !loadFailed && slots.length > 0 && !current ? (
-        <Muted style={styles.errorText}>{t('activeWorkout.missingProgram')}</Muted>
+        <Text style={styles.warnText}>{t('activeWorkout.missingProgram')}</Text>
       ) : null}
 
       {current ? (
         <>
+          <View style={styles.divider} />
+
           <View style={styles.exerciseHeader}>
             <View style={styles.exerciseNameWrap}>
               <Text style={styles.exerciseName}>{t(`exercise.${current.id}`)}</Text>
@@ -510,7 +515,11 @@ export function ActiveWorkoutCard({
               accessibilityLabel={t('activeWorkout.skip')}
               disabled={activeIndex >= exercises.length - 1}
               onPress={advanceToNext}
-              style={({ pressed }) => [styles.skipBtn, activeIndex >= exercises.length - 1 && styles.disabled, pressed ? styles.pressed : null]}
+              style={({ pressed }) => [
+                styles.skipBtn,
+                activeIndex >= exercises.length - 1 && styles.disabled,
+                pressed ? styles.pressedSurface : null,
+              ]}
               hitSlop={8}
             >
               <Text style={styles.skipText}>{t('activeWorkout.skip')}</Text>
@@ -521,14 +530,14 @@ export function ActiveWorkoutCard({
             <View style={styles.cardioBlock}>
               <Muted>{lastCardio ? t('activeWorkout.cardioLast', { summary: describeCardio(lastCardio) }) : t('activeWorkout.cardioBody')}</Muted>
               {lastCardio ? (
-                <Pressable
-                  accessibilityRole="button"
+                // THE one solid-accent primary on the screen when cardio is up (mutually exclusive
+                // with the strength complete-set CTA — only one exercise renders at a time).
+                <Button
+                  label={busy ? t('activeWorkout.saving') : t('activeWorkout.repeatCardio')}
+                  onPress={() => void completeCardio(lastCardio)}
                   disabled={busy}
-                  onPress={() => completeCardio(lastCardio)}
-                  style={({ pressed }) => [styles.primaryBtn, busy && styles.disabled, pressed ? styles.primaryPressed : null]}
-                >
-                  <Text style={styles.primaryText}>{busy ? t('activeWorkout.saving') : t('activeWorkout.repeatCardio')}</Text>
-                </Pressable>
+                  style={styles.cardioCta}
+                />
               ) : null}
 
               <View style={styles.presetGrid}>
@@ -538,7 +547,7 @@ export function ActiveWorkoutCard({
                     accessibilityRole="button"
                     disabled={busy}
                     onPress={() => completeCardio(preset)}
-                    style={({ pressed }) => [styles.presetBtn, busy && styles.disabled, pressed ? styles.pressed : null]}
+                    style={({ pressed }) => [styles.presetBtn, busy && styles.disabled, pressed ? styles.pressedSurface : null]}
                   >
                     <Text style={styles.presetTitle}>{t(`activeWorkout.cardioPreset.${preset.key}`)}</Text>
                     <Muted>{describeCardio(preset)}</Muted>
@@ -559,12 +568,28 @@ export function ActiveWorkoutCard({
                   <View style={styles.adjustGroup}>
                     <Text style={styles.adjustLabel}>{t('activeWorkout.weight')}</Text>
                     <View style={styles.adjustRow}>
-                      <AdjustButton label="-" a11yLabel={`${t('activeWorkout.weight')} -`} disabled={busy} onPress={() => setWeight(-1)} />
-                      <Text style={styles.valueText}>
-                        {compactNumber(draft.weightDisplay, weightPrecision)}
-                        <Text style={styles.unitText}> {weightUnit(unitSystem)}</Text>
-                      </Text>
-                      <AdjustButton label="+" a11yLabel={`${t('activeWorkout.weight')} +`} disabled={busy} onPress={() => setWeight(1)} />
+                      <IconSquare
+                        compact
+                        glyph="−"
+                        glyphStyle={styles.stepperGlyph}
+                        accessibilityLabel={`${t('activeWorkout.weight')} -`}
+                        disabled={busy}
+                        onPress={() => setWeight(-1)}
+                      />
+                      <Metric
+                        value={compactNumber(draft.weightDisplay, weightPrecision)}
+                        unit={weightUnit(unitSystem)}
+                        size="large"
+                        style={styles.valueWrap}
+                      />
+                      <IconSquare
+                        compact
+                        glyph="+"
+                        glyphStyle={styles.stepperGlyph}
+                        accessibilityLabel={`${t('activeWorkout.weight')} +`}
+                        disabled={busy}
+                        onPress={() => setWeight(1)}
+                      />
                     </View>
                   </View>
                 ) : null}
@@ -572,9 +597,23 @@ export function ActiveWorkoutCard({
                 <View style={[styles.adjustGroup, isBodyweight ? styles.fullWidth : null]}>
                   <Text style={styles.adjustLabel}>{isBodyweight ? t('logger.field.repsOrTime') : t('activeWorkout.reps')}</Text>
                   <View style={styles.adjustRow}>
-                    <AdjustButton label="-" a11yLabel={`${isBodyweight ? t('logger.field.repsOrTime') : t('activeWorkout.reps')} -`} disabled={busy} onPress={() => setReps(-1)} />
-                    <Text style={styles.valueText}>{draft.reps}</Text>
-                    <AdjustButton label="+" a11yLabel={`${isBodyweight ? t('logger.field.repsOrTime') : t('activeWorkout.reps')} +`} disabled={busy} onPress={() => setReps(1)} />
+                    <IconSquare
+                      compact
+                      glyph="−"
+                      glyphStyle={styles.stepperGlyph}
+                      accessibilityLabel={`${isBodyweight ? t('logger.field.repsOrTime') : t('activeWorkout.reps')} -`}
+                      disabled={busy}
+                      onPress={() => setReps(-1)}
+                    />
+                    <Metric value={draft.reps} size="large" style={styles.valueWrap} />
+                    <IconSquare
+                      compact
+                      glyph="+"
+                      glyphStyle={styles.stepperGlyph}
+                      accessibilityLabel={`${isBodyweight ? t('logger.field.repsOrTime') : t('activeWorkout.reps')} +`}
+                      disabled={busy}
+                      onPress={() => setReps(1)}
+                    />
                   </View>
                 </View>
               </View>
@@ -582,28 +621,22 @@ export function ActiveWorkoutCard({
               <View style={styles.rirRow}>
                 <Text style={styles.rirLabel}>{t('activeWorkout.rir')}</Text>
                 {[null, 1, 2, 3].map((value) => (
-                  <Pressable
+                  <Pill
                     key={value ?? 'auto'}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: draft.rir === value }}
+                    label={value == null ? t('activeWorkout.rirAuto') : String(value)}
+                    active={draft.rir === value}
                     onPress={() => setDraft((currentDraft) => ({ ...currentDraft, rir: value }))}
-                    style={[styles.rirPill, draft.rir === value ? styles.rirActive : null]}
-                  >
-                    <Text style={[styles.rirText, draft.rir === value ? styles.rirTextActive : null]}>
-                      {value == null ? t('activeWorkout.rirAuto') : value}
-                    </Text>
-                  </Pressable>
+                  />
                 ))}
               </View>
 
-              <Pressable
-                accessibilityRole="button"
+              {/* THE one solid-accent primary Button on the Today screen. */}
+              <Button
+                label={busy ? t('activeWorkout.saving') : t('activeWorkout.completeSet')}
+                onPress={() => void completeSet()}
                 disabled={busy || draft.reps <= 0}
-                onPress={completeSet}
-                style={({ pressed }) => [styles.primaryBtn, (busy || draft.reps <= 0) && styles.disabled, pressed ? styles.primaryPressed : null]}
-              >
-                <Text style={styles.primaryText}>{busy ? t('activeWorkout.saving') : t('activeWorkout.completeSet')}</Text>
-              </Pressable>
+                style={styles.cta}
+              />
 
               <View style={styles.footerRow}>
                 <Muted>{workoutComplete ? t('activeWorkout.workoutComplete') : t('activeWorkout.autoAdvance')}</Muted>
@@ -628,12 +661,15 @@ export function ActiveWorkoutCard({
           ) : null}
 
           {workoutComplete ? (
-            <Pressable accessibilityRole="button" onPress={onFinishWorkout} style={({ pressed }) => [styles.finishBtn, pressed ? styles.primaryPressed : null]}>
-              <Text style={styles.finishText}>{t('activeWorkout.finishWorkout')}</Text>
-            </Pressable>
+            <Button
+              label={t('activeWorkout.finishWorkout')}
+              onPress={onFinishWorkout}
+              variant="secondary"
+              style={styles.finish}
+            />
           ) : null}
 
-          {saveFailed ? <Muted style={styles.errorText}>{t('activeWorkout.saveFailed')}</Muted> : null}
+          {saveFailed ? <Text style={styles.dangerText}>{t('activeWorkout.saveFailed')}</Text> : null}
 
           <View style={styles.exerciseDots}>
             {exercises.map((exercise, index) => {
@@ -645,10 +681,13 @@ export function ActiveWorkoutCard({
                   accessibilityState={{ selected: active }}
                   key={exercise.id}
                   onPress={() => setActiveIndex(index)}
-                  style={[styles.exerciseDot, active && styles.exerciseDotActive]}
+                  style={[
+                    styles.exerciseDot,
+                    active && { backgroundColor: accent.fill, borderColor: accent.border },
+                  ]}
                   hitSlop={6}
                 >
-                  <Text style={[styles.exerciseDotText, active && styles.exerciseDotTextActive]}>
+                  <Text style={[styles.exerciseDotText, active && { color: accent.solid }]}>
                     {done}/{targetSetsFor(exercise)}
                   </Text>
                 </Pressable>
@@ -662,120 +701,87 @@ export function ActiveWorkoutCard({
 }
 
 const styles = StyleSheet.create({
-  card: { marginTop: space.lg, padding: space.md },
+  card: { marginTop: space.lg },
+  liveRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: space.sm },
+  eyebrow: { ...typeScale.overline },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', gap: space.md, alignItems: 'flex-start' },
   titleWrap: { flex: 1 },
-  programTitle: { color: colors.text, fontSize: fontSize.xl, fontWeight: '900', marginTop: 2 },
-  progressPill: {
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.cyan,
+  programTitle: { ...typeScale.title, color: colors.text },
+  focus: { marginTop: space.xxs },
+  counterChip: {
+    height: 30,
     paddingHorizontal: space.md,
-    paddingVertical: space.xs,
+    borderRadius: radius.chip,
+    borderWidth: border.thin,
+    borderColor: colors.line,
+    backgroundColor: colors.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  progressText: { color: colors.cyan, fontWeight: '900' },
+  counterText: { ...numType.small, color: colors.text2 },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.line, marginTop: space.lg },
   bodyText: { marginTop: space.md },
-  errorText: { color: colors.energyLo, marginTop: space.sm },
+  warnText: { ...typeScale.caption, color: colors.warning, marginTop: space.sm },
+  dangerText: { ...typeScale.caption, color: colors.danger, marginTop: space.sm },
   emptyBlock: { marginTop: space.lg, gap: space.xs },
-  emptyTitle: { color: colors.text, fontSize: fontSize.lg, fontWeight: '900' },
-  ctaLink: { color: colors.cyan, fontSize: fontSize.sm, fontWeight: '800', letterSpacing: 1, marginTop: space.sm },
+  emptyTitle: { ...typeScale.title, color: colors.text },
+  ctaLink: { ...typeScale.label, marginTop: space.sm },
   exerciseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.md, marginTop: space.lg },
   exerciseNameWrap: { flex: 1 },
-  exerciseName: { color: colors.text, fontSize: fontSize.lg, fontWeight: '900' },
+  exerciseName: { ...typeScale.body, color: colors.text },
   skipBtn: {
+    height: 30,
     minWidth: 56,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    borderRadius: radius.chip,
+    borderWidth: border.thin,
     borderColor: colors.line,
-    paddingHorizontal: space.sm,
-    paddingVertical: space.xs,
+    backgroundColor: colors.surface2,
+    paddingHorizontal: space.md,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  skipText: { color: colors.textDim, fontSize: fontSize.sm, fontWeight: '800' },
+  skipText: { ...typeScale.label, color: colors.text2 },
   lastSet: { marginTop: space.sm },
-  adjustGrid: { flexDirection: 'row', gap: space.md, marginTop: space.md },
+  adjustGrid: { flexDirection: 'row', gap: space.md, marginTop: space.lg },
   adjustGroup: { flex: 1, minWidth: 0 },
   fullWidth: { flex: 1 },
-  adjustLabel: { color: colors.textDim, fontSize: fontSize.sm, fontWeight: '800', marginBottom: 6 },
-  adjustRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.xs },
-  adjustBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: colors.cyan,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  adjustText: { color: colors.cyan, fontSize: 24, fontWeight: '900', lineHeight: 26 },
-  valueText: { flex: 1, color: colors.text, fontFamily: numberFamily, fontSize: 28, fontWeight: '900', textAlign: 'center' },
-  unitText: { color: colors.textDim, fontSize: fontSize.sm, fontWeight: '800' },
-  rirRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs, flexWrap: 'wrap', marginTop: space.md },
-  rirLabel: { color: colors.textDim, fontSize: fontSize.sm, fontWeight: '800', marginRight: space.xs },
-  rirPill: {
-    minWidth: 46,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.line,
-    paddingHorizontal: space.sm,
-    paddingVertical: space.xs,
-    alignItems: 'center',
-  },
-  rirActive: { backgroundColor: colors.violet, borderColor: colors.violet },
-  rirText: { color: colors.textDim, fontSize: fontSize.sm, fontWeight: '800' },
-  rirTextActive: { color: colors.bg },
-  primaryBtn: {
-    minHeight: 58,
-    borderRadius: radius.md,
-    backgroundColor: colors.energyHi,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: space.lg,
-    paddingHorizontal: space.md,
-  },
-  primaryText: { color: colors.flash, fontSize: fontSize.lg, fontWeight: '900', textAlign: 'center' },
-  primaryPressed: { opacity: 0.75 },
-  footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.md, marginTop: space.sm },
-  undoText: { color: colors.cyan, fontSize: fontSize.sm, fontWeight: '900' },
+  adjustLabel: { ...typeScale.label, color: colors.text2, marginBottom: space.sm },
+  adjustRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  // BLACKSTEEL graft: 22pt '800' glyphs in the 44×44 squares — mid-set tap targets read at arm's length.
+  stepperGlyph: { fontSize: 22, fontWeight: '800' },
+  valueWrap: { flex: 1, justifyContent: 'center' },
+  rirRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap', marginTop: space.lg },
+  rirLabel: { ...typeScale.label, color: colors.text2, marginRight: space.xs },
+  cta: { marginTop: space.lg },
+  footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.md, marginTop: space.md },
+  undoText: { ...typeScale.label, color: colors.text2 },
   cardioBlock: { marginTop: space.md },
+  cardioCta: { marginTop: space.md },
   presetGrid: { gap: space.sm, marginTop: space.md },
   presetBtn: {
     borderRadius: radius.md,
-    borderWidth: 1,
+    borderWidth: border.thin,
     borderColor: colors.line,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: colors.surface2,
     paddingHorizontal: space.md,
-    paddingVertical: space.sm,
+    paddingVertical: space.md,
   },
-  presetTitle: { color: colors.text, fontSize: fontSize.md, fontWeight: '900', marginBottom: 2 },
+  presetTitle: { ...typeScale.body, color: colors.text, marginBottom: space.xxs },
   detailsBtn: { alignSelf: 'center', marginTop: space.md, paddingVertical: space.xs, paddingHorizontal: space.md },
-  detailsText: { color: colors.cyan, fontSize: fontSize.sm, fontWeight: '900' },
-  finishBtn: {
-    minHeight: 52,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.cyan,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: space.md,
-    paddingHorizontal: space.md,
-    backgroundColor: colors.surfaceAlt,
-  },
-  finishText: { color: colors.cyan, fontSize: fontSize.md, fontWeight: '900', textAlign: 'center' },
-  exerciseDots: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: space.md },
+  detailsText: { ...typeScale.label, color: colors.text2 },
+  finish: { marginTop: space.md },
+  exerciseDots: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.md },
   exerciseDot: {
-    minWidth: 42,
-    borderRadius: radius.pill,
-    borderWidth: 1,
+    minWidth: 44,
+    borderRadius: radius.chip,
+    borderWidth: border.thin,
     borderColor: colors.line,
+    backgroundColor: colors.surface2,
     paddingHorizontal: space.xs,
-    paddingVertical: 4,
+    paddingVertical: space.xs,
     alignItems: 'center',
   },
-  exerciseDotActive: { borderColor: colors.cyan, backgroundColor: colors.surfaceAlt },
-  exerciseDotText: { color: colors.textDim, fontSize: 11, fontWeight: '800' },
-  exerciseDotTextActive: { color: colors.cyan },
+  exerciseDotText: { ...numType.small, color: colors.text2 },
   disabled: { opacity: 0.4 },
-  pressed: { opacity: 0.72 },
+  pressedSurface: { backgroundColor: colors.surface3 },
 });

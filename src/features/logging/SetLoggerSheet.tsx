@@ -2,12 +2,13 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getLastSetForExercise } from '@/db/repos/setLogRepo';
 import type { ExerciseRow } from '@/db/types';
 import { displayToKg, formatWeight, kgToDisplay, weightStepDisplay, weightUnit } from '@/lib/units';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { Muted, NeonButton, Pill } from '@/ui/primitives';
-import { colors, fontSize, radius, space } from '@/ui/theme/tokens';
+import { Button, Muted, Pill } from '@/ui/primitives';
+import { colors, hangulSafeLetterSpacing, radius, space, tracking, typeScale } from '@/ui/theme/tokens';
 import { Stepper } from './Stepper';
 import { useLogSet } from './useLogSet';
 
@@ -15,6 +16,10 @@ import { useLogSet } from './useLogSet';
  * Low-friction set logger (spec §6.1). Prefilled from the last set; "repeat last set" logs in ONE
  * tap, steppers replace the keyboard. Weight is shown/edited in the user's units (kg/lb) but stored
  * canonical kg. Stays open after logging. Calls the unchanged useLogSet hot path (→ JUICE fires).
+ *
+ * MONOLITH sheet chrome: opaque surface1 panel (no bleed-through under stepper digits), edge
+ * highlight, lineStrong grabber. The log CTA is THE one solid-accent primary; repeat-last is the
+ * tinted secondary.
  */
 export function SetLoggerSheet({
   exercise,
@@ -27,6 +32,7 @@ export function SetLoggerSheet({
 }) {
   const db = useSQLiteContext();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const logSet = useLogSet();
   const unitSystem = useSettingsStore((s) => s.unitSystem);
   const weightStepKg = useSettingsStore((s) => s.weightStep);
@@ -97,12 +103,13 @@ export function SetLoggerSheet({
   return (
     <Modal visible={!!exercise} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={styles.sheet}>
+      <View style={[styles.sheet, { paddingBottom: Math.max(space.lg, insets.bottom) }]}>
+        <View pointerEvents="none" style={styles.sheetEdge} />
         {exercise ? (
           <>
-            <View style={styles.handle} />
+            <View style={styles.grabber} />
             <Text style={styles.title}>{t(`exercise.${exercise.id}`)}</Text>
-            <Muted>
+            <Muted style={styles.meta}>
               {lastSetText}
               {count > 0 ? t('logger.sessionSetCount', { count }) : ''}
             </Muted>
@@ -129,29 +136,35 @@ export function SetLoggerSheet({
               onChange={setReps}
             />
 
-            <Text style={styles.rirLabel}>{t('logger.rirLabel')}</Text>
+            <Text
+              style={[
+                styles.fieldLabel,
+                { letterSpacing: hangulSafeLetterSpacing(t('logger.rirLabel'), tracking.overline) },
+              ]}
+            >
+              {t('logger.rirLabel')}
+            </Text>
             <View style={styles.rirRow}>
               {[0, 1, 2, 3, 4].map((n) => (
                 <Pill
                   key={n}
                   label={n === 4 ? t('logger.rirMaxPill') : String(n)}
                   active={rir === n}
-                  color={colors.violet}
                   onPress={() => setRir(rir === n ? null : n)}
                 />
               ))}
             </View>
 
-            <NeonButton
+            <Button
               label={t('logger.repeatLast')}
-              color={colors.cyan}
+              variant="secondary"
               disabled={!lastSet || busy}
               onPress={() => lastSet && commitKg(lastSet.weightKg, lastSet.reps, lastSet.rir)}
-              style={{ marginTop: space.lg }}
+              style={{ marginTop: space.xl }}
             />
-            <NeonButton
+            <Button
               label={t('logger.logSet')}
-              color={colors.energyHi}
+              variant="primary"
               disabled={!reps || busy}
               onPress={() => commitKg(displayToKg(weight, unitSystem), reps, rir)}
               style={{ marginTop: space.sm }}
@@ -167,20 +180,28 @@ export function SetLoggerSheet({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: '#000000AA' },
+  backdrop: { flex: 1, backgroundColor: colors.backdrop },
+  // Opaque machined panel — logger digits never fight scroll bleed-through.
   sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    borderTopWidth: 1,
-    borderColor: colors.line,
+    backgroundColor: colors.surface1,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
+    overflow: 'hidden',
     paddingHorizontal: space.lg,
-    paddingBottom: space.xxl,
-    paddingTop: space.sm,
   },
-  handle: { alignSelf: 'center', width: 44, height: 4, borderRadius: 2, backgroundColor: colors.line, marginBottom: space.md },
-  title: { color: colors.text, fontSize: fontSize.lg, fontWeight: '900' },
-  rirLabel: { color: colors.textDim, fontSize: fontSize.sm, fontWeight: '700', marginTop: space.lg, marginBottom: 6 },
+  sheetEdge: { position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: colors.edgeHi },
+  grabber: {
+    alignSelf: 'center',
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.lineStrong,
+    marginTop: space.sm,
+    marginBottom: space.md,
+  },
+  title: { ...typeScale.title, color: colors.text },
+  meta: { marginTop: space.xxs },
+  fieldLabel: { ...typeScale.overline, marginTop: space.xl, marginBottom: space.sm },
   rirRow: { flexDirection: 'row', gap: space.sm },
   closeBtn: { alignSelf: 'center', paddingVertical: space.md, marginTop: space.sm },
 });

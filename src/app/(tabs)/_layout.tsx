@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Text, type ColorValue } from 'react-native';
+import { StyleSheet, Text, type ColorValue } from 'react-native';
+import { useAccent } from '@/ui/primitives';
 import { colors } from '@/ui/theme/tokens';
 
 function tabIcon(glyph: string) {
@@ -11,13 +12,21 @@ function tabIcon(glyph: string) {
 
 export default function TabsLayout() {
   const { t } = useTranslation();
+  const accent = useAccent();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.line },
-        tabBarActiveTintColor: colors.cyan,
-        tabBarInactiveTintColor: colors.textDim,
+        // MONOLITH: bg1 chassis + hairline seam; the selected tab is the only lit element — tint
+        // change only (no underline indicator, no glow).
+        tabBarStyle: {
+          backgroundColor: colors.bg1,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colors.line,
+        },
+        tabBarActiveTintColor: accent.solid,
+        tabBarInactiveTintColor: colors.text3,
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '600', letterSpacing: 0.4 },
       }}
     >
       <Tabs.Screen name="index" options={{ title: t('tabs.today'), tabBarIcon: tabIcon('◆') }} />

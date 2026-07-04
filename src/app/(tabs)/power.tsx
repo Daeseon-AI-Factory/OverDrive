@@ -12,12 +12,13 @@ import { useJuice } from '@/features/juice/JuiceProvider';
 import { TIER_DURATION_MS } from '@/features/juice/constants';
 import { RankSection } from '@/features/rank/RankSection';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
-import { Card, Muted, NeonButton, Screen, SectionTitle } from '@/ui/primitives';
-import { colors, displayFamily, fontSize, numberFamily, space } from '@/ui/theme/tokens';
+import { Button, Card, Metric, Muted, ProgressTrack, Screen, SectionTitle, useAccent } from '@/ui/primitives';
+import { colors, displayGrade, hasHangul, heroTextGlow, numType, space, tracking, typeScale } from '@/ui/theme/tokens';
 
 export default function PowerScreen() {
   const db = useSQLiteContext();
   const { t } = useTranslation();
+  const accent = useAccent();
   const score = useCombatPowerStore((s) => s.score);
   const [breakdown, setBreakdown] = useState<CombatPowerComponent[]>([]);
   const [verifiedRatio, setVerifiedRatio] = useState(0);
@@ -47,6 +48,7 @@ export default function PowerScreen() {
   );
 
   const grade = gradeForScore(score);
+  const gradeWord = t(`grade.${grade.key}`);
   const active = breakdown.filter((c) => c.active);
   const juice = useJuice();
 
@@ -66,11 +68,14 @@ export default function PowerScreen() {
   return (
     <Screen background={<AmbientAura />}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space.xxl }}>
+        {/* The shrine — biggest single element in the app. Glow slot 1 of 2 = the CP number. */}
         <View style={styles.hero}>
-          <Text style={styles.score}>{score}</Text>
-          <Text style={[styles.grade, { color: colors.cyan }]}>{t(`grade.${grade.key}`)}</Text>
+          <Metric value={score} unit="CP" size="heroXL" valueStyle={heroTextGlow(accent)} />
+          {/* Anton is Latin-only (Hangul renders fallback tofu) — Korean grade words drop to system 600. */}
+          <Text style={[hasHangul(gradeWord) ? styles.gradeHangul : styles.grade, { color: accent.solid }]}>
+            {gradeWord}
+          </Text>
           <Text style={styles.disclaimer}>{t('power.disclaimer')}</Text>
-          <NeonButton label={t('power.demoFire')} color={colors.energyHi} onPress={fireDemo} style={{ marginTop: space.md }} />
         </View>
 
         <EvolutionCard />
@@ -89,9 +94,7 @@ export default function PowerScreen() {
                 {active.map((c) => (
                   <View key={c.key} style={styles.row}>
                     <Text style={styles.rowLabel}>{t(`cp.component.${c.key}`)}</Text>
-                    <View style={styles.barTrack}>
-                      <View style={[styles.barFill, { width: `${Math.round(c.score01 * 100)}%` }]} />
-                    </View>
+                    <ProgressTrack progress={c.score01} style={styles.rowTrack} />
                     <Text style={styles.rowPct}>{Math.round(c.score01 * 100)}</Text>
                   </View>
                 ))}
@@ -104,6 +107,9 @@ export default function PowerScreen() {
             </Card>
           </>
         ) : null}
+
+        {/* Demo replay — a utility, not a hero: ghost + bottom of the scroll, far from the shrine. */}
+        <Button label={t('power.demoFire')} onPress={fireDemo} variant="ghost" compact style={styles.demoBtn} />
       </ScrollView>
     </Screen>
   );
@@ -111,13 +117,19 @@ export default function PowerScreen() {
 
 const styles = StyleSheet.create({
   hero: { alignItems: 'center', marginTop: space.xl },
-  // Same vertical metrics + grade size as the Today hero (index.tsx cpScore/grade).
-  score: { color: colors.text, fontFamily: numberFamily, fontSize: fontSize.odometer, lineHeight: fontSize.odometer + 6 },
-  grade: { fontFamily: displayFamily, fontSize: fontSize.lg, letterSpacing: 3 },
-  disclaimer: { color: colors.textDim, fontSize: fontSize.xs, marginTop: space.sm, letterSpacing: 1 },
-  row: { flexDirection: 'row', alignItems: 'center', marginVertical: 6 },
-  rowLabel: { color: colors.text, fontSize: fontSize.sm, width: 120 },
-  barTrack: { flex: 1, height: 8, backgroundColor: colors.surfaceAlt, borderRadius: 4, overflow: 'hidden', marginHorizontal: space.sm },
-  barFill: { height: 8, backgroundColor: colors.cyan, borderRadius: 4 },
-  rowPct: { color: colors.textDim, fontSize: fontSize.sm, width: 28, textAlign: 'right' },
+  grade: { ...displayGrade, marginTop: space.xs },
+  // System-font fallback for Hangul grade words (Anton has no Hangul glyphs); tracking ≤0.5.
+  gradeHangul: {
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '600',
+    letterSpacing: tracking.hangulMax,
+    marginTop: space.xs,
+  },
+  disclaimer: { ...typeScale.caption, color: colors.text3, marginTop: space.sm },
+  row: { flexDirection: 'row', alignItems: 'center', height: 28 },
+  rowLabel: { fontSize: 13, fontWeight: '400', lineHeight: 18, color: colors.text2, width: 112 },
+  rowTrack: { flex: 1, marginHorizontal: space.sm },
+  rowPct: { ...numType.small, color: colors.text, width: 32, textAlign: 'right' },
+  demoBtn: { marginTop: space.xl, alignSelf: 'center' },
 });

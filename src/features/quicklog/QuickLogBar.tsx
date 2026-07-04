@@ -1,11 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import { formatWeight } from '@/lib/units';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { Muted } from '@/ui/primitives';
-import { colors, fontSize, radius, space } from '@/ui/theme/tokens';
+import { Button, IconSquare, Input } from '@/ui/primitives';
+import { border, colors, numType, radius, space, typeScale } from '@/ui/theme/tokens';
 import { QUICKLOG_ENDPOINT } from './config';
 import { transcribeAudio } from './transcribe';
 import { useQuickLog, type RecentChip } from './useQuickLog';
@@ -14,6 +14,10 @@ import { useQuickLog, type RecentChip } from './useQuickLog';
  * The one input. Type or SPEAK "벤치 100 5" → parse → log → explosion. Or tap a recent lift to repeat.
  * Voice: hold-free toggle mic → record → Groq whisper transcribes (server-side key) → same parser.
  * No menus, no body-map — killing choice overload. Manual full entry lives behind a "수동" toggle.
+ *
+ * MONOLITH chrome: neutral machined blocks (mic IconSquare, recess Input, accent-tinted submit).
+ * The ONLY colored surface is the recording-state mic (danger = live status); status feedback is
+ * ≤13pt semantic text, never chrome.
  */
 export function QuickLogBar() {
   const { t, i18n } = useTranslation();
@@ -22,8 +26,8 @@ export function QuickLogBar() {
   const { recents, submitText, repeat } = useQuickLog();
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [text, setText] = useState('');
-  const [hint, setHint] = useState<string | null>(null); // failure hints (energyLo)
-  const [confirm, setConfirm] = useState<string | null>(null); // "what got saved" echo (success color)
+  const [hint, setHint] = useState<string | null>(null); // failure hints (warning text)
+  const [confirm, setConfirm] = useState<string | null>(null); // "what got saved" echo (positive text)
   const [busy, setBusy] = useState(false);
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
@@ -41,7 +45,7 @@ export function QuickLogBar() {
         if (r.ok) {
           setText('');
           setHint(null);
-          setConfirm(r.summary ? `⚡ ${r.summary}` : null); // echo WHAT was logged — misparses are visible
+          setConfirm(r.summary ? `✓ ${r.summary}` : null); // echo WHAT was logged — misparses are visible
         } else {
           setConfirm(null);
           setHint(
@@ -150,7 +154,7 @@ export function QuickLogBar() {
       try {
         await repeat(chip);
         const w = formatWeight(chip.weight, unitSystem);
-        setConfirm(`⚡ ${chip.name}  ${w ? `${w}×` : ''}${chip.reps}`);
+        setConfirm(`✓ ${chip.name}  ${w ? `${w}×` : ''}${chip.reps}`);
       } catch {
         setHint(t('quicklog.fail.log'));
       } finally {
@@ -165,6 +169,14 @@ export function QuickLogBar() {
     return `${c.name}  ${w ? `${w}×` : ''}${c.reps}`;
   };
 
+  // Digits-only stat for the chip (Orbitron renders digits, never words — the unit lives in the
+  // accessibility label / confirm echo, not the 30pt chip).
+  const chipStat = (c: RecentChip) => {
+    const w = formatWeight(c.weight, unitSystem); // "100 kg" | '' for bodyweight
+    const n = w ? w.split(' ')[0] : '';
+    return `${n ? `${n}×` : ''}${c.reps}`;
+  };
+
   const statusHint = recording
     ? t('quicklog.recording')
     : transcribing
@@ -173,21 +185,23 @@ export function QuickLogBar() {
         ? t('quicklog.logging', { defaultValue: dv('기록 중…', 'Logging…') })
         : (hint ?? confirm ?? t('quicklog.help'));
   const statusColor = recording
-    ? colors.energyHi
+    ? colors.danger
     : transcribing || busy
-      ? null
+      ? colors.text3
       : hint
-        ? colors.energyLo
+        ? colors.warning
         : confirm
-          ? colors.success
-          : null;
+          ? colors.positive
+          : colors.text3;
 
   return (
     <View style={styles.wrap}>
       <View style={styles.inputRow}>
-        <Pressable
-          onPress={toggleMic}
-          accessibilityRole="button"
+        <IconSquare
+          glyph={recording ? '●' : transcribing ? '✕' : '🎤︎'}
+          tone={recording ? 'danger' : 'neutral'}
+          onPress={() => void toggleMic()}
+          disabled={busy}
           accessibilityLabel={
             recording
               ? t('quicklog.stopRecording')
@@ -195,16 +209,8 @@ export function QuickLogBar() {
                 ? t('quicklog.cancelTranscribe', { defaultValue: dv('음성 인식 취소', 'Cancel voice transcription') })
                 : t('quicklog.startRecording')
           }
-          accessibilityState={{ disabled: busy, selected: recording }}
-          style={[styles.micBtn, recording ? styles.micRec : null, busy && styles.disabled]}
-          hitSlop={6}
-          disabled={busy}
-        >
-          <Text style={[styles.micIcon, recording ? styles.micIconRec : null, transcribing ? styles.micIconCancel : null]}>
-            {recording ? '●' : transcribing ? '✕' : '🎤'}
-          </Text>
-        </Pressable>
-        <TextInput
+        />
+        <Input
           value={text}
           onChangeText={(v) => {
             setText(v);
@@ -212,7 +218,6 @@ export function QuickLogBar() {
           }}
           placeholder={t('quicklog.placeholder')}
           accessibilityLabel={t('quicklog.placeholder')}
-          placeholderTextColor={colors.textDim}
           style={styles.input}
           onSubmitEditing={onSubmit}
           returnKeyType="done"
@@ -221,20 +226,16 @@ export function QuickLogBar() {
           autoCorrect={false}
           editable={!recording && !transcribing}
         />
-        <Pressable
-          onPress={onSubmit}
+        <Button
+          label={t('quicklog.log')}
+          onPress={() => void onSubmit()}
+          variant="secondary"
+          compact
           disabled={!text.trim() || busy}
-          accessibilityRole="button"
-          accessibilityLabel={t('quicklog.log')}
-          accessibilityState={{ disabled: !text.trim() || busy }}
-          style={[styles.logBtn, { opacity: text.trim() && !busy ? 1 : 0.4 }]}
-          hitSlop={6}
-        >
-          <Text style={styles.logText}>{t('quicklog.log')}</Text>
-        </Pressable>
+        />
       </View>
 
-      <Muted style={[styles.hint, statusColor ? { color: statusColor } : null]}>{statusHint}</Muted>
+      <Text style={[styles.hint, { color: statusColor }]}>{statusHint}</Text>
 
       {recents.length > 0 ? (
         <ScrollView
@@ -254,7 +255,14 @@ export function QuickLogBar() {
               style={[styles.chip, (!!repeatingId || recording) && styles.disabled]}
               hitSlop={4}
             >
-              <Text style={styles.chipText}>{repeatingId === c.exerciseId ? '…' : chipLabel(c)}</Text>
+              {repeatingId === c.exerciseId ? (
+                <Text style={styles.chipName}>…</Text>
+              ) : (
+                <>
+                  <Text style={styles.chipName}>{c.name}</Text>
+                  <Text style={styles.chipStat}>{chipStat(c)}</Text>
+                </>
+              )}
             </Pressable>
           ))}
         </ScrollView>
@@ -266,51 +274,21 @@ export function QuickLogBar() {
 const styles = StyleSheet.create({
   wrap: { marginTop: space.lg },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  micBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.violet,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  micRec: { borderColor: colors.energyHi, backgroundColor: colors.energyHi },
+  input: { flex: 1 },
   disabled: { opacity: 0.4 },
-  micIcon: { fontSize: fontSize.lg },
-  micIconRec: { color: colors.flash, fontSize: fontSize.xl, fontWeight: '900' },
-  micIconCancel: { color: colors.text, fontWeight: '900' },
-  input: {
-    flex: 1,
-    color: colors.text,
-    fontSize: fontSize.lg,
-    fontWeight: '700',
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    paddingHorizontal: space.md,
-    paddingVertical: space.md,
-  },
-  logBtn: {
-    paddingHorizontal: space.lg,
-    paddingVertical: space.md,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.energyHi,
-    backgroundColor: colors.surfaceAlt,
-  },
-  logText: { color: colors.energyHi, fontSize: fontSize.md, fontWeight: '900', letterSpacing: 1 },
-  hint: { marginTop: 6 },
+  hint: { ...typeScale.caption, marginTop: space.sm },
   chips: { gap: space.sm, paddingVertical: space.md, paddingRight: space.lg },
+  // Pill-inactive chrome (neutral surface2 + 1pt line) — recents are history, not live state.
   chip: {
-    borderWidth: 1,
-    borderColor: colors.cyan,
-    borderRadius: radius.pill,
+    height: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-    backgroundColor: colors.surface,
+    borderRadius: radius.chip,
+    borderWidth: border.thin,
+    borderColor: colors.line,
+    backgroundColor: colors.surface2,
   },
-  chipText: { color: colors.cyan, fontSize: fontSize.sm, fontWeight: '800' },
+  chipName: { ...typeScale.label, color: colors.text2 },
+  chipStat: { ...numType.small, color: colors.text2, marginLeft: space.sm },
 });

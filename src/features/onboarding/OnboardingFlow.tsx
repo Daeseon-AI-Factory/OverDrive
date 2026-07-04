@@ -8,8 +8,8 @@ import { nowIso } from '@/lib/date';
 import type { UserSettings } from '@/lib/settings';
 import { displayToKg, kgToDisplay, weightUnit, type UnitSystem } from '@/lib/units';
 import { currentSettings, persistSettings, useSettingsStore } from '@/stores/settingsStore';
-import { Muted, NeonButton, Screen } from '@/ui/primitives';
-import { colors, displayFamily, fontSize, radius, space } from '@/ui/theme/tokens';
+import { Button, Muted, Screen, useAccent } from '@/ui/primitives';
+import { border, colors, displayFamily, radius, space, tracking, typeScale } from '@/ui/theme/tokens';
 
 const UNIT_SYSTEMS: UnitSystem[] = ['metric', 'imperial'];
 const TOTAL_STEPS = 3; // units, weight (+ protein suggestion), split (welcome is step 0, no counter)
@@ -23,10 +23,14 @@ const suggestProtein = (weightKg: number) => Math.round((weightKg * PROTEIN_PER_
  * everything already entered up to the current step (save-on-skip; it only skips the REMAINING
  * steps). Finishing persists units, bodyweight, a protein target (auto-suggested from weight),
  * and the chosen split. Tap-driven; the only typing is none.
+ *
+ * MONOLITH: the persona accent is the only powered-on hue — Latin wordmark (Anton, display
+ * tracking), tint-fill selection states, and ONE solid-accent primary CTA in the footer.
  */
 export function OnboardingFlow({ onDone }: { onDone: () => void }) {
   const db = useSQLiteContext();
   const { t } = useTranslation();
+  const accent = useAccent();
   const apply = useSettingsStore((s) => s.apply);
 
   const [step, setStep] = useState(0);
@@ -99,16 +103,17 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.body}>
         {step === 0 ? (
           <View style={styles.center}>
-            <Text style={styles.brand}>REPLOOM</Text>
+            {/* Latin wordmark — the screen's single display element, powered by the persona accent. */}
+            <Text style={[styles.brand, { color: accent.solid }]}>REPLOOM</Text>
             <Text style={styles.welcomeTitle}>{t('onboarding.welcomeTitle')}</Text>
-            <Muted style={styles.welcomeBody}>{t('onboarding.welcomeBody')}</Muted>
+            <Text style={styles.welcomeBody}>{t('onboarding.welcomeBody')}</Text>
           </View>
         ) : null}
 
         {step === 1 ? (
           <View>
             <Text style={styles.stepTitle}>{t('onboarding.units.title')}</Text>
-            <Muted style={styles.stepBody}>{t('onboarding.units.body')}</Muted>
+            <Text style={styles.stepBody}>{t('onboarding.units.body')}</Text>
             <View style={styles.wrapRow}>
               {UNIT_SYSTEMS.map((u) => (
                 <Pressable
@@ -116,9 +121,14 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
                   accessibilityRole="button"
                   accessibilityState={{ selected: unit === u }}
                   onPress={() => changeUnit(u)}
-                  style={[styles.bigPill, unit === u && styles.bigPillActive]}
+                  style={[
+                    styles.choice,
+                    unit === u && { backgroundColor: accent.fill, borderColor: accent.border },
+                  ]}
                 >
-                  <Text style={[styles.bigPillText, unit === u && styles.bigPillTextActive]}>{t(`settings.units.${u}`)}</Text>
+                  <Text style={[styles.choiceText, unit === u && { color: accent.solid }]}>
+                    {t(`settings.units.${u}`)}
+                  </Text>
                 </Pressable>
               ))}
             </View>
@@ -128,7 +138,7 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
         {step === 2 ? (
           <View>
             <Text style={styles.stepTitle}>{t('onboarding.weight.title')}</Text>
-            <Muted style={styles.stepBody}>{t('onboarding.weight.body')}</Muted>
+            <Text style={styles.stepBody}>{t('onboarding.weight.body')}</Text>
             <Stepper
               label={t('onboarding.weight.label')}
               value={weightDisplay}
@@ -151,7 +161,7 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
         {step === 3 ? (
           <View>
             <Text style={styles.stepTitle}>{t('onboarding.split.title')}</Text>
-            <Muted style={styles.stepBody}>{t('onboarding.split.body')}</Muted>
+            <Text style={styles.stepBody}>{t('onboarding.split.body')}</Text>
             {SPLIT_TEMPLATES.map((template) => {
               const active = template.key === templateKey;
               return (
@@ -160,9 +170,9 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
                   onPress={() => setTemplateKey(template.key)}
-                  style={[styles.templateCard, active && styles.templateCardActive]}
+                  style={[styles.templateCard, active && { borderColor: accent.border }]}
                 >
-                  <Text style={[styles.templateTitle, active && { color: colors.cyan }]}>{t(template.titleKey)}</Text>
+                  <Text style={[styles.templateTitle, active && { color: accent.solid }]}>{t(template.titleKey)}</Text>
                   <Muted>{t(template.descKey)}</Muted>
                 </Pressable>
               );
@@ -179,10 +189,10 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
         ) : (
           <View style={styles.backBtn} />
         )}
-        <NeonButton
+        <Button
           label={step === 0 ? t('onboarding.start') : step >= TOTAL_STEPS ? t('onboarding.finish') : t('onboarding.next')}
           onPress={next}
-          color={colors.energyHi}
+          variant="primary"
           disabled={saving}
           style={styles.nextBtn}
         />
@@ -193,25 +203,39 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
 
 const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.md, minHeight: 28 },
-  counter: { color: colors.textDim, fontSize: fontSize.sm, fontWeight: '800', letterSpacing: 1 },
-  skip: { color: colors.textDim, fontSize: fontSize.sm, fontWeight: '800' },
+  counter: { ...typeScale.label, color: colors.text3 },
+  skip: { ...typeScale.label, color: colors.text2 },
   body: { flexGrow: 1, paddingVertical: space.xl },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: space.xxl },
-  brand: { color: colors.cyan, fontFamily: displayFamily, fontSize: fontSize.xl, letterSpacing: 6, marginBottom: space.lg },
-  welcomeTitle: { color: colors.text, fontSize: fontSize.xl, fontWeight: '900', textAlign: 'center' },
-  welcomeBody: { textAlign: 'center', marginTop: space.md, lineHeight: 20 },
-  stepTitle: { color: colors.text, fontSize: fontSize.xl, fontWeight: '900', marginTop: space.lg },
-  stepBody: { marginTop: space.xs, marginBottom: space.lg, lineHeight: 20 },
+  brand: { fontFamily: displayFamily, fontSize: 28, lineHeight: 36, letterSpacing: tracking.display, marginBottom: space.lg },
+  welcomeTitle: { ...typeScale.title, color: colors.text, textAlign: 'center' },
+  welcomeBody: { ...typeScale.body, color: colors.text2, textAlign: 'center', marginTop: space.md },
+  stepTitle: { ...typeScale.title, color: colors.text, marginTop: space.lg },
+  stepBody: { ...typeScale.body, color: colors.text2, marginTop: space.xs, marginBottom: space.lg },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  bigPill: { flexGrow: 1, alignItems: 'center', borderWidth: 1.5, borderColor: colors.line, borderRadius: radius.md, paddingVertical: space.md, paddingHorizontal: space.lg },
-  bigPillActive: { borderColor: colors.cyan, backgroundColor: colors.surfaceAlt },
-  bigPillText: { color: colors.textDim, fontSize: fontSize.md, fontWeight: '800' },
-  bigPillTextActive: { color: colors.cyan },
-  templateCard: { borderWidth: 1.5, borderColor: colors.line, borderRadius: radius.md, padding: space.md, marginBottom: space.sm, backgroundColor: colors.surfaceAlt },
-  templateCardActive: { borderColor: colors.cyan },
-  templateTitle: { color: colors.text, fontSize: fontSize.md, fontWeight: '900', marginBottom: 2 },
+  // Selection controls — machined blocks: surface2 + 1pt line at rest, accent tint-fill when chosen.
+  choice: {
+    flexGrow: 1,
+    alignItems: 'center',
+    borderWidth: border.thin,
+    borderColor: colors.line,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.md,
+    paddingVertical: space.md,
+    paddingHorizontal: space.lg,
+  },
+  choiceText: { fontSize: 15, fontWeight: '600', color: colors.text2 },
+  templateCard: {
+    borderWidth: border.thin,
+    borderColor: colors.line,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.md,
+    padding: space.lg,
+    marginBottom: space.sm,
+  },
+  templateTitle: { fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: space.xxs },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: space.md, gap: space.md },
   backBtn: { minWidth: 64, paddingVertical: space.sm },
-  backText: { color: colors.textDim, fontSize: fontSize.md, fontWeight: '800' },
+  backText: { fontSize: 15, fontWeight: '600', color: colors.text2 },
   nextBtn: { flex: 1 },
 });

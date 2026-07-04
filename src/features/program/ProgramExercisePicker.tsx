@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CARDIO_EXERCISE_IDS, REGIONS, type BodyRegionId } from '@/features/character/regions';
 import { Muted } from '@/ui/primitives';
-import { colors, fontSize, radius, space } from '@/ui/theme/tokens';
+import { colors, hangulSafeLetterSpacing, radius, space, tracking, typeScale } from '@/ui/theme/tokens';
 
 const REGION_ORDER: BodyRegionId[] = ['chest', 'shoulders', 'back', 'arms', 'core', 'legs'];
 
@@ -25,6 +26,7 @@ export function ProgramExercisePicker({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const taken = new Set(existingIds);
 
   const renderRow = (id: string) => {
@@ -45,23 +47,34 @@ export function ProgramExercisePicker({
     );
   };
 
+  const groupTitle = (label: string) => (
+    <Text style={[styles.groupTitle, { letterSpacing: hangulSafeLetterSpacing(label, tracking.overline) }]}>{label}</Text>
+  );
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('logger.close')} />
-      <View style={styles.sheet}>
-        <View style={styles.handle} />
+      {/* Opaque surface1 sheet (no translucency over scroll content) + top edge-highlight + grabber. */}
+      <View style={[styles.sheet, { paddingBottom: Math.max(space.lg, insets.bottom) }]}>
+        <View pointerEvents="none" style={styles.sheetEdge} />
+        <View style={styles.grabber} />
         <Text style={styles.title}>{t('programEditor.pickerTitle')}</Text>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space.lg }}>
           {mode === 'cardio'
             ? CARDIO_EXERCISE_IDS.map((id) => renderRow(id))
             : REGION_ORDER.map((region) => (
                 <View key={region} style={styles.group}>
-                  <Text style={styles.groupTitle}>{t(`region.${region}`)}</Text>
+                  {groupTitle(t(`region.${region}`))}
                   {REGIONS[region].exerciseIds.map((id) => renderRow(id))}
                 </View>
               ))}
         </ScrollView>
-        <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={8} accessibilityRole="button">
+        <Pressable
+          onPress={onClose}
+          style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.7 }]}
+          hitSlop={8}
+          accessibilityRole="button"
+        >
           <Muted>{t('logger.close')}</Muted>
         </Pressable>
       </View>
@@ -70,35 +83,44 @@ export function ProgramExercisePicker({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: '#000000AA' },
+  backdrop: { flex: 1, backgroundColor: colors.backdrop },
   sheet: {
     maxHeight: '78%',
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    borderTopWidth: 1,
-    borderColor: colors.line,
+    backgroundColor: colors.surface1,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
+    overflow: 'hidden',
     paddingHorizontal: space.lg,
-    paddingBottom: space.xxl,
-    paddingTop: space.sm,
   },
-  handle: { alignSelf: 'center', width: 44, height: 4, borderRadius: 2, backgroundColor: colors.line, marginBottom: space.md },
-  title: { color: colors.text, fontSize: fontSize.lg, fontWeight: '900', marginBottom: space.sm },
+  // 1pt light falling on the sheet's machined top edge.
+  sheetEdge: { position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: colors.edgeHi },
+  grabber: {
+    alignSelf: 'center',
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.lineStrong,
+    marginTop: space.sm,
+    marginBottom: space.md,
+  },
+  title: { ...typeScale.title, color: colors.text, marginBottom: space.sm },
   group: { marginBottom: space.md },
-  groupTitle: { color: colors.textDim, fontSize: fontSize.sm, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', marginBottom: space.xs },
+  // letterSpacing applied per-string (Hangul-safe) at the call site.
+  groupTitle: { ...typeScale.overline, marginBottom: space.xs },
   row: {
     minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.line,
     paddingVertical: space.sm,
   },
   rowPressed: { opacity: 0.6 },
   rowTaken: { opacity: 0.4 },
-  exName: { color: colors.text, fontSize: fontSize.md, fontWeight: '700' },
-  exNameTaken: { color: colors.textDim },
-  add: { color: colors.cyan, fontSize: 26, fontWeight: '900', lineHeight: 28 },
+  exName: { ...typeScale.body, color: colors.text },
+  exNameTaken: { color: colors.text3 },
+  // Add affordance is chrome, not signal — monochrome (accent marks what is alive, not what is tappable).
+  add: { color: colors.text3, fontSize: 22, fontWeight: '400', lineHeight: 24 },
   closeBtn: { alignSelf: 'center', paddingVertical: space.md, marginTop: space.xs },
 });

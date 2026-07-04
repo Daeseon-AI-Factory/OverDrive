@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import { formatWeight } from '@/lib/units';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { Muted, NeonButton } from '@/ui/primitives';
-import { colors, fontSize, numberFamily, space } from '@/ui/theme/tokens';
+import { Button, Card, Muted } from '@/ui/primitives';
+import { colors, numType, space, typeScale } from '@/ui/theme/tokens';
 import { useSessionStore } from './sessionStore';
 
 function useElapsed(startedAt: number | null): string {
@@ -19,7 +19,14 @@ function useElapsed(startedAt: number | null): string {
   return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 }
 
-/** ENTER THE FORGE button when idle; the active-session bar (timer · sets · volume · FINISH) when in. */
+/**
+ * ENTER THE FORGE button when idle; the active-session bar (timer · sets · volume · FINISH) when in.
+ *
+ * MONOLITH: the active bar merges into the live card's language — `Card live` gives it the same 2pt
+ * accent rail + accent eyebrow as ActiveWorkoutCard (no LiveDot here: the glow budget's slot 2 lives
+ * on ActiveWorkoutCard). Timer digits are Orbitron; words stay system text. Finish = secondary tint
+ * (the screen's ONE solid-accent primary belongs to ActiveWorkoutCard).
+ */
 export function ForgeBar({ onEnter, onFinish }: { onEnter: () => void; onFinish: () => void }) {
   const { t } = useTranslation();
   const unitSystem = useSettingsStore((s) => s.unitSystem);
@@ -32,38 +39,34 @@ export function ForgeBar({ onEnter, onFinish }: { onEnter: () => void; onFinish:
   if (!activeSessionId) {
     return (
       <View style={styles.enterWrap}>
-        <NeonButton label={t('forge.enter')} color={colors.energyHi} onPress={onEnter} />
+        <Button label={t('forge.enter')} onPress={onEnter} variant="secondary" />
         <Muted style={styles.hint}>{t('forge.hint')}</Muted>
       </View>
     );
   }
 
   return (
-    <View style={styles.bar}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.activeLabel}>{t('forge.active')}</Text>
-        <Text style={styles.activeStats}>
-          {elapsed} · {t('forge.summary.sets', { count: setCount })} · {formatWeight(volumeKg, unitSystem, 0) || '—'}
-        </Text>
+    <Card live eyebrow={t('forge.active')} style={styles.bar}>
+      <View style={styles.row}>
+        <View style={styles.statsRow}>
+          <Text style={styles.timer}>{elapsed}</Text>
+          <Text style={styles.statsMeta} numberOfLines={1}>
+            {' · '}
+            {t('forge.summary.sets', { count: setCount })} · {formatWeight(volumeKg, unitSystem, 0) || '—'}
+          </Text>
+        </View>
+        <Button label={t('forge.finish')} onPress={onFinish} variant="secondary" compact />
       </View>
-      <NeonButton label={t('forge.finish')} color={colors.success} onPress={onFinish} style={{ paddingHorizontal: space.lg }} />
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
   enterWrap: { marginTop: space.lg },
-  hint: { textAlign: 'center', marginTop: space.sm },
-  bar: {
-    marginTop: space.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.success,
-    padding: space.md,
-  },
-  activeLabel: { color: colors.success, fontSize: fontSize.xs, fontWeight: '800', letterSpacing: 2 },
-  activeStats: { color: colors.text, fontFamily: numberFamily, fontSize: fontSize.md, marginTop: 2 },
+  hint: { textAlign: 'center', marginTop: space.sm, color: colors.text3 },
+  bar: { marginTop: space.md, padding: space.md },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
+  statsRow: { flex: 1, flexDirection: 'row', alignItems: 'flex-end' },
+  timer: { ...numType.mid, color: colors.text },
+  statsMeta: { ...typeScale.caption, color: colors.text2, paddingBottom: 2, flexShrink: 1 },
 });

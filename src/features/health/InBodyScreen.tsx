@@ -6,8 +6,8 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { Stepper } from '@/features/logging/Stepper';
 import { displayToKg, kgToDisplay, weightUnit } from '@/lib/units';
 import { currentSettings, persistSettings, useSettingsStore } from '@/stores/settingsStore';
-import { Card, Muted, NeonButton, Screen, SectionTitle } from '@/ui/primitives';
-import { colors, fontSize, space } from '@/ui/theme/tokens';
+import { Button, Card, Muted, Screen, SectionTitle } from '@/ui/primitives';
+import { colors, space, tracking, typeScale } from '@/ui/theme/tokens';
 import { healthAvailable, writeBodyComposition } from './health';
 
 /**
@@ -70,7 +70,13 @@ export function InBodyScreen() {
       {/* keyboardShouldPersistTaps: don't eat the first tap on +/− / ✓ while the Stepper type-in keyboard is up. */}
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: space.xxl }}>
         <View style={styles.topBar}>
-          <Pressable accessibilityRole="button" accessibilityLabel={t('common.back')} onPress={() => router.back()} hitSlop={10}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('common.back')}
+            onPress={() => router.back()}
+            hitSlop={10}
+            style={({ pressed }) => [pressed && { opacity: 0.7 }]}
+          >
             <Text style={styles.back}>‹ {t('common.back')}</Text>
           </Pressable>
         </View>
@@ -108,8 +114,9 @@ export function InBodyScreen() {
           />
         </Card>
 
+        {/* THE one solid-accent CTA of this screen; the saved state speaks through the label. */}
         <View style={{ marginTop: space.lg }}>
-          <NeonButton label={saved ? t('inbody.saved') : t('inbody.save')} color={saved ? colors.success : colors.cyan} disabled={busy} onPress={() => void save()} />
+          <Button label={saved ? t('inbody.saved') : t('inbody.save')} disabled={busy} onPress={() => void save()} />
         </View>
       </ScrollView>
     </Screen>
@@ -118,6 +125,7 @@ export function InBodyScreen() {
 
 const styles = StyleSheet.create({
   topBar: { marginTop: space.md },
-  back: { color: colors.cyan, fontSize: fontSize.md, fontWeight: '800' },
-  title: { color: colors.text, fontSize: fontSize.xl, fontWeight: '900', marginTop: space.sm },
+  // Nav is chrome, not signal — monochrome text2, no accent.
+  back: { fontSize: 15, fontWeight: '600', letterSpacing: tracking.none, color: colors.text2 },
+  title: { ...typeScale.title, color: colors.text, marginTop: space.sm },
 });

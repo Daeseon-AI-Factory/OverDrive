@@ -1,7 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors, fontSize, numberFamily, space } from '@/ui/theme/tokens';
+import { Metric, useAccent } from '@/ui/primitives';
+import {
+  border,
+  colors,
+  hangulSafeLetterSpacing,
+  liveTextGlow,
+  numType,
+  radius,
+  space,
+  tracking,
+  typeScale,
+} from '@/ui/theme/tokens';
 
 interface StepperProps {
   value: number;
@@ -25,8 +36,14 @@ const roundTo = (v: number, precision: number) => {
  * faster and doubles the step, so 20→100kg is a short hold, not 16 taps.
  * Tap the center value (✎) to type it in directly; ✓ or blur commits — needed because the iOS
  * numeric pad has no return key.
+ *
+ * MONOLITH: +/− are 44×44 machined icon-squares (styled locally, not the IconSquare primitive,
+ * because acceleration needs onLongPress/onPressOut); the value is an Orbitron numLarge Metric
+ * with a seated unit micro-label. While typing, the value takes the soft accent glow — the ONE
+ * sanctioned live-stepper glow (slot 2 of the screen's budget).
  */
 export function Stepper({ value, step, min = 0, max = 9999, precision = 0, unit, label, onChange }: StepperProps) {
+  const accent = useAccent();
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState('');
   const valueRef = useRef(value);
@@ -78,7 +95,9 @@ export function Stepper({ value, step, min = 0, max = 9999, precision = 0, unit,
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, { letterSpacing: hangulSafeLetterSpacing(label, tracking.overline) }]}>
+        {label}
+      </Text>
       <View style={styles.row}>
         {/* onPress (release) for the single step — onPressIn fired on touch-down, so starting a
             scroll on the button silently changed the value. Hold ramps via onLongPress. */}
@@ -88,10 +107,10 @@ export function Stepper({ value, step, min = 0, max = 9999, precision = 0, unit,
           onLongPress={() => start(-1)}
           onPressOut={stop}
           delayLongPress={250}
-          style={styles.btn}
+          style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
           hitSlop={8}
         >
-          <Text style={styles.btnText}>−</Text>
+          <Text style={styles.btnGlyph}>−</Text>
         </Pressable>
 
         {editing ? (
@@ -104,11 +123,16 @@ export function Stepper({ value, step, min = 0, max = 9999, precision = 0, unit,
               onBlur={commitText}
               onSubmitEditing={commitText}
               keyboardType="numeric"
-              style={styles.valueInput}
+              style={[styles.valueInput, liveTextGlow(accent)]}
             />
             {/* Explicit Done — the iOS numeric pad has no return key, so onSubmitEditing alone is unreachable. */}
-            <Pressable accessibilityRole="button" onPress={commitText} style={styles.doneBtn} hitSlop={8}>
-              <Text style={styles.doneText}>✓</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={commitText}
+              style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
+              hitSlop={8}
+            >
+              <Text style={styles.btnGlyph}>✓</Text>
             </Pressable>
           </View>
         ) : (
@@ -121,11 +145,15 @@ export function Stepper({ value, step, min = 0, max = 9999, precision = 0, unit,
             }}
             style={styles.valueWrap}
           >
-            <Text style={styles.value}>
-              {value.toFixed(precision)}
-              {unit ? <Text style={styles.unit}> {unit}</Text> : null}
-              <Text style={styles.editHint}> ✎</Text>
-            </Text>
+            <Metric
+              value={value.toFixed(precision)}
+              unit={unit}
+              size="large"
+              unitStyle={
+                unit ? { letterSpacing: hangulSafeLetterSpacing(unit, tracking.overline) } : undefined
+              }
+            />
+            <Text style={styles.editHint}>✎</Text>
           </Pressable>
         )}
 
@@ -135,10 +163,10 @@ export function Stepper({ value, step, min = 0, max = 9999, precision = 0, unit,
           onLongPress={() => start(1)}
           onPressOut={stop}
           delayLongPress={250}
-          style={styles.btn}
+          style={({ pressed }) => [styles.btn, pressed && styles.btnPressed]}
           hitSlop={8}
         >
-          <Text style={styles.btnText}>+</Text>
+          <Text style={styles.btnGlyph}>+</Text>
         </Pressable>
       </View>
     </View>
@@ -146,43 +174,31 @@ export function Stepper({ value, step, min = 0, max = 9999, precision = 0, unit,
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginTop: space.md },
-  label: { color: colors.textDim, fontSize: fontSize.sm, fontWeight: '700', marginBottom: 6 },
+  wrap: { marginTop: space.lg },
+  label: { ...typeScale.overline, marginBottom: space.sm },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  // Local IconSquare visuals (44×44 machined block) — pressed = surface-step, never scale/bounce.
   btn: {
-    width: 56,
-    height: 56,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: colors.cyan,
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    borderWidth: border.thin,
+    borderColor: colors.line,
+    backgroundColor: colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surfaceAlt,
   },
-  btnText: { color: colors.cyan, fontSize: 28, fontWeight: '900', lineHeight: 30 },
-  valueWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  value: { color: colors.text, fontFamily: numberFamily, fontSize: 40, fontWeight: '900' },
-  unit: { color: colors.textDim, fontSize: fontSize.md, fontWeight: '700' },
-  editHint: { color: colors.textDim, fontSize: fontSize.sm, fontWeight: '700' },
+  btnPressed: { backgroundColor: colors.surface3 },
+  // 22pt glyph for mid-set taps (sanctioned stepper-glyph exception to the 400/600 rule).
+  btnGlyph: { fontSize: 22, fontWeight: '800', lineHeight: 26, color: colors.text2 },
+  valueWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  editHint: { ...typeScale.caption, color: colors.text3, marginLeft: space.xs },
   editRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.sm },
   valueInput: {
     flex: 1,
     textAlign: 'center',
+    ...numType.large,
     color: colors.text,
-    fontFamily: numberFamily,
-    fontSize: 40,
-    fontWeight: '900',
     paddingVertical: 0,
   },
-  doneBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: colors.success,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surfaceAlt,
-  },
-  doneText: { color: colors.success, fontSize: 20, fontWeight: '900', lineHeight: 22 },
 });

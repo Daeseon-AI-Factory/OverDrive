@@ -2,7 +2,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { getScoreOnOrBefore } from '@/db/repos/combatPowerRepo';
 import { newUuid } from '@/db/uuid';
 import { addDays, weekStartLocal } from '@/features/arena/rival';
@@ -11,8 +11,8 @@ import { CP_FLOOR } from '@/features/combat-power/constants';
 import { todayLocal } from '@/lib/date';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { persistSettings, useSettingsStore } from '@/stores/settingsStore';
-import { Card, Muted, Pill, SectionTitle } from '@/ui/primitives';
-import { colors, fontSize, numberFamily, radius, space } from '@/ui/theme/tokens';
+import { Button, Card, Input, Muted, Pill, SectionTitle, useAccent } from '@/ui/primitives';
+import { colors, numType, radius, space, typeScale } from '@/ui/theme/tokens';
 import { fetchBoard, submitRank, type RankBoard, type RankSort } from './rankClient';
 
 /**
@@ -23,6 +23,7 @@ import { fetchBoard, submitRank, type RankBoard, type RankSort } from './rankCli
 export function RankSection() {
   const db = useSQLiteContext();
   const { t } = useTranslation();
+  const accent = useAccent();
   const score = useCombatPowerStore((s) => s.score);
   const gradeKey = useCombatPowerStore((s) => s.gradeKey);
   const rankHandle = useSettingsStore((s) => s.rankHandle);
@@ -95,49 +96,54 @@ export function RankSection() {
           <>
             <Muted>{t('rank.optIn')}</Muted>
             <View style={styles.joinRow}>
-              <TextInput
+              <Input
                 value={draftHandle}
                 onChangeText={setDraftHandle}
                 placeholder={t('rank.handlePlaceholder')}
                 accessibilityLabel={t('rank.handlePlaceholder')}
-                placeholderTextColor={colors.textDim}
                 autoCapitalize="characters"
                 autoCorrect={false}
                 style={styles.input}
               />
-              <Pressable onPress={join} disabled={!draftHandle.trim()} style={[styles.joinBtn, { opacity: draftHandle.trim() ? 1 : 0.4 }]}>
-                <Text style={styles.joinText}>{t('rank.join')}</Text>
-              </Pressable>
+              <Button
+                label={t('rank.join')}
+                variant="secondary"
+                compact
+                disabled={!draftHandle.trim()}
+                onPress={() => void join()}
+              />
             </View>
           </>
         ) : (
           <>
             <View style={styles.tabs}>
-              <Pill label={t('rank.tabWeek')} active={sort === 'weekGain'} color={colors.cyan} onPress={() => setSort('weekGain')} />
-              <Pill label={t('rank.tabCp')} active={sort === 'cp'} color={colors.magenta} onPress={() => setSort('cp')} />
+              <Pill label={t('rank.tabWeek')} active={sort === 'weekGain'} onPress={() => setSort('weekGain')} />
+              <Pill label={t('rank.tabCp')} active={sort === 'cp'} onPress={() => setSort('cp')} />
               <Pill
                 label={rankCrew ? rankCrew : t('rank.tabCrew')}
                 active={scope === 'crew'}
-                color={colors.violet}
                 onPress={() => setScope(scope === 'crew' ? 'global' : 'crew')}
               />
             </View>
 
             {scope === 'crew' && !rankCrew ? (
               <View style={styles.joinRow}>
-                <TextInput
+                <Input
                   value={draftCrew}
                   onChangeText={setDraftCrew}
                   placeholder={t('rank.crewPlaceholder')}
                   accessibilityLabel={t('rank.crewPlaceholder')}
-                  placeholderTextColor={colors.textDim}
                   autoCapitalize="characters"
                   autoCorrect={false}
                   style={styles.input}
                 />
-                <Pressable onPress={saveCrew} disabled={!draftCrew.trim()} style={[styles.joinBtn, { opacity: draftCrew.trim() ? 1 : 0.4 }]}>
-                  <Text style={styles.joinText}>{t('rank.join')}</Text>
-                </Pressable>
+                <Button
+                  label={t('rank.join')}
+                  variant="secondary"
+                  compact
+                  disabled={!draftCrew.trim()}
+                  onPress={() => void saveCrew()}
+                />
               </View>
             ) : null}
 
@@ -148,26 +154,27 @@ export function RankSection() {
             ) : null}
 
             {/* First load: show that the board is coming instead of a blank card (stale board stays up on refetches). */}
-            {loading && !board ? <ActivityIndicator color={colors.cyan} style={styles.loading} /> : null}
+            {loading && !board ? <ActivityIndicator color={accent.solid} style={styles.loading} /> : null}
             {err ? (
               <Pressable onPress={() => void refresh()} disabled={loading} hitSlop={8} accessibilityRole="button">
                 <Muted>
-                  {t('rank.offline')} <Text style={styles.retry}>{t('rank.retry', { defaultValue: 'Tap to retry' })}</Text>
+                  {t('rank.offline')}{' '}
+                  <Text style={[styles.retry, { color: accent.solid }]}>{t('rank.retry', { defaultValue: 'Tap to retry' })}</Text>
                 </Muted>
               </Pressable>
             ) : null}
             {board && board.entries.length === 0 && !err && !loading ? <Muted>{t('rank.empty')}</Muted> : null}
 
             {board?.entries.slice(0, 10).map((e, i) => (
-              <View key={`${e.handle}-${i}`} style={[styles.row, e.isMe === 1 && styles.meRow]}>
-                <Text style={[styles.pos, i < 3 && { color: colors.energyLo }]}>{i + 1}</Text>
-                <Text style={[styles.handle, e.isMe === 1 && { color: colors.cyan }]} numberOfLines={1}>
+              <View key={`${e.handle}-${i}`} style={[styles.row, e.isMe === 1 && [styles.meRow, { backgroundColor: accent.faint }]]}>
+                <Text style={[styles.pos, i < 3 && { color: colors.text }]}>{i + 1}</Text>
+                <Text style={[styles.handle, e.isMe === 1 && { color: accent.solid, fontWeight: '600' }]} numberOfLines={1}>
                   {e.handle}
                 </Text>
                 <Text style={styles.value}>{sort === 'weekGain' ? `+${e.weekGain}` : e.cp.toLocaleString()}</Text>
               </View>
             ))}
-            <Muted style={{ marginTop: space.sm, fontSize: 10 }}>{t('rank.selfReport')}</Muted>
+            <Muted style={styles.selfReport}>{t('rank.selfReport')}</Muted>
           </>
         )}
       </Card>
@@ -177,33 +184,17 @@ export function RankSection() {
 
 const styles = StyleSheet.create({
   joinRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.md },
-  input: {
-    flex: 1,
-    color: colors.text,
-    fontSize: fontSize.md,
-    fontWeight: '700',
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm + 2,
-  },
-  joinBtn: {
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm + 2,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.cyan,
-  },
-  joinText: { color: colors.cyan, fontSize: fontSize.sm, fontWeight: '900' },
-  tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginBottom: space.sm },
-  myRank: { color: colors.text, fontSize: fontSize.md, fontWeight: '900', marginVertical: space.sm },
+  input: { flex: 1 },
+  tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.sm },
+  myRank: { ...typeScale.body, fontWeight: '600', color: colors.text, marginVertical: space.sm },
   loading: { marginVertical: space.sm },
-  retry: { color: colors.cyan, fontWeight: '900' },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
-  meRow: { backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, paddingHorizontal: 6 },
-  pos: { width: 26, color: colors.textDim, fontFamily: numberFamily, fontSize: fontSize.sm },
-  handle: { flex: 1, color: colors.text, fontSize: fontSize.sm, fontWeight: '700' },
-  value: { color: colors.text, fontFamily: numberFamily, fontSize: fontSize.sm },
+  retry: { fontWeight: '600' },
+  row: { flexDirection: 'row', alignItems: 'center', minHeight: 32, paddingVertical: space.xs },
+  // accent.faint row highlight (the ONE colored surface on the board — it's you, alive right now);
+  // negative margin keeps the columns aligned with the unhighlighted rows.
+  meRow: { borderRadius: radius.sm, paddingHorizontal: space.sm, marginHorizontal: -space.sm },
+  pos: { ...numType.small, color: colors.text3, width: 28 },
+  handle: { ...typeScale.body, flex: 1, color: colors.text },
+  value: { ...numType.small, color: colors.text },
+  selfReport: { marginTop: space.sm, color: colors.text3 },
 });
