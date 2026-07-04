@@ -1,24 +1,30 @@
 {
   "expo": {
-    "name": "OverDrive",
-    "slug": "overdrive",
+    "name": "Reploom",
+    "slug": "reploom",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "overdrive",
+    "scheme": "reploom",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.anonymous.overdrive"
+      "bundleIdentifier": "ai.daeseon.reploom",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#081017",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "output": "static",
@@ -29,18 +35,16 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "android": {
-            "image": "./assets/images/splash-icon.png",
-            "imageWidth": 76
-          }
+          "backgroundColor": "#07070B",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 128
         }
       ],
       "expo-sqlite",
       [
         "expo-audio",
         {
-          "microphonePermission": "OVERDRIVE uses the microphone only to transcribe your spoken workout logs, on demand.",
+          "microphonePermission": "Reploom uses the microphone only to transcribe your spoken workout logs, on demand.",
           "recordAudioAndroid": true,
           "enableBackgroundPlayback": false
         }
@@ -50,7 +54,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "OVERDRIVE uses your photo library only when you pick a photo for your Evolution avatar or a meal log.",
+          "photosPermission": "Reploom uses your photo library only when you pick a photo for your Evolution avatar or a meal log.",
           "cameraPermission": false,
           "microphonePermission": false
         }
@@ -58,8 +62,8 @@
       [
         "@kingstinct/react-native-healthkit",
         {
-          "NSHealthShareUsageDescription": "OVERDRIVE reads your workouts, energy, heart rate, and body metrics on your device to calculate your Combat Power score.",
-          "NSHealthUpdateUsageDescription": "OVERDRIVE saves the strength workouts you log so they appear in Apple Health.",
+          "NSHealthShareUsageDescription": "Reploom reads your workouts, energy, heart rate, and body metrics on your device to calculate your Combat Power score.",
+          "NSHealthUpdateUsageDescription": "Reploom saves the strength workouts you log so they appear in Apple Health.",
           "background": false
         }
       ]
@@ -67,6 +71,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ccd6a39b-de5e-4657-bf9e-5561baadeb85"
+      }
+    },
+    "owner": "daeseonyoo"
   }
 }

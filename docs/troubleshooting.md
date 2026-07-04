@@ -400,3 +400,7 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: d008bad docs: troubleshooting override note for 21f2909 log-commit [no-log] -->
 <!-- skipped: d15d747 docs(state): refresh handoff for Codex — session work + open/unverified items [no-log] -->
 <!-- override-trigger: f99f867 docs: plain-language stack walkthrough — every dependency, why, tradeoffs [no-log] — LOC trigger (222 LOC) misfired on a pure prose explainer (docs/STACK-EXPLAINED.md). Zero code/behavior change, no new architecture decision (it *explains* existing tech choices for the builder's portfolio/onboarding, it doesn't make one), not a bug → no Symptom/Cause/Fix and nothing to put in a decision-tier log. The >200 LOC rule targets substantive code diffs; a long educational markdown doc is the routine case the rule isn't for. -->
+<!-- skipped: 8870d86 docs: override note for f99f867 stack explainer (LOC false positive) [no-log] -->
+<!-- skipped: 9fcad25 docs(log): share artifacts for external validation (e688bc2) [no-log] -->
+<!-- skipped: 4d9022b docs(state): worker deployed — theme EVOLUTION loop wired + verified (ver 1aef7442) [no-log] -->
+<!-- skipped: 3fe19bc docs(log): warrior completion spine + product synthesis (de9a973) [no-log] -->

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reploom — Privacy Policy</title>
+  <meta name="description" content="Reploom privacy policy. Your Apple Health data never leaves your device. No accounts, no ads, no trackers." />
+  <meta name="theme-color" content="#07070B" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <nav>
+    <div class="wrap">
+      <a class="wordmark" href="index.html" style="text-decoration:none">REPLOOM</a>
+      <span class="links">
+        <a href="index.html">Home</a>
+        <a href="support.html">Support</a>
+      </span>
+    </div>
+  </nav>
+
+  <article class="doc">
+    <a class="back" href="index.html">← Back</a>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: 2026-06-30</p>
+
+    <div class="lead">
+      <strong>One-line summary:</strong> Your Apple Health data never leaves your device. Your
+      workout/meal logs (text, voice, or photo) are sent only to turn them into structured entries.
+      There are <strong>no accounts, no ads, no third-party trackers</strong>, and we
+      <strong>never sell, rent, or mine</strong> your data.
+    </div>
+
+    <h2>1. Who we are</h2>
+    <p>Reploom is an independent fitness app. For any privacy question or request, contact
+      <a href="mailto:support@reploom.app">support@reploom.app</a>.</p>
+
+    <h2>2. Apple Health / HealthKit data</h2>
+    <p>If you connect Apple Health, Reploom <strong>reads</strong> these data types
+      <strong>on your device</strong> to calculate your Combat Power score and show progress:</p>
+    <ul>
+      <li>Workouts</li>
+      <li>Active energy burned</li>
+      <li>Heart rate</li>
+      <li>Resting heart rate</li>
+      <li>VO₂ max</li>
+      <li>Body mass (weight)</li>
+      <li>Body fat percentage</li>
+    </ul>
+    <p>When you log a strength workout or body-composition entry, Reploom can <strong>write</strong>
+      these back to Apple Health so your real training is reflected there:</p>
+    <ul>
+      <li>Workouts</li>
+      <li>Body mass (weight)</li>
+      <li>Body fat percentage</li>
+      <li>Lean body mass</li>
+    </ul>
+    <p><strong>Apple Health data is processed entirely on your device.</strong> It is never
+      transmitted to our servers or any third party, never stored in iCloud by Reploom, and never
+      used for advertising, marketing, data-mining, or sale. Reploom only writes data you actually
+      logged — never fabricated or “game” numbers.</p>
+
+    <h2>3. Data that is sent off your device (and why)</h2>
+    <p>Reploom has no health-data backend. The only time information leaves your device is when you
+      ask the app to interpret a log you created. That input goes to our processing endpoint, which
+      forwards it to a third-party AI service to convert it into structured data, then returns the
+      result:</p>
+    <table>
+      <tr><th>What you do</th><th>What is sent</th><th>Who processes it</th><th>Purpose</th></tr>
+      <tr><td>Type a workout/meal</td><td>The text you wrote</td><td>Groq, or Google Gemini (fallback)</td><td>Parse into sets / nutrition</td></tr>
+      <tr><td>Speak a workout log</td><td>The audio you recorded</td><td>Groq (Whisper)</td><td>Speech-to-text</td></tr>
+      <tr><td>Pick a meal / avatar photo</td><td>The image you chose</td><td>Google Gemini</td><td>Estimate nutrition / generate an avatar</td></tr>
+    </table>
+    <p>These inputs are sent only to return your result. We do not attach your identity to them
+      (Reploom has no account) and do not use them for advertising or tracking profiles. We never
+      send your Apple Health data, contacts, or location through this path.</p>
+
+    <h2>4. Optional leaderboard</h2>
+    <p>Leaderboards are <strong>opt-in</strong>. Until you choose a handle, nothing about you leaves
+      your device. If you opt in, the app may send a handle you type, a random anonymous device ID
+      (not tied to your Apple ID, name, email, or phone), and an optional crew code.</p>
+
+    <h2>5. On-device storage</h2>
+    <p>Your workouts, sets, cardio, body-composition entries, daily goals, food logs, Combat Power
+      history, and settings are stored locally on your device. Deleting the app removes this data.</p>
+
+    <h2>6. What we do NOT do</h2>
+    <ul>
+      <li>No advertising and no ad networks</li>
+      <li>No third-party analytics or trackers</li>
+      <li>No selling, renting, or data-mining of your information</li>
+      <li>No sending your Apple Health data off your device</li>
+      <li>No storing your Apple Health data in iCloud</li>
+      <li>No accounts, no email/phone collection</li>
+      <li>Not directed to children under 13</li>
+    </ul>
+
+    <h2>7. Permissions</h2>
+    <table>
+      <tr><th>Permission</th><th>Why</th><th>When</th></tr>
+      <tr><td>Apple Health</td><td>Read metrics for Combat Power; write back workouts/body metrics you log</td><td>When you connect Health</td></tr>
+      <tr><td>Microphone</td><td>Transcribe a spoken workout log</td><td>Only while you record a voice log</td></tr>
+      <tr><td>Photo Library</td><td>Use a photo you pick for a meal log or avatar</td><td>Only when you pick a photo</td></tr>
+    </table>
+
+    <h2>8. Combat Power is for fun</h2>
+    <p>Combat Power is an original, for-fun score — not a medical or scientific metric — and is
+      labeled as such in the app.</p>
+
+    <h2>9. Your choices</h2>
+    <ul>
+      <li>Revoke Health, Microphone, or Photos access in iOS Settings.</li>
+      <li>Skip the optional leaderboard (default).</li>
+      <li>Delete the app to remove on-device data.</li>
+    </ul>
+
+    <h2>10. Changes & contact</h2>
+    <p>If this policy changes, we’ll update the date above and post the new version here. Questions:
+      <a href="mailto:support@reploom.app">support@reploom.app</a>.</p>
+  </article>
+
+  <footer>
+    <div class="wrap">
+      <a class="wordmark" href="index.html" style="font-size:20px;text-decoration:none">REPLOOM</a>
+      <span><a href="index.html">Home</a><a href="support.html">Support</a></span>
+    </div>
+    <p class="disclaimer">© 2026 Reploom.</p>
+  </footer>
+</body>
+</html>

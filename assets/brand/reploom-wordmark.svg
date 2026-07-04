@@ -1,0 +1,17 @@
+<svg width="1600" height="420" viewBox="0 0 1600 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="420" rx="64" fill="#081017"/>
+  <g transform="translate(74 58) scale(0.29)">
+    <path d="M512 168C590 280 700 348 844 374C720 426 638 508 590 648C548 532 464 448 334 394C412 354 470 282 512 168Z" fill="url(#pulse)"/>
+    <path d="M238 722V286H522C616 286 680 346 680 432C680 490 650 536 602 560L704 722H576L486 580H356V722H238ZM356 482H506C536 482 558 462 558 434C558 406 536 386 506 386H356V482Z" fill="#F5FBFF"/>
+    <path d="M222 756H716" stroke="#FF4FD8" stroke-width="34" stroke-linecap="round"/>
+  </g>
+  <text x="396" y="265" fill="#F5FBFF" font-family="Arial Black, Impact, sans-serif" font-size="154" font-weight="900" letter-spacing="8">REPLOOM</text>
+  <text x="404" y="330" fill="#8BA0B3" font-family="Arial, sans-serif" font-size="36" font-weight="700" letter-spacing="9">LOG A REP. BLOOM THE SCORE.</text>
+  <defs>
+    <linearGradient id="pulse" x1="298" y1="204" x2="746" y2="684" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#38F5D5"/>
+      <stop offset="0.52" stop-color="#598BFF"/>
+      <stop offset="1" stop-color="#FF4FD8"/>
+    </linearGradient>
+  </defs>
+</svg>

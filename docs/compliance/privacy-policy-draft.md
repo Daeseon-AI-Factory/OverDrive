@@ -1,22 +1,22 @@
 # Privacy Policy — DRAFT (requires legal review)
 
-> **DRAFT — NOT LEGAL ADVICE. This document MUST be reviewed by a qualified privacy/IP attorney before publication or app-store submission.** It is a first draft written to reflect OVERDRIVE's stated constraints (CLAUDE.md non-negotiable §4 and §3) and the Apple/Google health-app requirements documented in `health-data.md`. Bracketed `[…]` items are placeholders the operator must fill in.
+> **DRAFT — NOT LEGAL ADVICE. This document MUST be reviewed by a qualified privacy/IP attorney before publication or app-store submission.** It is a first draft written to reflect Reploom's stated constraints (CLAUDE.md non-negotiable §4 and §3) and the Apple/Google health-app requirements documented in `health-data.md`. Bracketed `[…]` items are placeholders the operator must fill in.
 >
-> **App-name note:** per `brand-availability.md`, "OverDrive" is **not** cleared as a public app name (live "Overdrive Fitness" collision + the well-known OverDrive, Inc. mark). Replace every "OVERDRIVE" below with the final cleared product name before publishing.
+> **App-name note:** per `brand-availability.md`, "OverDrive" is **not** cleared as a public app name (live "Overdrive Fitness" collision + the well-known OverDrive, Inc. mark). This draft now uses the working launch candidate "Reploom"; run final trademark/privacy review before publishing.
 
 ---
 
 **Last updated:** [DATE]
-**Applies to:** the OVERDRIVE mobile application ("the App") on iOS and Android.
+**Applies to:** the Reploom mobile application ("the App") on iOS and Android.
 **Operator / data controller:** [LEGAL NAME], [ADDRESS], contact: [PRIVACY EMAIL].
 
 ---
 
 ## 1. Our privacy promise (plain language)
 
-OVERDRIVE turns your real workout data into a game score called **Combat Power**. We built it privacy-first:
+Reploom turns your real workout data into a game score called **Combat Power**. We built it privacy-first:
 
-- **Your health data stays on your device.** In the current version (Phase 1), the App runs entirely **on-device**. There is no OVERDRIVE backend server, and we do not upload, transmit, or store your health data on our servers or in any cloud account controlled by us.
+- **Your health data stays on your device.** In the current version, the App runs primarily **on-device**. We do not upload, transmit, or store your Apple Health data on our servers or in any cloud account controlled by us.
 - **We never sell your data. Ever.** We do not sell, rent, or trade your personal or health information to anyone, including third parties.
 - **No advertising. No data-mining.** We do not use your health, fitness, or activity data for advertising, marketing, ad targeting, or use-based data mining.
 - **No third-party sharing of health data** without your explicit, separate consent.
@@ -71,8 +71,8 @@ We request the **minimum** data needed for the features you use. You can grant o
 
 ## 5. Permissions you control
 
-- **iOS:** manage what the App can read/write in **Settings → Health → Data Access & Devices → OVERDRIVE**. You can revoke any permission at any time.
-- **Android:** manage permissions in **Health Connect → App permissions → OVERDRIVE**. You can revoke any permission at any time.
+- **iOS:** manage what the App can read/write in **Settings → Health → Data Access & Devices → Reploom**. You can revoke any permission at any time.
+- **Android:** manage permissions in **Health Connect → App permissions → Reploom**. You can revoke any permission at any time.
 - Revoking access stops new reads/writes; it does not delete data already computed and stored locally — use the in-App delete (below) for that.
 
 ---
@@ -116,4 +116,4 @@ Questions or requests: **[PRIVACY EMAIL]** · [LEGAL NAME] · [ADDRESS].
 ### Compliance cross-reference (for internal use — remove before publishing)
 - Apple Guideline 5.1.1 (data collection & storage / minimum necessary), 5.1.2 (privacy policy + consent + withdrawal + no undisclosed third-party/AI sharing), 5.1.3 (no iCloud for HealthKit, no ads/data-mining/sale, no false data). [App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/)
 - Google Play: Health apps declaration + privacy policy + minimum permissions + sensitive-data handling. [Android Health Permissions FAQs](https://support.google.com/googleplay/android-developer/answer/12991134), [Plan compliance with privacy policies](https://developer.android.com/health-and-fitness/guides/health-connect/plan/user-privacy)
-- OVERDRIVE spec non-negotiables §3 (secrets server-side) and §4 (privacy policy, no ads/mining/sale, no iCloud for HealthKit, no false writes, declared types).
+- Reploom spec non-negotiables §3 (secrets server-side) and §4 (privacy policy, no ads/mining/sale, no iCloud for HealthKit, no false writes, declared types).
