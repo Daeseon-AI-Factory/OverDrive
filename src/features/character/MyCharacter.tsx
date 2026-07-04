@@ -48,7 +48,7 @@ export function MyCharacter({
 }
 
 const styles = StyleSheet.create({
-  toggleRow: { flexDirection: 'row', justifyContent: 'center', marginTop: space.md },
+  toggleRow: { flexDirection: 'row', justifyContent: 'center', gap: space.sm, marginTop: space.md },
   stageWrap: { alignItems: 'center', marginTop: space.md },
   stage: { width: '64%', maxWidth: 280, aspectRatio: STAGE_ASPECT },
   cardioRow: { flexDirection: 'row', justifyContent: 'center', marginTop: space.lg },

@@ -1,18 +1,26 @@
 import React, { useEffect, useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { InteractionManager, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   interpolate,
+  makeMutable,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { calloutAt, getTheme } from '../theme/themes';
 import { colors, displayFamily, fontSize, numberFamily } from '../../ui/theme/tokens';
 import type { Burst } from './JuiceProvider';
 import { makeEnergyPopEffect, makeOverdriveBurstEffect } from './shaders';
 import { SkiaBurst } from './SkiaBurst';
-import { calloutAt, TIER_COLOR, TIER_LABEL } from './tierConfig';
+
+/**
+ * True while a burst overlay is mounted. AmbientAura's UI-thread frame callback reads this to hold
+ * its own full-screen repaints during the burst, leaving the celebration all the GPU headroom.
+ */
+export const burstActive = makeMutable(false);
 
 /**
  * Kinetic JUICE overlay — when you log, the NUMBER and CALLOUT explode: punch-scale, RGB chromatic
@@ -20,6 +28,20 @@ import { calloutAt, TIER_COLOR, TIER_LABEL } from './tierConfig';
  * SkSL particle/energy shaders layer in next on-device. Combined with screen-shake in JuiceProvider.
  */
 export function JuiceOverlay({ burst, onDone }: { burst: Burst | null; onDone: () => void }) {
+  const juiceIntensity = useSettingsStore((s) => s.juiceIntensity);
+  // Warm the SkSL compiles once, after first interactions settle, so the FIRST burst of a launch
+  // never pays the synchronous compile on the JS thread mid-celebration (§6: JUICE never hitches
+  // logging). The module-level ??= cache in shaders/index makes the burst-time calls free after.
+  // 'minimal' keeps its zero-cost guarantee: no bursts fire, so nothing is compiled.
+  useEffect(() => {
+    if (juiceIntensity === 'minimal') return;
+    const task = InteractionManager.runAfterInteractions(() => {
+      makeEnergyPopEffect();
+      makeOverdriveBurstEffect();
+    });
+    return () => task.cancel();
+  }, [juiceIntensity]);
+
   if (!burst) return null;
   return <JuiceBurst key={burst.id} burst={burst} onDone={onDone} />;
 }
@@ -28,9 +50,10 @@ function JuiceBurst({ burst, onDone }: { burst: Burst; onDone: () => void }) {
   const { verdict, id } = burst;
   const p = useSharedValue(0);
   const intensity = verdict.intensity01;
-  const color = TIER_COLOR[verdict.tier];
+  const theme = getTheme(useSettingsStore((s) => s.aestheticPref));
+  const color = theme.tierColor[verdict.tier];
   const showCallout = verdict.tier >= 3;
-  const label = verdict.tier === 4 ? calloutAt(id) : TIER_LABEL[verdict.tier];
+  const label = verdict.tier === 4 ? calloutAt(theme, id) : verdict.tier === 3 ? theme.overdriveLabel : '';
   const numText = `+${Math.max(0, Math.round(verdict.deltaCp))}`;
   // GPU shader: overdriveBurst (T3/T4) or energyPop (T1/T2). null if SkSL compile fails → text-only.
   const effect = useMemo(
@@ -39,11 +62,16 @@ function JuiceBurst({ burst, onDone }: { burst: Burst; onDone: () => void }) {
   );
 
   useEffect(() => {
+    // Tell the ambient layer to hold its clock while the burst owns the GPU (cleared on unmount).
+    burstActive.value = true;
     p.value = 0;
     p.value = withTiming(1, { duration: verdict.durationMs, easing: Easing.out(Easing.cubic) }, (finished) => {
       'worklet';
       if (finished) runOnJS(onDone)();
     });
+    return () => {
+      burstActive.value = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

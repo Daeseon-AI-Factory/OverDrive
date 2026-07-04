@@ -2,7 +2,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { getScoreOnOrBefore } from '@/db/repos/combatPowerRepo';
 import { newUuid } from '@/db/uuid';
 import { addDays, weekStartLocal } from '@/features/arena/rival';
@@ -36,6 +36,7 @@ export function RankSection() {
   const [scope, setScope] = useState<'global' | 'crew'>('global');
   const [board, setBoard] = useState<RankBoard | null>(null);
   const [err, setErr] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const persist = useCallback(async () => {
     await persistSettings(db);
@@ -59,6 +60,7 @@ export function RankSection() {
   const refresh = useCallback(async () => {
     if (!rankHandle || !rankDeviceId || !QUICKLOG_ENDPOINT) return;
     setErr(false);
+    setLoading(true);
     try {
       const weekStart = weekStartLocal(todayLocal());
       const base = (await getScoreOnOrBefore(db, addDays(weekStart, -1))) ?? CP_FLOOR;
@@ -74,6 +76,8 @@ export function RankSection() {
       setBoard(await fetchBoard(QUICKLOG_ENDPOINT, { deviceId: rankDeviceId, sort, crew: useCrew ? rankCrew : null }));
     } catch {
       setErr(true);
+    } finally {
+      setLoading(false);
     }
   }, [db, rankHandle, rankDeviceId, rankCrew, score, gradeKey, sort, scope]);
 
@@ -143,8 +147,16 @@ export function RankSection() {
               </Text>
             ) : null}
 
-            {err ? <Muted>{t('rank.offline')}</Muted> : null}
-            {board && board.entries.length === 0 && !err ? <Muted>{t('rank.empty')}</Muted> : null}
+            {/* First load: show that the board is coming instead of a blank card (stale board stays up on refetches). */}
+            {loading && !board ? <ActivityIndicator color={colors.cyan} style={styles.loading} /> : null}
+            {err ? (
+              <Pressable onPress={() => void refresh()} disabled={loading} hitSlop={8} accessibilityRole="button">
+                <Muted>
+                  {t('rank.offline')} <Text style={styles.retry}>{t('rank.retry', { defaultValue: 'Tap to retry' })}</Text>
+                </Muted>
+              </Pressable>
+            ) : null}
+            {board && board.entries.length === 0 && !err && !loading ? <Muted>{t('rank.empty')}</Muted> : null}
 
             {board?.entries.slice(0, 10).map((e, i) => (
               <View key={`${e.handle}-${i}`} style={[styles.row, e.isMe === 1 && styles.meRow]}>
@@ -187,6 +199,8 @@ const styles = StyleSheet.create({
   joinText: { color: colors.cyan, fontSize: fontSize.sm, fontWeight: '900' },
   tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginBottom: space.sm },
   myRank: { color: colors.text, fontSize: fontSize.md, fontWeight: '900', marginVertical: space.sm },
+  loading: { marginVertical: space.sm },
+  retry: { color: colors.cyan, fontWeight: '900' },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   meRow: { backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, paddingHorizontal: 6 },
   pos: { width: 26, color: colors.textDim, fontFamily: numberFamily, fontSize: fontSize.sm },

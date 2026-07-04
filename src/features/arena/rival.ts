@@ -79,8 +79,9 @@ export function addDays(date: string, n: number): string {
 }
 
 /**
- * Spawn a rival just BELOW the user's current CP (you start ahead — the rival chases you, not the
- * other way around: hype framing, not shame). Name/seed from the random source passed in.
+ * Spawn a rival AT or just BELOW the user's current CP (you start ahead — the rival chases you,
+ * not the other way around: hype framing, not shame per §9). A zero-data user at CP_FLOOR gets a
+ * rival tied at the floor, never above them. Name/seed from the random source passed in.
  */
 export function createRival(userCp: number, today: string, rand: () => number = Math.random): RivalConfig {
   const seed = Math.floor(rand() * 0xffffffff) >>> 0;
@@ -88,7 +89,7 @@ export function createRival(userCp: number, today: string, rand: () => number = 
   return {
     name,
     epoch: today,
-    cp0: Math.max(CP_FLOOR + 20, Math.round(userCp * 0.93)),
+    cp0: Math.max(CP_FLOOR, Math.min(userCp - 10, Math.round(userCp * 0.93))),
     seed,
   };
 }

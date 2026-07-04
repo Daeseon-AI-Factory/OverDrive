@@ -9,6 +9,7 @@ import { CARDIO_EXERCISE_IDS, REGIONS, type BodyRegionId } from '@/features/char
 import { DailyGoalsCard } from '@/features/dailyGoals/DailyGoalsCard';
 import { DisciplineCard } from '@/features/discipline/DisciplineCard';
 import { FoodCard } from '@/features/food/FoodCard';
+import { AmbientAura } from '@/features/juice/AmbientAura';
 import { RestTimerBar } from '@/features/rest/RestTimerBar';
 import { ForgeBar } from '@/features/forge/ForgeBar';
 import { ForgeRitualOverlay } from '@/features/forge/ForgeRitualOverlay';
@@ -35,44 +36,58 @@ export default function TodayScreen() {
   const { t } = useTranslation();
   const score = useCombatPowerStore((s) => s.score);
   const { enter, finish } = useForge();
+  const activeSessionId = useSessionStore((s) => s.activeSessionId);
 
   const [activeRegion, setActiveRegion] = useState<BodyRegionId | null>(null);
   const [picker, setPicker] = useState<RegionPicker | null>(null);
   const [activeExercise, setActiveExercise] = useState<ExerciseRow | null>(null);
 
+  // Implicit session start (first set / body-map tap): skip the 1.6s enter ritual so the gesture
+  // completes immediately — JUICE must never block logging (spec §6). The ritual stays for an
+  // explicit forge entry.
+  const enterSilently = useCallback(async () => {
+    useSessionStore.getState().setSilentStart(true);
+    try {
+      await enter();
+    } finally {
+      useSessionStore.getState().setSilentStart(false);
+    }
+  }, [enter]);
+
   const ensureSession = useCallback(async (): Promise<string> => {
     const active = useSessionStore.getState().activeSessionId;
     if (active) return active;
-    await enter();
+    await enterSilently();
     return useSessionStore.getState().activeSessionId ?? '';
-  }, [enter]);
+  }, [enterSilently]);
 
   const onRegionPress = useCallback(
     (region: BodyRegionId) => {
-      if (!useSessionStore.getState().activeSessionId) {
-        void enter();
-        return;
-      }
+      // Open the picker in this SAME gesture; the session auto-starts silently in the background.
+      if (!useSessionStore.getState().activeSessionId) void enterSilently();
       setActiveRegion(region);
       setPicker({ title: t(`region.${region}`), exerciseIds: REGIONS[region].exerciseIds });
     },
-    [enter, t],
+    [enterSilently, t],
   );
 
   const onCardioPress = useCallback(() => {
-    if (!useSessionStore.getState().activeSessionId) {
-      void enter();
-      return;
-    }
+    if (!useSessionStore.getState().activeSessionId) void enterSilently();
     setActiveRegion(null);
     setPicker({ title: t('today.cardioSheetTitle'), exerciseIds: [...CARDIO_EXERCISE_IDS] });
-  }, [enter, t]);
+  }, [enterSilently, t]);
 
   const grade = gradeForScore(score);
 
   return (
-    <Screen>
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+    <Screen background={<AmbientAura />}>
+      <ScrollView
+        style={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+      >
         <View style={styles.header}>
           <Muted>{t('today.combatPowerLabel')}</Muted>
           <Text style={styles.cpScore}>{score}</Text>
@@ -83,7 +98,10 @@ export default function TodayScreen() {
 
         <ActiveWorkoutCard ensureSession={ensureSession} onOpenCardio={(exercise) => setActiveExercise(exercise)} onFinishWorkout={finish} />
         <RestTimerBar />
-        <ForgeBar onEnter={enter} onFinish={finish} />
+        {/* Active-session bar only (timer · sets · 수련 완료). The idle '용광로 진입' button competed
+            with ActiveWorkoutCard's own primary CTA and its hint claimed a false precondition —
+            sessions auto-start on the first log / body-map tap. */}
+        {activeSessionId ? <ForgeBar onEnter={enter} onFinish={finish} /> : null}
 
         <ArenaCard />
         <DailyGoalsCard />

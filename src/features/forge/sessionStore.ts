@@ -23,6 +23,11 @@ interface SessionState {
   volumeKg: number;
   cpAtStart: number;
   ritual: ForgeRitual | null;
+  silentStartArmed: boolean;
+  /** One-shot arm: the next start() skips the enter ritual — for implicit auto-starts (first set /
+   * body-map tap), where the 1.6s ritual must never delay logging (spec §6). Explicit forge entry
+   * keeps the ritual. start() consumes the flag; callers disarm in a finally as a safety net. */
+  setSilentStart: (armed: boolean) => void;
   start: (id: string, cpAtStart: number) => void;
   resume: (id: string, cpAtStart: number, setCount: number, volumeKg: number) => void;
   recordSet: (volumeKg: number) => void;
@@ -40,15 +45,18 @@ export const useSessionStore = create<SessionState>((set) => ({
   volumeKg: 0,
   cpAtStart: 0,
   ritual: null,
+  silentStartArmed: false,
+  setSilentStart: (armed) => set({ silentStartArmed: armed }),
   start: (id, cpAtStart) =>
-    set({
+    set((s) => ({
       activeSessionId: id,
       startedAt: Date.now(),
       setCount: 0,
       volumeKg: 0,
       cpAtStart,
-      ritual: { id: ++ritualId, kind: 'enter' },
-    }),
+      ritual: s.silentStartArmed ? null : { id: ++ritualId, kind: 'enter' },
+      silentStartArmed: false,
+    })),
   resume: (id, cpAtStart, setCount, volumeKg) =>
     set({
       activeSessionId: id,

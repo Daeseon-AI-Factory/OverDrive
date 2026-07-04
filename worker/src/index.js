@@ -327,14 +327,27 @@ async function handleRankBoard(req, env) {
 // edit). The power/aura/gear escalates with grade — the person's real body type is preserved (a
 // larger build = a mighty juggernaut, not slimmed). Original IP only — generic epic hero, never a
 // named franchise.
-const EVOLVE_LOOKS = {
-  ordinary: 'a newly awakened hero — clean stylized hero art, a faint glowing energy outline, determined expression, heroic lighting',
-  rookie: 'a rising fighter — dynamic anime/game hero art, light battle gear, a forming energy aura, bold dramatic lighting',
-  fighter: 'a battle-hardened warrior — bold splash-art style, rugged armor, crackling energy aura, intense glare',
-  warrior: 'an elite champion — epic game splash art, ornate heroic armor, radiant energy aura, glowing eyes, cinematic VFX',
-  beast: 'an unstoppable powerhouse — high-impact stylized hero art, heavy battle armor, explosive energy aura, particle effects, lightning',
-  monster: 'a legendary force of nature — over-the-top epic character art, imposing armor, enormous swirling energy aura, shattering ground, electric storm',
-  ascendant: 'a transcendent god-tier hero in ultimate form — maximum stylization, divine armor, blinding radiant aura, cosmic energy, glowing runes',
+// Power escalates with grade (shared across themes — the "how strong"). Original IP only.
+const GRADE_RAMP = {
+  ordinary: 'a newly awakened, just-getting-started',
+  rookie: 'a rising, hungry',
+  fighter: 'a battle-hardened, proven',
+  warrior: 'an elite, peak-form',
+  beast: 'an unstoppable, dominant',
+  monster: 'a legendary, larger-than-life',
+  ascendant: 'a transcendent, god-tier ultimate-form',
+};
+
+// The persona (the "who") — selected by the user's theme. ORIGINAL designs, no named franchise.
+const THEME_PERSONA = {
+  aura: 'ORIGINAL energy-warrior hero — stylized anime/game splash art, glowing battle aura that grows with power, ' +
+    'crackling energy VFX, heroic armor/gear escalating with rank, strong rim lighting, electric particle effects',
+  mogul: 'self-made mogul / titan of industry — luxury magazine-cover portrait, sharp impeccably tailored power suit, ' +
+    'opulent penthouse skyline at golden hour, commanding confident posture, wealth-and-power presence (tasteful, not gaudy)',
+  pro: 'elite professional athlete at peak performance — dynamic sports-magazine action cover, athletic gear, ' +
+    'stadium floodlights and crowd haze, explosive powerful pose, sweat and grit, motion energy',
+  forged: 'disciplined stoic warrior-monk — forged-by-discipline aesthetic, minimalist dojo/training-hall, ' +
+    'dramatic chiaroscuro lighting, calm intense focus, restrained monochrome palette with jade accents, quiet unbreakable resolve',
 };
 
 async function handleEvolve(req, env) {
@@ -348,7 +361,10 @@ async function handleEvolve(req, env) {
   const file = form.get('file');
   if (!file || typeof file === 'string') return json({ error: 'missing file' }, 400);
   const gradeKey = sanitize(form.get('gradeKey'), 24) || 'rookie';
-  const look = EVOLVE_LOOKS[gradeKey] || EVOLVE_LOOKS.rookie;
+  const themeId = sanitize(form.get('themeId'), 16) || 'aura';
+  const ramp = GRADE_RAMP[gradeKey] || GRADE_RAMP.rookie;
+  const persona = THEME_PERSONA[themeId] || THEME_PERSONA.aura;
+  const look = `${ramp} ${persona}`;
 
   const buf = new Uint8Array(await file.arrayBuffer());
   let bin = '';

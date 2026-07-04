@@ -20,9 +20,11 @@ const roundTo = (v: number, precision: number) => {
 };
 
 /**
- * +/- stepper with long-press acceleration — the core of "kill the keyboard". Tap = one step;
- * hold = ramps faster and doubles the step, so 20→100kg is a ~1.5s hold, not 16 taps.
- * Long-press the center value for a rare type-it-in escape hatch.
+ * +/- stepper with long-press acceleration — the core of "kill the keyboard". Tap = one step
+ * (fires on release, so a scroll that starts on a button never mutates the value); hold = ramps
+ * faster and doubles the step, so 20→100kg is a short hold, not 16 taps.
+ * Tap the center value (✎) to type it in directly; ✓ or blur commits — needed because the iOS
+ * numeric pad has no return key.
  */
 export function Stepper({ value, step, min = 0, max = 9999, precision = 0, unit, label, onChange }: StepperProps) {
   const [editing, setEditing] = useState(false);
@@ -69,7 +71,8 @@ export function Stepper({ value, step, min = 0, max = 9999, precision = 0, unit,
 
   const commitText = () => {
     const n = Number(text);
-    if (Number.isFinite(n)) onChange(clamp(roundTo(n, precision)));
+    // Empty string coerces to 0 — never commit it (it would slam the value to `min`).
+    if (text.trim() !== '' && Number.isFinite(n)) onChange(clamp(roundTo(n, precision)));
     setEditing(false);
   };
 
@@ -77,24 +80,42 @@ export function Stepper({ value, step, min = 0, max = 9999, precision = 0, unit,
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
       <View style={styles.row}>
-        <Pressable onPressIn={() => start(-1)} onPressOut={stop} style={styles.btn} hitSlop={8}>
+        {/* onPress (release) for the single step — onPressIn fired on touch-down, so starting a
+            scroll on the button silently changed the value. Hold ramps via onLongPress. */}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => bump(-1)}
+          onLongPress={() => start(-1)}
+          onPressOut={stop}
+          delayLongPress={250}
+          style={styles.btn}
+          hitSlop={8}
+        >
           <Text style={styles.btnText}>−</Text>
         </Pressable>
 
         {editing ? (
-          <TextInput
-            autoFocus
-            accessibilityLabel={label}
-            value={text}
-            onChangeText={setText}
-            onBlur={commitText}
-            onSubmitEditing={commitText}
-            keyboardType="numeric"
-            style={styles.valueInput}
-          />
+          <View style={styles.editRow}>
+            <TextInput
+              autoFocus
+              accessibilityLabel={label}
+              value={text}
+              onChangeText={setText}
+              onBlur={commitText}
+              onSubmitEditing={commitText}
+              keyboardType="numeric"
+              style={styles.valueInput}
+            />
+            {/* Explicit Done — the iOS numeric pad has no return key, so onSubmitEditing alone is unreachable. */}
+            <Pressable accessibilityRole="button" onPress={commitText} style={styles.doneBtn} hitSlop={8}>
+              <Text style={styles.doneText}>✓</Text>
+            </Pressable>
+          </View>
         ) : (
           <Pressable
-            onLongPress={() => {
+            accessibilityRole="button"
+            accessibilityLabel={label}
+            onPress={() => {
               setText(value.toFixed(precision));
               setEditing(true);
             }}
@@ -103,11 +124,20 @@ export function Stepper({ value, step, min = 0, max = 9999, precision = 0, unit,
             <Text style={styles.value}>
               {value.toFixed(precision)}
               {unit ? <Text style={styles.unit}> {unit}</Text> : null}
+              <Text style={styles.editHint}> ✎</Text>
             </Text>
           </Pressable>
         )}
 
-        <Pressable onPressIn={() => start(1)} onPressOut={stop} style={styles.btn} hitSlop={8}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => bump(1)}
+          onLongPress={() => start(1)}
+          onPressOut={stop}
+          delayLongPress={250}
+          style={styles.btn}
+          hitSlop={8}
+        >
           <Text style={styles.btnText}>+</Text>
         </Pressable>
       </View>
@@ -133,6 +163,8 @@ const styles = StyleSheet.create({
   valueWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   value: { color: colors.text, fontFamily: numberFamily, fontSize: 40, fontWeight: '900' },
   unit: { color: colors.textDim, fontSize: fontSize.md, fontWeight: '700' },
+  editHint: { color: colors.textDim, fontSize: fontSize.sm, fontWeight: '700' },
+  editRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.sm },
   valueInput: {
     flex: 1,
     textAlign: 'center',
@@ -142,4 +174,15 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     paddingVertical: 0,
   },
+  doneBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceAlt,
+  },
+  doneText: { color: colors.success, fontSize: 20, fontWeight: '900', lineHeight: 22 },
 });

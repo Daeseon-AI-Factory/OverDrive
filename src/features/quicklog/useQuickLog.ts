@@ -7,6 +7,7 @@ import type { ExerciseRow } from '@/db/types';
 import { useForge } from '@/features/forge/useForge';
 import { useSessionStore } from '@/features/forge/sessionStore';
 import { useLogSet } from '@/features/logging/useLogSet';
+import { formatWeight } from '@/lib/units';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { QUICKLOG_ENDPOINT } from './config';
 import { parseEntry, type ParseCandidate } from './parseEntry';
@@ -76,18 +77,48 @@ export function useQuickLog() {
     return useSessionStore.getState().activeSessionId ?? '';
   }, [enter]);
 
+  /** "벤치프레스  100 kg×5" / "풀업  12" — echoes exactly what got saved (same shape as the chips). */
+  const setSummary = useCallback(
+    (name: string, weightKg: number, reps: number) => {
+      const w = formatWeight(weightKg, unitSystem); // '' for bodyweight
+      return `${name}  ${w ? `${w}×` : ''}${reps}`;
+    },
+    [unitSystem],
+  );
+
   /**
-   * Parse + log one free-text line. AI-first (Gemini via the proxy — handles messy language + multiple
-   * sets); on any network/timeout/offline failure it falls back to the on-device rule parser, so
-   * logging never depends on the network. Returns ok + matched name, or a reason for a hint.
+   * Parse + log one free-text line. LOCAL-FIRST (spec: logging speed > flashiness): the on-device
+   * rule parser runs FIRST, so a clean "벤치 100 5" is saved + JUICE-fired instantly with zero
+   * network wait. Only lines the rules can't read (messy language / multi-set) go to the AI proxy,
+   * bounded by a short timeout so logging never hangs on gym LTE. Returns ok + a summary of what
+   * was saved, or a reason for a hint ('ai_offline' = AI unreachable, distinct from parse failures).
    */
   const submitText = useCallback(
-    async (text: string): Promise<{ ok: boolean; reason?: string; name?: string }> => {
-      // 1) AI path (only if a proxy endpoint is configured).
+    async (text: string): Promise<{ ok: boolean; reason?: string; summary?: string }> => {
+      // 1) On-device rule parser — instant, offline, the common path.
+      const local = parseEntry(text, candidates, unitSystem);
+      if (local.ok) {
+        const sid = await ensureSession();
+        if (!sid) return { ok: false, reason: 'no_session' };
+        const ex = exMap.current.get(local.set.exerciseId);
+        await logSet({
+          sessionId: sid,
+          exerciseId: local.set.exerciseId,
+          weight: local.set.weightKg,
+          reps: local.set.reps,
+          rir: local.set.rir,
+          hitTargetReps: ex ? local.set.reps >= ex.rep_low : true,
+          loggedVia: 'quick',
+        });
+        void load();
+        return { ok: true, summary: setSummary(local.set.exerciseName, local.set.weightKg, local.set.reps) };
+      }
+
+      // 2) AI fallback — only for what the rules couldn't read (and only if an endpoint is configured).
       if (QUICKLOG_ENDPOINT) {
         try {
           const ctrl = new AbortController();
-          const timer = setTimeout(() => ctrl.abort(), 7000); // never hang logging on a slow network
+          const timer = setTimeout(() => ctrl.abort(), 3500); // never hang logging on a slow network
           let sets;
           try {
             sets = await parseEntryAI(text, candidates, unitSystem, QUICKLOG_ENDPOINT, ctrl.signal);
@@ -115,34 +146,21 @@ export function useQuickLog() {
                 });
               }
               void load();
-              const head = sets[0].exerciseName;
-              return { ok: true, name: sets.length > 1 ? `${head} +${sets.length - 1}` : head };
+              const head = setSummary(sets[0].exerciseName, sets[0].weightKg, sets[0].reps);
+              return { ok: true, summary: sets.length > 1 ? `${head}  +${sets.length - 1}` : head };
             }
           }
         } catch {
-          // network / timeout / proxy error → fall through to the offline rule parser
+          // network / timeout / proxy error — the set was NOT parseable on-device either, so tell
+          // the user the AI is unreachable (actionable: use the "name weight reps" format).
+          return { ok: false, reason: 'ai_offline' };
         }
       }
 
-      // 2) Offline fallback: on-device rule parser (single set).
-      const r = parseEntry(text, candidates, unitSystem);
-      if (!r.ok) return { ok: false, reason: r.reason };
-      const sid = await ensureSession();
-      if (!sid) return { ok: false, reason: 'no_session' };
-      const ex = exMap.current.get(r.set.exerciseId);
-      await logSet({
-        sessionId: sid,
-        exerciseId: r.set.exerciseId,
-        weight: r.set.weightKg,
-        reps: r.set.reps,
-        rir: r.set.rir,
-        hitTargetReps: ex ? r.set.reps >= ex.rep_low : true,
-        loggedVia: 'quick',
-      });
-      void load();
-      return { ok: true, name: r.set.exerciseName };
+      // Neither the rules nor the AI could read it → parse-failure hint (format guidance).
+      return { ok: false, reason: local.reason };
     },
-    [db, candidates, unitSystem, ensureSession, logSet, load],
+    [db, candidates, unitSystem, ensureSession, logSet, load, setSummary],
   );
 
   /** One-tap repeat of a recent lift (same weight×reps). */

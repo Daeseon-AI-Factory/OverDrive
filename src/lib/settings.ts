@@ -2,9 +2,11 @@
 // mirrored into settingsStore at runtime. → JSONB in Postgres (Phase 2).
 
 import type { WeeklyProgram } from '@/features/program/types';
+import { normalizeThemeId, type ThemeId } from '@/features/theme/themes';
 import type { UnitSystem } from './units';
 
-export type AestheticPref = 'battle' | 'glow' | 'neon';
+/** Active power-fantasy theme (see features/theme/themes.ts). Legacy values fall back to 'aura'. */
+export type AestheticPref = ThemeId;
 export type JuiceIntensity = 'full' | 'mid' | 'minimal';
 
 export interface UserSettings {
@@ -52,7 +54,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   startWeightKg: null,
   targetWeightKg: null,
   proteinTargetG: null,
-  aestheticPref: 'battle',
+  aestheticPref: 'aura',
   juiceIntensity: 'full',
   soundOn: true,
   weightStep: 2.5,
@@ -71,7 +73,7 @@ export function parseSettings(json: string | null | undefined): UserSettings {
   if (!json) return { ...DEFAULT_SETTINGS };
   try {
     const parsed = JSON.parse(json) as Partial<UserSettings>;
-    return { ...DEFAULT_SETTINGS, ...parsed };
+    return { ...DEFAULT_SETTINGS, ...parsed, aestheticPref: normalizeThemeId(parsed.aestheticPref) };
   } catch {
     return { ...DEFAULT_SETTINGS };
   }

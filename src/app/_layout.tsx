@@ -13,10 +13,11 @@ export default function RootLayout() {
   return (
     <I18nextProvider i18n={i18n}>
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
+        {/* Mounted above <Boot> so light status-bar content covers the splash and first-run onboarding too. */}
+        <StatusBar style="light" />
         <SQLiteProvider databaseName="overdrive.db" onInit={migrateDbIfNeeded}>
           <Boot>
             <JuiceProvider>
-              <StatusBar style="light" />
               <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
             </JuiceProvider>
           </Boot>

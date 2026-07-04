@@ -181,6 +181,6 @@ const styles = StyleSheet.create({
   handle: { alignSelf: 'center', width: 44, height: 4, borderRadius: 2, backgroundColor: colors.line, marginBottom: space.md },
   title: { color: colors.text, fontSize: fontSize.lg, fontWeight: '900' },
   rirLabel: { color: colors.textDim, fontSize: fontSize.sm, fontWeight: '700', marginTop: space.lg, marginBottom: 6 },
-  rirRow: { flexDirection: 'row' },
+  rirRow: { flexDirection: 'row', gap: space.sm },
   closeBtn: { alignSelf: 'center', paddingVertical: space.md, marginTop: space.sm },
 });

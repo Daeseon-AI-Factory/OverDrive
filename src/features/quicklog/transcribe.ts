@@ -15,7 +15,7 @@ export async function transcribeAudio(uri: string, endpoint: string, language?: 
       mimeType: 'audio/m4a',
       parameters: language ? { language } : undefined,
     }),
-    20000,
+    8000, // hard cap — a stuck upload must never hold the logging bar hostage (spec: logging speed first)
     'transcribe',
   );
   if (res.status < 200 || res.status >= 300) {

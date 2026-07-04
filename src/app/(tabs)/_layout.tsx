@@ -21,7 +21,8 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: t('tabs.today'), tabBarIcon: tabIcon('◆') }} />
-      <Tabs.Screen name="power" options={{ title: t('tabs.power'), tabBarIcon: tabIcon('⚡') }} />
+      {/* U+FE0E (VS15) forces text presentation — bare U+26A1 draws the color emoji, ignoring tab tint. */}
+      <Tabs.Screen name="power" options={{ title: t('tabs.power'), tabBarIcon: tabIcon('⚡\uFE0E') }} />
       <Tabs.Screen name="history" options={{ title: t('tabs.history'), tabBarIcon: tabIcon('≡') }} />
       <Tabs.Screen name="settings" options={{ title: t('tabs.settings'), tabBarIcon: tabIcon('⚙') }} />
     </Tabs>

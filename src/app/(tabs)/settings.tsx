@@ -2,14 +2,15 @@ import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
-import { updateLocale, updateSettings } from '@/db/repos/userRepo';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { updateLocale } from '@/db/repos/userRepo';
 import { useHealth } from '@/features/health/useHealth';
 import { Stepper } from '@/features/logging/Stepper';
+import { THEME_IDS, THEMES, getTheme } from '@/features/theme/themes';
 import i18n, { LOCALE_LABEL, SUPPORTED_LOCALES, type AppLocale } from '@/i18n';
 import type { JuiceIntensity } from '@/lib/settings';
-import { displayToKg, kgToDisplay, weightStepDisplay, weightUnit, type UnitSystem } from '@/lib/units';
-import { currentSettings, useSettingsStore } from '@/stores/settingsStore';
+import { displayToKg, kgToDisplay, weightUnit, type UnitSystem } from '@/lib/units';
+import { currentSettings, persistSettings, useSettingsStore } from '@/stores/settingsStore';
 import { Card, Muted, NeonButton, Pill, Screen, SectionTitle } from '@/ui/primitives';
 import { colors, fontSize, space } from '@/ui/theme/tokens';
 
@@ -18,10 +19,22 @@ const PROTEIN_PER_KG = 1.8;
 const INTENSITY: JuiceIntensity[] = ['full', 'mid', 'minimal'];
 const UNIT_SYSTEMS: UnitSystem[] = ['metric', 'imperial'];
 
+// Alert-only copy kept inline (the locale catalogs are owned by a separate workstream; every other
+// string here reuses existing keys). Disconnect is destructive — it wipes the synced health data
+// and recomputes Combat Power — so it must confirm first.
+const DISCONNECT_CONFIRM: Record<AppLocale, string> = {
+  en: 'This clears the synced Apple Health data from Reploom and recomputes your Combat Power. You can reconnect anytime.',
+  ko: '동기화된 Apple 건강 데이터가 Reploom에서 지워지고 전투력이 다시 계산돼. 언제든 다시 연동할 수 있어.',
+  es: 'Esto borra los datos de Apple Health sincronizados en Reploom y recalcula tu Poder de Combate. Puedes reconectar cuando quieras.',
+  zh: '这会清除 Reploom 中已同步的 Apple 健康数据，并重新计算战斗力。随时可以重新连接。',
+};
+const CANCEL_LABEL: Record<AppLocale, string> = { en: 'Cancel', ko: '취소', es: 'Cancelar', zh: '取消' };
+
 export default function SettingsScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
   const { t } = useTranslation();
+  const aestheticPref = useSettingsStore((s) => s.aestheticPref);
   const juiceIntensity = useSettingsStore((s) => s.juiceIntensity);
   const soundOn = useSettingsStore((s) => s.soundOn);
   const weightStep = useSettingsStore((s) => s.weightStep);
@@ -33,14 +46,35 @@ export default function SettingsScreen() {
   const apply = useSettingsStore((s) => s.apply);
   const setLocale = useSettingsStore((s) => s.setLocale);
   const hk = useHealth();
+  const activeTheme = getTheme(aestheticPref);
   const [syncing, setSyncing] = useState(false);
+  const [syncedFlash, setSyncedFlash] = useState(false); // brief ✓ so a successful sync is visible
   const onSyncHealth = async () => {
     setSyncing(true);
+    setSyncedFlash(false);
     try {
-      await hk.sync();
+      const ok = await hk.sync();
+      if (ok) {
+        setSyncedFlash(true);
+        setTimeout(() => setSyncedFlash(false), 2000);
+      } else {
+        // A failed sync must not look identical to a successful one.
+        Alert.alert(t('settings.health.sync'), t('inbody.saveFailed'));
+      }
     } finally {
       setSyncing(false);
     }
+  };
+  const onConnectHealth = async () => {
+    const ok = await hk.connect();
+    // Success is self-evident (the card flips to the connected state); failure needs saying.
+    if (!ok) Alert.alert(t('settings.health.connect'), t('inbody.saveFailed'));
+  };
+  const confirmDisconnect = () => {
+    Alert.alert(t('settings.health.disconnect'), DISCONNECT_CONFIRM[locale], [
+      { text: CANCEL_LABEL[locale], style: 'cancel' },
+      { text: t('settings.health.disconnect'), style: 'destructive', onPress: () => void hk.disconnect() },
+    ]);
   };
 
   const weightKg = startWeightKg ?? 75;
@@ -57,26 +91,40 @@ export default function SettingsScreen() {
   };
 
   const persist = async (patch: Partial<ReturnType<typeof currentSettings>>) => {
+    const prev = currentSettings();
     apply(patch);
-    await updateSettings(db, currentSettings());
+    const ok = await persistSettings(db);
+    if (!ok) {
+      apply(prev);
+      Alert.alert(t('common.saveFailed'));
+    }
   };
 
   const changeLanguage = async (l: AppLocale) => {
-    setLocale(l);
-    await i18n.changeLanguage(l);
-    await updateLocale(db, l);
+    if (l === locale) return;
+    const prev = locale;
+    try {
+      setLocale(l);
+      await i18n.changeLanguage(l);
+      await updateLocale(db, l);
+    } catch {
+      setLocale(prev);
+      await i18n.changeLanguage(prev).catch(() => {});
+      Alert.alert(t('common.saveFailed'));
+    }
   };
 
   return (
     <Screen>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space.xxl }}>
+      {/* keyboardShouldPersistTaps: don't eat the first tap on +/− / ✓ while the Stepper type-in keyboard is up. */}
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: space.xxl }}>
         <Text style={styles.title}>{t('settings.title')}</Text>
 
         <SectionTitle>{t('settings.language.section')}</SectionTitle>
         <Card>
           <View style={styles.wrapRow}>
             {SUPPORTED_LOCALES.map((l) => (
-              <Pill key={l} label={LOCALE_LABEL[l]} active={locale === l} color={colors.cyan} onPress={() => changeLanguage(l)} />
+              <Pill key={l} label={LOCALE_LABEL[l]} active={locale === l} color={colors.cyan} onPress={() => void changeLanguage(l)} />
             ))}
           </View>
         </Card>
@@ -101,7 +149,8 @@ export default function SettingsScreen() {
           <Stepper
             label={t('settings.profile.bodyweight')}
             value={kgToDisplay(weightKg, unitSystem)}
-            step={weightStepDisplay(unitSystem, 1)}
+            // Bodyweight moves in 1s — the 5 lb plate-oriented step can't reach e.g. 172 lb.
+            step={1}
             min={unitSystem === 'imperial' ? 66 : 30}
             max={unitSystem === 'imperial' ? 660 : 300}
             precision={unitSystem === 'imperial' ? 0 : 1}
@@ -163,18 +212,19 @@ export default function SettingsScreen() {
                   </Muted>
                   <View style={[styles.wrapRow, { marginTop: space.md }]}>
                     <Pill
-                      label={syncing ? t('settings.health.syncing') : t('settings.health.sync')}
+                      label={syncing ? t('settings.health.syncing') : syncedFlash ? `✓ ${t('settings.health.sync')}` : t('settings.health.sync')}
+                      active={syncedFlash}
                       color={colors.cyan}
                       onPress={() => void onSyncHealth()}
                     />
-                    <Pill label={t('settings.health.disconnect')} color={colors.energyLo} onPress={() => void hk.disconnect()} />
+                    <Pill label={t('settings.health.disconnect')} color={colors.energyLo} onPress={confirmDisconnect} />
                   </View>
                 </>
               ) : (
                 <>
                   <Muted>{t('settings.health.explainer')}</Muted>
                   <View style={{ marginTop: space.md }}>
-                    <NeonButton label={t('settings.health.connect')} color={colors.cyan} onPress={() => void hk.connect()} />
+                    <NeonButton label={t('settings.health.connect')} color={colors.cyan} onPress={() => void onConnectHealth()} />
                   </View>
                 </>
               )}
@@ -193,6 +243,24 @@ export default function SettingsScreen() {
             </Card>
           </>
         ) : null}
+
+        <SectionTitle>{t('settings.theme.section')}</SectionTitle>
+        <Card>
+          <View style={styles.wrapRow}>
+            {THEME_IDS.map((id) => (
+              <Pill
+                key={id}
+                label={t(`theme.${id}.name`)}
+                active={activeTheme.id === id}
+                color={THEMES[id].accent}
+                onPress={() => persist({ aestheticPref: id })}
+              />
+            ))}
+          </View>
+          <Muted style={{ marginTop: space.sm }}>
+            {t(`theme.${activeTheme.id}.tagline`)} — {t('settings.theme.explainer')}
+          </Muted>
+        </Card>
 
         <SectionTitle>{t('settings.juice.section')}</SectionTitle>
         <Card>
