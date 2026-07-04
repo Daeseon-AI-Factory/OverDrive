@@ -404,3 +404,27 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: 9fcad25 docs(log): share artifacts for external validation (e688bc2) [no-log] -->
 <!-- skipped: 4d9022b docs(state): worker deployed — theme EVOLUTION loop wired + verified (ver 1aef7442) [no-log] -->
 <!-- skipped: 3fe19bc docs(log): warrior completion spine + product synthesis (de9a973) [no-log] -->
+
+## TestFlight build shipped with an EMPTY AI endpoint — food/voice logging dead, ".env" jargon shown to users
+
+- **Symptom**: First real-device dogfood (TestFlight Build 4): every typed meal returned "추정 실패 — 더 간단히 써봐." regardless of input; mic showed "음성은 AI 엔드포인트 설정 필요(.env)", photo showed the same .env copy. Verified against the shipped artifact: the IPA's Hermes bundle contains the surrounding control strings but NOT "workers.dev" — `QUICKLOG_ENDPOINT` compiled to `''`.
+- **Cause**: `src/features/quicklog/config.ts` read the endpoint ONLY from `process.env.EXPO_PUBLIC_QUICKLOG_ENDPOINT`; `.env` is gitignored and `eas.json` had no `env` block, so EAS cloud builds never received it. Local dev worked (dotenv), production silently didn't.
+- **Fix**: `config.ts` now defaults to the deployed worker URL (`https://overdrive-quicklog.daeseon.workers.dev`, verified live) when the env var is absent; `eas.json` also injects `EXPO_PUBLIC_QUICKLOG_ENDPOINT` in all three build profiles. User copy no longer mentions ".env": endpoint-missing and network-fail states have distinct honest messages (`food.aiUnavailable`, `quicklog.fail.ai_offline`).
+- **Commit**: 41b3885
+- **Pattern**: EXPO_PUBLIC_* values that only live in a gitignored .env do not exist in EAS builds. Every client-required env var needs an eas.json `env` entry (or an in-code default) + a signed-build smoke test before distribution.
+
+## Logging waited up to 7s on the AI network call before saving — spec §6 violation (JUICE/logging must never block)
+
+- **Symptom**: TestFlight dogfood: typing "벤치 100 5" then tapping 기록 froze the row with zero feedback until the Gemini round-trip finished (up to the 7s abort timeout on gym LTE); the set only saved AFTER the network call. Voice could lock the bar ~27s (20s transcribe + 7s parse). First body-map tap was also swallowed: it silently started a session and played the 1.6s enter ritual (absolute-fill Pressable eating every touch) instead of opening the exercise picker — 2-3 taps to start logging.
+- **Cause**: `useQuickLog.submitText` called `parseEntryAI()` (network) BEFORE the on-device rule parser and saved only after it resolved. `index.tsx onRegionPress/onCardioPress` early-returned into `enter()` whose store-set ritual rendered the blocking `ForgeRitualOverlay` (1600ms). No busy/confirmation states existed.
+- **Fix**: Inverted parse order in `useQuickLog.ts` — rule parser first, save + JUICE fire immediately, AI only as fallback (timeout 7s→3.5s); transcribe timeout 20s→8s with mic-as-cancel. Silent one-shot session start (`sessionStore.silentStartArmed`) so body-map/cardio taps open the picker in the same gesture; enter ritual reserved for explicit 용광로 진입. Busy line ("기록 중…") + success echo of exactly what saved ("⚡ 벤치프레스 100 kg×5") in `QuickLogBar.tsx`. Keyboard: `keyboardShouldPersistTaps="handled"` + `automaticallyAdjustKeyboardInsets` on the Today ScrollView, `submitBehavior="submit"` keeps the keyboard for the next set.
+- **Commit**: 41b3885
+- **Pattern**: The core-loop action must complete locally before any network hop; remote calls enrich, never gate. Any full-screen overlay with an absolute-fill Pressable is a tap-eater — never mount one on an implicit path.
+
+## EAS free-tier submit queue stalled 29 min — bypassed with direct altool upload (5s)
+
+- **Symptom**: `eas submit` (submission 70dfa86c) stayed `IN_QUEUE` for 29+ minutes (`updatedAt == createdAt`, never started); ASC showed "No Builds" the whole time.
+- **Cause**: EAS free-tier submission queue congestion — config was fine (verified via EAS GraphQL: status IN_QUEUE, error null).
+- **Fix**: Canceled the queued submission (GraphQL `cancelSubmission` → CANCELED), downloaded the IPA artifact from `build:view --json`'s `applicationArchiveUrl`, uploaded directly with `xcrun altool --upload-app --apiKey 84HQ6ZG4L2 --apiIssuer <issuer>` (`.p8` in `~/.appstoreconnect/private_keys/`) — "UPLOAD SUCCEEDED", 36.4MB in 5.2s; build 4 was VALID on ASC minutes later. Pipeline for future releases: `eas build --non-interactive` → curl IPA → altool.
+- **Commit**: a873470 (eas.json submit profile), pipeline itself is ops (no code).
+- **Pattern**: EAS submit is a convenience queue, not the only path — with an ASC API key, altool direct upload is seconds and unblocks TestFlight instantly.
