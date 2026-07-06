@@ -128,6 +128,10 @@
     "theme": {
       "section": "主题",
       "explainer": "主题会切换记录时爆发的呼喊、颜色和 EVOLUTION 角色。"
+    },
+    "skin": {
+      "section": "皮肤",
+      "explainer": "皮肤会整套切换 HUD 外观——面板形状、材质、进度条和按钮，与主题呼喊互不影响。"
     }
   },
   "inbody": {
@@ -543,6 +547,20 @@
       "name": "淬炼",
       "tagline": "自律 · 坚毅"
     }
+  },
+  "skin": {
+    "reactor": { "name": "反应堆" },
+    "foundry": { "name": "熔炉" },
+    "arena": { "name": "擂台" },
+    "kiburst": { "name": "气爆" },
+    "primal": { "name": "野性" },
+    "ironcult": { "name": "铁教团" },
+    "murim": { "name": "武林" },
+    "darkkeep": { "name": "暗黑要塞" },
+    "blackops": { "name": "特战" },
+    "colosseum": { "name": "角斗场" },
+    "redline": { "name": "红线" },
+    "dojo": { "name": "道场" }
   },
   "warrior": {
     "title": "战士铸造",

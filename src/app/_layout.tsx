@@ -7,6 +7,7 @@ import { migrateDbIfNeeded } from '@/db/migrate';
 import { Boot } from '@/features/boot/Boot';
 import { JuiceProvider } from '@/features/juice/JuiceProvider';
 import i18n from '@/i18n';
+import { SkinProvider } from '@/ui/skins/SkinContext';
 import { colors } from '@/ui/theme/tokens';
 
 export default function RootLayout() {
@@ -17,9 +18,13 @@ export default function RootLayout() {
         <StatusBar style="light" />
         <SQLiteProvider databaseName="overdrive.db" onInit={migrateDbIfNeeded}>
           <Boot>
-            <JuiceProvider>
-              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
-            </JuiceProvider>
+            {/* Skin = full HUD chrome swap. Mounted inside <Boot> (settings hydrated) and reads the
+                persisted skinId from the settings store itself — switching skin re-renders the tree. */}
+            <SkinProvider>
+              <JuiceProvider>
+                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+              </JuiceProvider>
+            </SkinProvider>
           </Boot>
         </SQLiteProvider>
       </GestureHandlerRootView>

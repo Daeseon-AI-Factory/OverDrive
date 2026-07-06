@@ -1,7 +1,8 @@
 import { Tabs } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, type ColorValue } from 'react-native';
-import { useAccent } from '@/ui/primitives';
+import { useSkinAccent } from '@/ui/primitives';
+import { useSkinOrNull } from '@/ui/skins/SkinContext';
 import { colors } from '@/ui/theme/tokens';
 
 function tabIcon(glyph: string) {
@@ -12,20 +13,23 @@ function tabIcon(glyph: string) {
 
 export default function TabsLayout() {
   const { t } = useTranslation();
-  const accent = useAccent();
+  // SKIN accent (chrome) — switching skin recolors the tabs instantly. Without a SkinProvider
+  // (tests, unskinned trees) both fall back to the legacy MONOLITH tokens + persona accent.
+  const accent = useSkinAccent();
+  const skin = useSkinOrNull();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        // MONOLITH: bg1 chassis + hairline seam; the selected tab is the only lit element — tint
-        // change only (no underline indicator, no glow).
+        // bg1 chassis + hairline seam; the selected tab is the only lit element — tint change
+        // only (no underline indicator, no glow).
         tabBarStyle: {
-          backgroundColor: colors.bg1,
+          backgroundColor: skin?.palette.bg1 ?? colors.bg1,
           borderTopWidth: StyleSheet.hairlineWidth,
-          borderTopColor: colors.line,
+          borderTopColor: skin?.palette.line ?? colors.line,
         },
         tabBarActiveTintColor: accent.solid,
-        tabBarInactiveTintColor: colors.text3,
+        tabBarInactiveTintColor: skin?.palette.text3 ?? colors.text3,
         tabBarLabelStyle: { fontSize: 10, fontWeight: '600', letterSpacing: 0.4 },
       }}
     >

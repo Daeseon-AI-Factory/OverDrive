@@ -161,6 +161,10 @@
     "theme": {
       "section": "Theme",
       "explainer": "Your theme swaps the callouts, colors and EVOLUTION character that explode when you log."
+    },
+    "skin": {
+      "section": "Skin",
+      "explainer": "Your skin swaps the entire HUD chrome — panel shape, material, bars and buttons. Independent from your theme's callouts."
     }
   },
   "inbody": {
@@ -543,6 +547,20 @@
       "name": "Forged",
       "tagline": "Discipline · stoic"
     }
+  },
+  "skin": {
+    "reactor": { "name": "REACTOR" },
+    "foundry": { "name": "FOUNDRY" },
+    "arena": { "name": "ARENA" },
+    "kiburst": { "name": "KI BURST" },
+    "primal": { "name": "PRIMAL" },
+    "ironcult": { "name": "IRON CULT" },
+    "murim": { "name": "MURIM" },
+    "darkkeep": { "name": "DARK KEEP" },
+    "blackops": { "name": "BLACK OPS" },
+    "colosseum": { "name": "COLOSSEUM" },
+    "redline": { "name": "REDLINE" },
+    "dojo": { "name": "DOJO" }
   },
   "warrior": {
     "title": "WARRIOR FORGE",

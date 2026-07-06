@@ -128,6 +128,10 @@
     "theme": {
       "section": "Tema",
       "explainer": "Tu tema cambia los avisos, colores y el personaje EVOLUTION que explotan al registrar."
+    },
+    "skin": {
+      "section": "Skin",
+      "explainer": "Tu skin cambia todo el cromo del HUD: forma de paneles, material, barras y botones. Independiente de los avisos del tema."
     }
   },
   "inbody": {
@@ -543,6 +547,20 @@
       "name": "Forjado",
       "tagline": "Disciplina · estoico"
     }
+  },
+  "skin": {
+    "reactor": { "name": "REACTOR" },
+    "foundry": { "name": "FUNDICIÓN" },
+    "arena": { "name": "ARENA" },
+    "kiburst": { "name": "RÁFAGA KI" },
+    "primal": { "name": "PRIMAL" },
+    "ironcult": { "name": "CULTO DEL HIERRO" },
+    "murim": { "name": "MURIM" },
+    "darkkeep": { "name": "TORREÓN OSCURO" },
+    "blackops": { "name": "OPS ENCUBIERTAS" },
+    "colosseum": { "name": "COLISEO" },
+    "redline": { "name": "REDLINE" },
+    "dojo": { "name": "DOJO" }
   },
   "warrior": {
     "title": "FORJA DE GUERRERO",

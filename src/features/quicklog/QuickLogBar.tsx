@@ -5,6 +5,7 @@ import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder } fr
 import { formatWeight } from '@/lib/units';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { Button, IconSquare, Input } from '@/ui/primitives';
+import { useSkinOrNull } from '@/ui/skins/SkinContext';
 import { border, colors, numType, radius, space, typeScale } from '@/ui/theme/tokens';
 import { QUICKLOG_ENDPOINT } from './config';
 import { transcribeAudio } from './transcribe';
@@ -21,6 +22,7 @@ import { useQuickLog, type RecentChip } from './useQuickLog';
  */
 export function QuickLogBar() {
   const { t, i18n } = useTranslation();
+  const skin = useSkinOrNull(); // themed CTA word (주입/단조/KO!…) — the skin's voice on the one log button
   const unitSystem = useSettingsStore((s) => s.unitSystem);
   const locale = useSettingsStore((s) => s.locale); // transcribe in the UI language (Whisper code)
   const { recents, submitText, repeat } = useQuickLog();
@@ -227,7 +229,7 @@ export function QuickLogBar() {
           editable={!recording && !transcribing}
         />
         <Button
-          label={t('quicklog.log')}
+          label={skin?.cta.logWord ?? t('quicklog.log')}
           onPress={() => void onSubmit()}
           variant="secondary"
           compact

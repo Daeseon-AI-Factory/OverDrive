@@ -12,6 +12,9 @@ import type { JuiceIntensity } from '@/lib/settings';
 import { displayToKg, kgToDisplay, weightUnit, type UnitSystem } from '@/lib/units';
 import { currentSettings, persistSettings, useSettingsStore } from '@/stores/settingsStore';
 import { Button, Card, Muted, Pill, Screen, SectionTitle, useAccent } from '@/ui/primitives';
+import { HudPanel } from '@/ui/skins/HudPanel';
+import { SkinProvider } from '@/ui/skins/SkinContext';
+import { SKINS, SKIN_IDS } from '@/ui/skins/registry';
 import { border, colors, radius, space, typeScale } from '@/ui/theme/tokens';
 
 const PROTEIN_PER_KG = 1.8;
@@ -36,6 +39,7 @@ export default function SettingsScreen() {
   const { t } = useTranslation();
   const accent = useAccent();
   const aestheticPref = useSettingsStore((s) => s.aestheticPref);
+  const skinId = useSettingsStore((s) => s.skinId);
   const juiceIntensity = useSettingsStore((s) => s.juiceIntensity);
   const soundOn = useSettingsStore((s) => s.soundOn);
   const weightStep = useSettingsStore((s) => s.weightStep);
@@ -238,6 +242,42 @@ export default function SettingsScreen() {
           </>
         ) : null}
 
+        <SectionTitle>{t('settings.skin.section')}</SectionTitle>
+        <Card>
+          {/* Skin picker — 12 full-chrome HUD skins. Each chip IS a mini HudPanel rendered in its
+              own skin's chrome (via an explicit-skinId provider), so the grid previews the actual
+              panel geometry/material/accent. Static Skia — repaints only on layout/skin change. */}
+          <View style={styles.wrapRow}>
+            {SKIN_IDS.map((id) => {
+              const s = SKINS[id];
+              const selected = skinId === id;
+              return (
+                <Pressable
+                  key={id}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(`skin.${id}.name`)}
+                  accessibilityState={{ selected }}
+                  onPress={() => persist({ skinId: id })}
+                  style={({ pressed }) => [styles.skinChip, pressed && { opacity: 0.75 }]}
+                >
+                  <SkinProvider skinId={id}>
+                    <HudPanel live={selected} style={styles.skinChipPanel}>
+                      <View style={[styles.swatch, { backgroundColor: s.palette.accent }]} />
+                      <Text
+                        numberOfLines={1}
+                        style={[styles.skinName, { color: selected ? s.palette.text : s.palette.text2 }]}
+                      >
+                        {t(`skin.${id}.name`)}
+                      </Text>
+                    </HudPanel>
+                  </SkinProvider>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Muted style={{ marginTop: space.sm }}>{t('settings.skin.explainer')}</Muted>
+        </Card>
+
         <SectionTitle>{t('settings.theme.section')}</SectionTitle>
         <Card>
           {/* Persona picker — the ONE place multiple hues may appear, as data (12×12 swatch dots),
@@ -338,4 +378,15 @@ const styles = StyleSheet.create({
   },
   swatch: { width: 12, height: 12, borderRadius: 6 },
   themeName: { ...typeScale.label, color: colors.text2 },
+  // Skin chips — the chrome preview is the HudPanel itself; the outer Pressable only sizes the grid cell.
+  skinChip: { flexGrow: 1, flexBasis: '45%' },
+  skinChipPanel: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+  },
+  skinName: { ...typeScale.label, flexShrink: 1 },
 });

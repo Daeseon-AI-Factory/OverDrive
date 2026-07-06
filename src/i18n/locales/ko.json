@@ -128,6 +128,10 @@
     "theme": {
       "section": "테마",
       "explainer": "기록할 때 터지는 콜아웃·색·EVOLUTION 캐릭터가 테마 따라 바뀐다."
+    },
+    "skin": {
+      "section": "스킨",
+      "explainer": "패널 모양·재질·게이지·버튼 — 화면 크롬 전체가 스킨 따라 통째로 바뀐다. 테마(콜아웃)와는 별개."
     }
   },
   "inbody": {
@@ -543,6 +547,20 @@
       "name": "스토익",
       "tagline": "단련 · 자기수양"
     }
+  },
+  "skin": {
+    "reactor": { "name": "리액터" },
+    "foundry": { "name": "파운드리" },
+    "arena": { "name": "아레나" },
+    "kiburst": { "name": "기 버스트" },
+    "primal": { "name": "프라이멀" },
+    "ironcult": { "name": "아이언 컬트" },
+    "murim": { "name": "무림" },
+    "darkkeep": { "name": "다크 킵" },
+    "blackops": { "name": "블랙 옵스" },
+    "colosseum": { "name": "콜로세움" },
+    "redline": { "name": "레드라인" },
+    "dojo": { "name": "도장" }
   },
   "warrior": {
     "title": "전사 완성도",

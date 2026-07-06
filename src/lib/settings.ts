@@ -3,11 +3,20 @@
 
 import type { WeeklyProgram } from '@/features/program/types';
 import { normalizeThemeId, type ThemeId } from '@/features/theme/themes';
+// Pure data module (registry → types only) — importing SkinContext here would cycle through
+// stores/settingsStore back into this file, so id normalization is done against SKINS directly.
+import { SKINS } from '@/ui/skins/registry';
+import type { SkinId } from '@/ui/skins/types';
 import type { UnitSystem } from './units';
 
 /** Active power-fantasy theme (see features/theme/themes.ts). Legacy values fall back to 'aura'. */
 export type AestheticPref = ThemeId;
 export type JuiceIntensity = 'full' | 'mid' | 'minimal';
+
+/** Tolerant id → SkinId for stored values. Unknown/legacy ids fall back to the default skin. */
+function normalizeSkinId(id: unknown): SkinId {
+  return typeof id === 'string' && Object.prototype.hasOwnProperty.call(SKINS, id) ? (id as SkinId) : 'reactor';
+}
 
 export interface UserSettings {
   heightCm: number | null;
@@ -15,6 +24,8 @@ export interface UserSettings {
   targetWeightKg: number | null;
   proteinTargetG: number | null;
   aestheticPref: AestheticPref;
+  /** Active HUD skin — full chrome swap (see ui/skins/registry.ts). Orthogonal to aestheticPref. */
+  skinId: SkinId;
   juiceIntensity: JuiceIntensity;
   soundOn: boolean;
   /** Weight stepper increment (kg) in the set logger. */
@@ -55,6 +66,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   targetWeightKg: null,
   proteinTargetG: null,
   aestheticPref: 'aura',
+  skinId: 'reactor',
   juiceIntensity: 'full',
   soundOn: true,
   weightStep: 2.5,
@@ -73,7 +85,12 @@ export function parseSettings(json: string | null | undefined): UserSettings {
   if (!json) return { ...DEFAULT_SETTINGS };
   try {
     const parsed = JSON.parse(json) as Partial<UserSettings>;
-    return { ...DEFAULT_SETTINGS, ...parsed, aestheticPref: normalizeThemeId(parsed.aestheticPref) };
+    return {
+      ...DEFAULT_SETTINGS,
+      ...parsed,
+      aestheticPref: normalizeThemeId(parsed.aestheticPref),
+      skinId: normalizeSkinId(parsed.skinId),
+    };
   } catch {
     return { ...DEFAULT_SETTINGS };
   }

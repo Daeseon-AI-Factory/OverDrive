@@ -1,7 +1,12 @@
 // MONOLITH primitives — a matte-black machined chassis where exactly ONE thing is powered on:
 // the persona accent. Depth = surface steps + a 1pt top edge-highlight, never shadows
-// (shadowOpacity 0 / elevation 0 everywhere). NO Skia here — Skia lives exclusively in
-// AmbientAura + JuiceOverlay (spec §6: logging speed > 화려함); every primitive is plain Views.
+// (shadowOpacity 0 / elevation 0 everywhere).
+//
+// SKINS (ui/skins/*): when a SkinProvider is mounted, every primitive reads its chrome (palette +
+// panel/bar/cta/hero params) from useSkin — Card delegates to HudPanel's STATIC Skia chrome
+// (repaints only on layout/skin change; §6: logging speed > 화려함). WITHOUT a provider (tests,
+// unskinned trees) everything falls back to these MONOLITH tokens + persona accent, unchanged.
+// Animated Skia still lives exclusively in AmbientAura + JuiceOverlay.
 
 import React, { useMemo, useState } from 'react';
 import {
@@ -31,6 +36,8 @@ import {
   typeScale,
   type Accent,
 } from './theme/tokens';
+import { CtaSurface, GradientDigits, HudPanel } from './skins/HudPanel';
+import { useSkinOrNull } from './skins/SkinContext';
 
 /**
  * The ONE accent of the current view — persona accent (settings.aestheticPref) expanded through
@@ -40,6 +47,17 @@ import {
 export function useAccent(): Accent {
   const pref = useSettingsStore((s) => s.aestheticPref);
   return useMemo(() => makeAccent(getTheme(pref).accent), [pref]);
+}
+
+/**
+ * The CHROME accent: the skin accent when a SkinProvider is mounted (skins own chrome — panel
+ * geometry, material, glow, bars, CTA), else the persona accent (legacy MONOLITH behavior; tests
+ * render without a provider). Personas keep owning JUICE callouts/tier colors — orthogonal.
+ */
+export function useSkinAccent(): Accent {
+  const skin = useSkinOrNull();
+  const pref = useSettingsStore((s) => s.aestheticPref);
+  return useMemo(() => makeAccent(skin != null ? skin.palette.accent : getTheme(pref).accent), [skin, pref]);
 }
 
 /**
@@ -57,8 +75,9 @@ export function Screen({
   style?: StyleProp<ViewStyle>;
   background?: React.ReactNode;
 }) {
+  const skin = useSkinOrNull();
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, skin != null && { backgroundColor: skin.palette.bg0 }]}>
       {background}
       <SafeAreaView style={[styles.screen, style]}>{children}</SafeAreaView>
     </View>
@@ -67,15 +86,21 @@ export function Screen({
 
 /** Overline section header — pure text3, no accent, no rules/ticks. Korean strings get ≤0.5 tracking. */
 export function SectionTitle({ children }: { children: React.ReactNode }) {
+  const skin = useSkinOrNull();
   const letterSpacing =
     typeof children === 'string' ? hangulSafeLetterSpacing(children, tracking.overline) : tracking.overline;
-  return <Text style={[styles.section, { letterSpacing }]}>{children}</Text>;
+  return (
+    <Text style={[styles.section, skin != null && { color: skin.palette.text3 }, { letterSpacing }]}>{children}</Text>
+  );
 }
 
 /**
  * Card — 3-layer machined panel: surface1 body + 1pt `line` border + 1pt top edge-highlight
  * (light falling on the top edge). `live` marks THE one alive card per screen with a 2pt accent
  * rail and flips the `eyebrow` overline to accent. No shadows, no colored borders.
+ *
+ * With a SkinProvider mounted, chrome is delegated to HudPanel (skin shape/material/texture/marks
+ * — static Skia); `live` becomes the skin's accent edge emphasis.
  */
 export function Card({
   children,
@@ -90,22 +115,34 @@ export function Card({
   /** Optional overline rendered inside the card top (text3; accent.solid when live). */
   eyebrow?: string;
 }) {
-  const accent = useAccent();
+  const skin = useSkinOrNull();
+  const accent = useSkinAccent();
+  const eyebrowNode =
+    eyebrow != null ? (
+      <Text
+        style={[
+          styles.cardEyebrow,
+          skin != null && { color: skin.palette.text3 },
+          { letterSpacing: hangulSafeLetterSpacing(eyebrow, tracking.overline) },
+          live && { color: accent.solid },
+        ]}
+      >
+        {eyebrow}
+      </Text>
+    ) : null;
+  if (skin != null) {
+    return (
+      <HudPanel live={live} style={[styles.cardPad, style]}>
+        {eyebrowNode}
+        {children}
+      </HudPanel>
+    );
+  }
   return (
     <View style={[styles.card, style]}>
       <View pointerEvents="none" style={styles.cardEdge} />
       {live ? <View pointerEvents="none" style={[styles.cardRail, { backgroundColor: accent.solid }]} /> : null}
-      {eyebrow != null ? (
-        <Text
-          style={[
-            styles.cardEyebrow,
-            { letterSpacing: hangulSafeLetterSpacing(eyebrow, tracking.overline) },
-            live && { color: accent.solid },
-          ]}
-        >
-          {eyebrow}
-        </Text>
-      ) : null}
+      {eyebrowNode}
       {children}
     </View>
   );
@@ -127,7 +164,8 @@ export function Pill({
   /** @deprecated Ignored — active tint always uses the persona accent. */
   color?: string;
 }) {
-  const accent = useAccent();
+  const skin = useSkinOrNull();
+  const accent = useSkinAccent();
   return (
     <Pressable
       onPress={onPress}
@@ -139,11 +177,14 @@ export function Pill({
       hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
       style={({ pressed }) => [
         styles.pill,
+        skin != null && { backgroundColor: skin.palette.surface2, borderColor: skin.palette.line },
         active && { backgroundColor: accent.fill, borderColor: accent.border },
         pressed && { opacity: 0.7 },
       ]}
     >
-      <Text style={[styles.pillLabel, active && { color: accent.solid }]}>{label}</Text>
+      <Text style={[styles.pillLabel, skin != null && { color: skin.palette.text2 }, active && { color: accent.solid }]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -154,6 +195,10 @@ export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
  * The button. `primary` (solid accent) is THE one CTA per screen — log set / finish session.
  * `secondary` = accent tint-fill; `ghost` = neutral surface for demote-able actions. Pressed
  * state is a surface-step/opacity change only — no scale/bounce, no shadows.
+ *
+ * With a skin active, `primary` takes the skin CTA chrome (shape + gradient + textColor from
+ * skin.cta; `logWord` is the quicklog CTA's copy only — the label prop always wins here). The
+ * chamfer/gradient fill is ONE static Skia canvas; skew is a plain View transform.
  */
 export function Button({
   label,
@@ -171,8 +216,12 @@ export function Button({
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
-  const accent = useAccent();
+  const skin = useSkinOrNull();
+  const accent = useSkinAccent();
   const height = compact ? 36 : 48;
+  const cta = variant === 'primary' ? skin?.cta : undefined;
+  const paintsCanvas = cta != null && (cta.gradient != null || cta.shape === 'chamfer');
+  const skewed = cta?.shape === 'skew';
   return (
     <Pressable
       onPress={() => {
@@ -187,30 +236,46 @@ export function Button({
       style={({ pressed }) => [
         styles.button,
         { height },
-        variant === 'primary' && { backgroundColor: accent.solid },
+        cta != null && { borderRadius: cta.shape === 'slab' ? 3 : cta.shape === 'rect' ? radius.md : 0 },
+        skewed && styles.buttonSkew,
+        variant === 'primary' && { backgroundColor: paintsCanvas ? 'transparent' : accent.solid },
         variant === 'secondary' && {
           backgroundColor: pressed ? accent.fillActive : accent.fill,
           borderWidth: border.thin,
           borderColor: accent.border,
         },
         variant === 'ghost' && {
-          backgroundColor: pressed ? colors.surface3 : colors.surface2,
+          backgroundColor:
+            skin != null ? skin.palette.surface2 : pressed ? colors.surface3 : colors.surface2,
           borderWidth: border.thin,
-          borderColor: colors.line,
+          borderColor: skin != null ? skin.palette.line : colors.line,
         },
+        skin != null && variant === 'ghost' && pressed && { opacity: 0.8 },
         disabled && { opacity: 0.35 },
         !disabled && pressed && variant === 'primary' && { opacity: 0.85 },
         style,
       ]}
     >
-      <Text
-        style={[
-          compact ? styles.buttonLabelCompact : styles.buttonLabel,
-          { color: variant === 'primary' ? colors.bg0 : variant === 'secondary' ? accent.solid : colors.text2 },
-        ]}
-      >
-        {label}
-      </Text>
+      {paintsCanvas && cta != null ? <CtaSurface shape={cta.shape} gradient={cta.gradient} color={accent.solid} /> : null}
+      <View style={skewed ? styles.buttonUnskew : null}>
+        <Text
+          style={[
+            compact ? styles.buttonLabelCompact : styles.buttonLabel,
+            {
+              color:
+                variant === 'primary'
+                  ? (cta?.textColor ?? colors.bg0)
+                  : variant === 'secondary'
+                    ? accent.solid
+                    : skin != null
+                      ? skin.palette.text2
+                      : colors.text2,
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -259,8 +324,10 @@ export function IconSquare({
   glyphStyle?: StyleProp<TextStyle>;
   style?: StyleProp<ViewStyle>;
 }) {
+  const skin = useSkinOrNull();
   const size = compact ? 44 : 48;
   const blocked = disabled || busy;
+  const dangerColor = skin != null ? skin.palette.danger : colors.danger;
   return (
     <Pressable
       onPress={onPress}
@@ -271,14 +338,29 @@ export function IconSquare({
       style={({ pressed }) => [
         styles.iconSquare,
         { width: size, height: size },
-        tone === 'danger' && { backgroundColor: colors.danger, borderColor: colors.danger },
-        pressed && (tone === 'danger' ? { opacity: 0.85 } : { backgroundColor: colors.surface3 }),
+        skin != null && { backgroundColor: skin.palette.surface2, borderColor: skin.palette.line },
+        tone === 'danger' && { backgroundColor: dangerColor, borderColor: dangerColor },
+        pressed &&
+          (tone === 'danger'
+            ? { opacity: 0.85 }
+            : skin != null
+              ? { opacity: 0.8 }
+              : { backgroundColor: colors.surface3 }),
         busy && { opacity: 0.4 },
         disabled && !busy && { opacity: 0.35 },
         style,
       ]}
     >
-      <Text style={[styles.iconGlyph, tone === 'danger' && { color: colors.flash }, glyphStyle]}>{glyph}</Text>
+      <Text
+        style={[
+          styles.iconGlyph,
+          skin != null && { color: skin.palette.text2 },
+          tone === 'danger' && { color: colors.flash },
+          glyphStyle,
+        ]}
+      >
+        {glyph}
+      </Text>
     </Pressable>
   );
 }
@@ -288,12 +370,13 @@ export const Input = React.forwardRef<TextInput, TextInputProps>(function Input(
   { style, onFocus, onBlur, ...rest },
   ref,
 ) {
-  const accent = useAccent();
+  const skin = useSkinOrNull();
+  const accent = useSkinAccent();
   const [focused, setFocused] = useState(false);
   return (
     <TextInput
       ref={ref}
-      placeholderTextColor={colors.text3}
+      placeholderTextColor={skin != null ? skin.palette.text3 : colors.text3}
       {...rest}
       onFocus={(e) => {
         setFocused(true);
@@ -303,14 +386,30 @@ export const Input = React.forwardRef<TextInput, TextInputProps>(function Input(
         setFocused(false);
         onBlur?.(e);
       }}
-      style={[styles.input, style, focused && { borderColor: accent.border }]}
+      style={[
+        styles.input,
+        skin != null && {
+          backgroundColor: skin.palette.bg1,
+          borderColor: skin.palette.line,
+          color: skin.palette.text,
+        },
+        style,
+        focused && { borderColor: accent.border },
+      ]}
     />
   );
 });
 
+/** Segment notch pitch (px) for 'segment'/'skew-segment' bar styles. */
+const NOTCH_STEP = 14;
+
 /**
  * 6pt progress bar — recess track, accent fill; the fill flips to semantic green at 100%
  * (completion = achieved status, anti-shame §9).
+ *
+ * With a skin active the bar takes skin.bar: `heightPx`, and style 'segment' (overlaid bg notches),
+ * 'skew-segment' (same + skewX transform), or 'dual' (second 2pt echo track). All plain Views —
+ * no Skia, nothing animated.
  */
 export function ProgressTrack({
   progress,
@@ -323,17 +422,54 @@ export function ProgressTrack({
   complete?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
-  const accent = useAccent();
+  const skin = useSkinOrNull();
+  const accent = useSkinAccent();
+  const [trackW, setTrackW] = useState(0);
   const clamped = Math.max(0, Math.min(1, progress));
   const done = complete ?? clamped >= 1;
+  const barKind = skin?.bar.style ?? 'solid';
+  const heightPx = skin?.bar.heightPx ?? 6;
+  const segmented = barKind === 'segment' || barKind === 'skew-segment';
+  const fillColor = done ? (skin != null ? skin.palette.positive : colors.positive) : accent.solid;
+  const radiusPx = skin != null ? 2 : 3;
+
+  const notches = useMemo(() => {
+    if (!segmented || trackW < NOTCH_STEP * 2) return [];
+    const xs: number[] = [];
+    for (let x = NOTCH_STEP; x < trackW && xs.length < 48; x += NOTCH_STEP) xs.push(x);
+    return xs;
+  }, [segmented, trackW]);
+
+  const track = (
+    <View
+      onLayout={segmented ? (e) => setTrackW(Math.round(e.nativeEvent.layout.width)) : undefined}
+      style={[
+        styles.track,
+        skin != null && { height: heightPx, borderRadius: radiusPx, backgroundColor: skin.palette.bg1 },
+        barKind === 'skew-segment' && styles.trackSkew,
+        skin == null && style, // legacy contract: style lands on the track itself
+      ]}
+    >
+      <View style={[styles.trackFill, { borderRadius: radiusPx, width: `${clamped * 100}%`, backgroundColor: fillColor }]} />
+      {notches.map((x) => (
+        <View
+          key={x}
+          pointerEvents="none"
+          style={[styles.trackNotch, { left: x, backgroundColor: skin != null ? skin.palette.bg0 : colors.bg0 }]}
+        />
+      ))}
+    </View>
+  );
+
+  if (skin == null) return track;
   return (
-    <View style={[styles.track, style]}>
-      <View
-        style={[
-          styles.trackFill,
-          { width: `${clamped * 100}%`, backgroundColor: done ? colors.positive : accent.solid },
-        ]}
-      />
+    <View style={style}>
+      {track}
+      {barKind === 'dual' ? (
+        <View style={[styles.trackDual, { backgroundColor: skin.palette.bg1 }]}>
+          <View style={[styles.trackDualFill, { width: `${clamped * 100}%`, backgroundColor: fillColor }]} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -344,7 +480,7 @@ export function ProgressTrack({
  * Counts as glow slot 2 of 2 on a screen.
  */
 export function LiveDot({ style }: { style?: StyleProp<ViewStyle> }) {
-  const accent = useAccent();
+  const accent = useSkinAccent();
   return (
     <View style={[styles.liveHalo, { backgroundColor: accent.fillActive }, style]}>
       <View style={[styles.liveDot, { backgroundColor: accent.solid }]} />
@@ -368,13 +504,17 @@ const UNIT_SEAT: Record<MetricSize, { paddingBottom: number; marginLeft: number 
  * Number + unit micro-label atom — no naked numbers ship. Digits are Orbitron tabular-nums; the
  * unit ('CP', 'KG', 'G', 'KCAL', '%') is an 11pt uppercase Latin micro-label seated on the digit
  * baseline. Hero glow is applied by the caller via valueStyle (heroTextGlow) — Metric stays dumb.
+ *
+ * With a skin active and skin.hero.numberGradient set, hero-size digits (hero/heroXL, no explicit
+ * `color` override) render through a static Skia gradient (GradientDigits — repaints only when
+ * the value changes; falls back to plain Text until the font resolves).
  */
 export function Metric({
   value,
   unit,
   size = 'mid',
-  color = colors.text,
-  unitColor = colors.text3,
+  color,
+  unitColor,
   style,
   valueStyle,
   unitStyle,
@@ -388,15 +528,42 @@ export function Metric({
   valueStyle?: StyleProp<TextStyle>;
   unitStyle?: StyleProp<TextStyle>;
 }) {
+  const skin = useSkinOrNull();
   const seat = UNIT_SEAT[size];
+  const heroSize = size === 'hero' || size === 'heroXL';
+  // Hero digits take the skin's bright hero fill (accentHi — e.g. REACTOR's flat #BFF4FF .num);
+  // everything smaller stays plain text so inline stats never read accent-tinted.
+  const digitColor =
+    color ?? (skin != null ? (heroSize ? (skin.palette.accentHi ?? skin.palette.text) : skin.palette.text) : colors.text);
+  const resolvedUnitColor = unitColor ?? (skin != null ? skin.palette.text3 : colors.text3);
+  const spec = numType[size];
+  const hero =
+    skin != null &&
+    (size === 'hero' || size === 'heroXL') &&
+    color == null &&
+    skin.hero.numberGradient != null &&
+    skin.hero.numberGradient.length >= 2
+      ? { colors: skin.hero.numberGradient, glow: skin.hero.glowRadius }
+      : null;
   return (
     <View style={[styles.metricRow, style]}>
-      <Text style={[numType[size], { color }, valueStyle]}>{value}</Text>
+      {hero != null ? (
+        <GradientDigits
+          text={String(value)}
+          fontSize={typeof spec.fontSize === 'number' ? spec.fontSize : 17}
+          lineHeight={typeof spec.lineHeight === 'number' ? spec.lineHeight : 22}
+          colors={hero.colors}
+          glowRadius={hero.glow}
+          fallbackStyle={[spec, { color: digitColor }, valueStyle]}
+        />
+      ) : (
+        <Text style={[spec, { color: digitColor }, valueStyle]}>{value}</Text>
+      )}
       {unit != null ? (
         <Text
           style={[
             styles.metricUnit,
-            { color: unitColor, paddingBottom: seat.paddingBottom, marginLeft: seat.marginLeft },
+            { color: resolvedUnitColor, paddingBottom: seat.paddingBottom, marginLeft: seat.marginLeft },
             unitStyle,
           ]}
         >
@@ -408,7 +575,8 @@ export function Metric({
 }
 
 export function Muted({ children, style }: { children: React.ReactNode; style?: StyleProp<TextStyle> }) {
-  return <Text style={[styles.muted, style]}>{children}</Text>;
+  const skin = useSkinOrNull();
+  return <Text style={[styles.muted, skin != null && { color: skin.palette.text2 }, style]}>{children}</Text>;
 }
 
 const styles = StyleSheet.create({
@@ -431,6 +599,8 @@ const styles = StyleSheet.create({
   cardEdge: { position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: colors.edgeHi },
   cardRail: { position: 'absolute', left: 0, top: 0, bottom: 0, width: border.rail },
   cardEyebrow: { ...typeScale.overline, marginBottom: space.sm },
+  // Skin-delegated Card: HudPanel owns the chrome, Card only contributes its content padding.
+  cardPad: { padding: space.lg },
   button: {
     borderRadius: radius.md,
     paddingHorizontal: space.lg,
@@ -439,6 +609,9 @@ const styles = StyleSheet.create({
   },
   buttonLabel: { fontSize: 15, fontWeight: '600', letterSpacing: tracking.cta },
   buttonLabelCompact: { ...typeScale.label },
+  // Skin CTA 'skew': the surface leans, the label stays upright (counter-transform).
+  buttonSkew: { transform: [{ skewX: '-8deg' }] },
+  buttonUnskew: { transform: [{ skewX: '8deg' }] },
   // Spacing is owned by the container row (gap: space.sm) — no marginRight here, or gap rows double-space.
   pill: {
     height: 30,
@@ -473,6 +646,10 @@ const styles = StyleSheet.create({
   },
   track: { height: 6, borderRadius: 3, backgroundColor: colors.recess, overflow: 'hidden' },
   trackFill: { height: '100%', borderRadius: 3 },
+  trackSkew: { transform: [{ skewX: '-14deg' }] },
+  trackNotch: { position: 'absolute', top: 0, bottom: 0, width: 2 },
+  trackDual: { height: 2, marginTop: 3, borderRadius: 1, overflow: 'hidden' },
+  trackDualFill: { height: '100%', opacity: 0.55 },
   liveHalo: { width: 14, height: 14, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
   liveDot: { width: 6, height: 6, borderRadius: 3 },
   metricRow: { flexDirection: 'row', alignItems: 'flex-end' },

@@ -47,6 +47,7 @@ export function currentSettings(): UserSettings {
     targetWeightKg: s.targetWeightKg,
     proteinTargetG: s.proteinTargetG,
     aestheticPref: s.aestheticPref,
+    skinId: s.skinId,
     juiceIntensity: s.juiceIntensity,
     soundOn: s.soundOn,
     weightStep: s.weightStep,
