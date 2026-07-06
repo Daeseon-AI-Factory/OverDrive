@@ -73,6 +73,27 @@ export async function getCardioCountsForModalitiesOnDate(
   return Object.fromEntries(rows.map((r) => [r.modality, r.n]));
 }
 
+/** Cardio row tagged with its session's local calendar date — feeds the history daily timeline. */
+export type CardioLogWithDate = CardioLogRow & { date: string };
+
+/**
+ * READ-ONLY: every cardio log on/after `sinceDate` (local yyyy-mm-dd, from workout_session.date),
+ * newest day first, chronological within a day.
+ */
+export async function getCardioWithDateSince(
+  db: SQLiteDatabase,
+  sinceDate: string,
+  userId: string = LOCAL_USER_ID,
+): Promise<CardioLogWithDate[]> {
+  return db.getAllAsync<CardioLogWithDate>(
+    `SELECT cl.*, ws.date AS date FROM cardio_log cl
+     JOIN workout_session ws ON ws.id = cl.session_id
+     WHERE ws.user_id = ? AND ws.date >= ?
+     ORDER BY ws.date DESC, cl.logged_at ASC`,
+    [userId, sinceDate],
+  );
+}
+
 /**
  * Conditioning units since `sinceDate`: Σ min(minutes, 45) · (rpe/6), rpe defaulting to 6.
  * Fun heuristic feeding the Combat Power conditioning sub-score (spec §6.3).

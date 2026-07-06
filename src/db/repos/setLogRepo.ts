@@ -169,6 +169,27 @@ export async function deleteSet(db: SQLiteDatabase, setId: string): Promise<void
   await db.runAsync('DELETE FROM set_log WHERE id = ?', [setId]);
 }
 
+/** Set row tagged with its session's local calendar date — feeds the history daily timeline. */
+export type SetLogWithDate = SetLogRow & { date: string };
+
+/**
+ * READ-ONLY: every set on/after `sinceDate` (local yyyy-mm-dd, from workout_session.date — the
+ * day the workout belongs to), newest day first, chronological within a day.
+ */
+export async function getSetsWithDateSince(
+  db: SQLiteDatabase,
+  sinceDate: string,
+  userId: string = LOCAL_USER_ID,
+): Promise<SetLogWithDate[]> {
+  return db.getAllAsync<SetLogWithDate>(
+    `SELECT sl.*, ws.date AS date FROM set_log sl
+     JOIN workout_session ws ON ws.id = sl.session_id
+     WHERE ws.user_id = ? AND ws.date >= ?
+     ORDER BY ws.date DESC, sl.logged_at ASC`,
+    [userId, sinceDate],
+  );
+}
+
 /** Per-exercise stats for the weekly-boss picker: best-scoring set + recent training frequency. */
 export async function bossCandidates(
   db: SQLiteDatabase,

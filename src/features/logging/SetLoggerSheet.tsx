@@ -1,10 +1,11 @@
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getLastSetForExercise } from '@/db/repos/setLogRepo';
 import type { ExerciseRow } from '@/db/types';
+import { useEditIntentStore } from '@/features/quicklog/editIntentStore';
 import { displayToKg, formatWeight, kgToDisplay, weightStepDisplay, weightUnit } from '@/lib/units';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { Button, Muted, Pill } from '@/ui/primitives';
@@ -17,12 +18,16 @@ import { useLogSet } from './useLogSet';
  * tap, steppers replace the keyboard. Weight is shown/edited in the user's units (kg/lb) but stored
  * canonical kg. Stays open after logging. Calls the unchanged useLogSet hot path (→ JUICE fires).
  *
+ * Opens from TWO sources: the screen-level `exercise` prop (body-map picker) or the quicklog
+ * confirm-card's [수정] intent (editIntentStore) — the prop wins when both are set. The intent path
+ * prefills from the last set, which IS the just-logged set.
+ *
  * MONOLITH sheet chrome: opaque surface1 panel (no bleed-through under stepper digits), edge
  * highlight, lineStrong grabber. The log CTA is THE one solid-accent primary; repeat-last is the
  * tinted secondary.
  */
 export function SetLoggerSheet({
-  exercise,
+  exercise: exerciseProp,
   ensureSession,
   onClose,
 }: {
@@ -36,6 +41,14 @@ export function SetLoggerSheet({
   const logSet = useLogSet();
   const unitSystem = useSettingsStore((s) => s.unitSystem);
   const weightStepKg = useSettingsStore((s) => s.weightStep);
+
+  const intent = useEditIntentStore((s) => s.exercise);
+  // Strength only — cardio has its own sheet; the quicklog card hides [수정] for cardio anyway.
+  const exercise = exerciseProp ?? (intent?.type === 'strength' ? intent : null);
+  const close = useCallback(() => {
+    useEditIntentStore.getState().close();
+    onClose();
+  }, [onClose]);
 
   const isBw = exercise?.is_bodyweight === 1;
 
@@ -53,6 +66,7 @@ export function SetLoggerSheet({
     (async () => {
       const last = await getLastSetForExercise(db, exercise.id);
       if (!alive) return;
+      setCount(0); // fresh per-open counter — the intent path reopens without a key remount
       if (last) {
         setLastSet({ weightKg: last.weight, reps: last.reps, rir: last.rir });
         setWeight(Math.round(kgToDisplay(last.weight, unitSystem) * 10) / 10);
@@ -101,8 +115,8 @@ export function SetLoggerSheet({
   })();
 
   return (
-    <Modal visible={!!exercise} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
+    <Modal visible={!!exercise} transparent animationType="slide" onRequestClose={close}>
+      <Pressable style={styles.backdrop} onPress={close} />
       <View style={[styles.sheet, { paddingBottom: Math.max(space.lg, insets.bottom) }]}>
         <View pointerEvents="none" style={styles.sheetEdge} />
         {exercise ? (
@@ -169,7 +183,7 @@ export function SetLoggerSheet({
               onPress={() => commitKg(displayToKg(weight, unitSystem), reps, rir)}
               style={{ marginTop: space.sm }}
             />
-            <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={8}>
+            <Pressable onPress={close} style={styles.closeBtn} hitSlop={8}>
               <Muted>{t('logger.close')}</Muted>
             </Pressable>
           </>

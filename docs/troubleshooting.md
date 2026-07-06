@@ -429,3 +429,6 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: a873470 (eas.json submit profile), pipeline itself is ops (no code).
 - **Pattern**: EAS submit is a convenience queue, not the only path — with an ASC API key, altool direct upload is seconds and unblocks TestFlight instantly.
 <!-- override-trigger: 112b1b9 docs(log): first-dogfood verdict + 45-finding audit pass (41b3885, a873470) [no-log] — log-commit recursion (same footgun as 57d4e56 and 21f2909): 112b1b9 IS the dual-write log commit — it only adds docs/troubleshooting.md entries (3) and content/logs/OverDrive/2026-07-03-first-dogfood-ux-pass.mdx, which LOG the actual work commits 41b3885 (UX pass) and a873470 (launch scaffolding). "audit" appears in the log commit's subject describing what was logged, not in any code change. The audited work itself is fully dual-written by exactly this commit. Third occurrence of this footgun — keep trigger keywords out of log-commit subjects. -->
+<!-- skipped: 9bc7747 docs: override note for 112b1b9 log-commit recursion [no-log] -->
+<!-- skipped: 05d304a docs(log): MONOLITH visual language T2 record (ac0d450) [no-log] -->
+<!-- skipped: 138a64a docs(log): HUD skin engine T2 record (ab1eaba) [no-log] -->

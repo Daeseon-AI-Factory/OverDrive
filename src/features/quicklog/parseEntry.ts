@@ -24,33 +24,53 @@ export interface ParsedSet {
 }
 
 export type ParseResult =
-  | { ok: true; set: ParsedSet }
+  | {
+      ok: true;
+      set: ParsedSet;
+      /**
+       * Present ONLY when the exercise match is genuinely ambiguous (≥2 catalog entries whose best
+       * matched alias is within 2 normalized chars of the winner). Ordered best-first; `set` is
+       * still parsed against candidates[0], so callers that ignore this field behave exactly as
+       * before. UI may offer a one-tap disambiguation instead of silently saving.
+       */
+      candidates?: ParseCandidate[];
+    }
   | { ok: false; reason: 'empty' | 'no_exercise' | 'no_reps'; text: string };
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
+
+/** How close (in normalized alias chars) a rival match must be to the winner to count as a near-tie. */
+const NEAR_TIE_CHARS = 2;
 
 /** Parse one free-text entry into a set. `unitSystem` interprets bare weights with no explicit unit. */
 export function parseEntry(raw: string, catalog: ParseCandidate[], unitSystem: UnitSystem = 'metric'): ParseResult {
   const text = (raw ?? '').trim();
   if (!text) return { ok: false, reason: 'empty', text: raw };
 
-  // --- exercise match: longest alias contained in the normalized text wins ---
+  // --- exercise match: longest alias contained in the normalized text wins. Every entry keeps its
+  // own best match so near-ties can be surfaced as disambiguation candidates. ---
   const ntext = norm(text);
-  let best: ParseCandidate | null = null;
-  let bestLen = 0;
-  let bestAlias = '';
+  const matches: { c: ParseCandidate; len: number; alias: string }[] = [];
   for (const c of catalog) {
-    for (const alias of [c.name, ...c.aliases]) {
-      const na = norm(alias);
+    let len = 0;
+    let alias = '';
+    for (const a of [c.name, ...c.aliases]) {
+      const na = norm(a);
       if (na.length < 2) continue;
-      if (ntext.includes(na) && na.length > bestLen) {
-        best = c;
-        bestLen = na.length;
-        bestAlias = alias;
+      if (ntext.includes(na) && na.length > len) {
+        len = na.length;
+        alias = a;
       }
     }
+    if (len > 0) matches.push({ c, len, alias });
   }
-  if (!best) return { ok: false, reason: 'no_exercise', text: raw };
+  if (matches.length === 0) return { ok: false, reason: 'no_exercise', text: raw };
+  // Stable sort → exact-length ties keep catalog order, i.e. the SAME winner as the old
+  // first-strictly-longer loop. Backward compatible by construction.
+  matches.sort((x, y) => y.len - x.len);
+  const best = matches[0].c;
+  const bestAlias = matches[0].alias;
+  const near = matches.filter((m) => m.len >= matches[0].len - NEAR_TIE_CHARS).map((m) => m.c);
 
   const lower = text.toLowerCase();
 
@@ -103,5 +123,6 @@ export function parseEntry(raw: string, catalog: ParseCandidate[], unitSystem: U
   return {
     ok: true,
     set: { exerciseId: best.id, exerciseName: best.name, weightKg: Math.round(weightKg * 100) / 100, reps, rir },
+    ...(near.length > 1 ? { candidates: near } : {}),
   };
 }

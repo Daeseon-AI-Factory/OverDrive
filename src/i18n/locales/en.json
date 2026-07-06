@@ -87,6 +87,14 @@
     "prBadge": "PR ⚡",
     "weekly": "This week",
     "noneThisWeek": "Not trained this week",
+    "timeline": "Daily timeline",
+    "day": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "date": "{month}/{day}"
+    },
+    "emptyCta": "Log your first set",
+    "deleteHint": "Long-press to delete this set.",
     "delete": {
       "title": "Delete this set?",
       "confirm": "Delete",

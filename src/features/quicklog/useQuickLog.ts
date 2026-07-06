@@ -2,15 +2,18 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ensureExercise, getRecentExercises } from '@/db/repos/setLogRepo';
+import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
+import { deleteSet, ensureExercise, getRecentExercises, getSetCountsForExercisesOnDate } from '@/db/repos/setLogRepo';
 import type { ExerciseRow } from '@/db/types';
 import { useForge } from '@/features/forge/useForge';
 import { useSessionStore } from '@/features/forge/sessionStore';
 import { useLogSet } from '@/features/logging/useLogSet';
+import { todayLocal } from '@/lib/date';
 import { formatWeight } from '@/lib/units';
+import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { QUICKLOG_ENDPOINT } from './config';
-import { parseEntry, type ParseCandidate } from './parseEntry';
+import { parseEntry, type ParseCandidate, type ParsedSet } from './parseEntry';
 import { parseEntryAI } from './parseEntryAI';
 
 export interface RecentChip {
@@ -22,10 +25,34 @@ export interface RecentChip {
   isBodyweight: boolean;
 }
 
+/** Everything the confirm-as-undo card needs to display and to act on the JUST-saved set. */
+export interface SavedQuickSet {
+  setId: string;
+  exerciseId: string;
+  /** Resolved catalog row (null only if a just-created ad-hoc exercise failed to load back). */
+  exercise: ExerciseRow | null;
+  /** Localized display name (what the user saw echoed). */
+  name: string;
+  weightKg: number;
+  reps: number;
+  rir: number | null;
+  /** weight×reps — what recordSet fed the Forge session; undo hands it back to undoSet. */
+  volumeKg: number;
+  /** Sets logged today for this exercise, INCLUDING this one. */
+  setCountToday: number;
+}
+
+export type QuickSubmitResult =
+  | { ok: true; summary: string; saved: SavedQuickSet[] }
+  /** Genuinely ambiguous parse — NOTHING was saved; offer `options` for a one-tap submitWith(). */
+  | { ok: false; reason: 'ambiguous'; options: ParseCandidate[] }
+  | { ok: false; reason: 'empty' | 'no_exercise' | 'no_reps' | 'no_session' | 'ai_offline' };
+
 /**
  * The brain behind the one-input QuickLog: load the exercise catalog (→ parser aliases) + recent
  * lifts (→ one-tap repeat chips), and log either a typed/spoken line or a tapped chip through the
  * unchanged logging hot path (so JUICE fires). First log auto-enters the Forge session.
+ * Every save resolves to a SavedQuickSet (id + exercise) so the confirm card can undo/edit it.
  */
 export function useQuickLog() {
   const db = useSQLiteContext();
@@ -86,102 +113,173 @@ export function useQuickLog() {
     [unitSystem],
   );
 
+  /** Catalog row for an id — exMap cache, else DB (just-created ad-hoc exercises). */
+  const getExerciseRow = useCallback(
+    async (id: string): Promise<ExerciseRow | null> => {
+      const hit = exMap.current.get(id);
+      if (hit) return hit;
+      const row = await db.getFirstAsync<ExerciseRow>('SELECT * FROM exercise WHERE id = ?', [id]);
+      if (row) exMap.current.set(id, row);
+      return row ?? null;
+    },
+    [db],
+  );
+
+  /**
+   * The ONE save path for every quicklog entry (typed/voice/AI/chip/candidate-pick): unchanged
+   * logging hot path first (save → CP → JUICE), then the cheap post-save lookups the confirm card
+   * needs (today's set count). Nothing here runs before the durable write.
+   */
+  const saveParsed = useCallback(
+    async (set: ParsedSet): Promise<{ ok: true; summary: string; saved: SavedQuickSet } | { ok: false; reason: 'no_session' }> => {
+      const sid = await ensureSession();
+      if (!sid) return { ok: false, reason: 'no_session' };
+      const ex = exMap.current.get(set.exerciseId) ?? null;
+      const { setId } = await logSet({
+        sessionId: sid,
+        exerciseId: set.exerciseId,
+        weight: set.weightKg,
+        reps: set.reps,
+        rir: set.rir,
+        hitTargetReps: ex ? set.reps >= ex.rep_low : true,
+        loggedVia: 'quick',
+      });
+      void load();
+      // Post-save decoration for the confirm card — the set is already durable above.
+      let setCountToday = 1;
+      try {
+        const counts = await getSetCountsForExercisesOnDate(db, [set.exerciseId], todayLocal());
+        setCountToday = counts[set.exerciseId] ?? 1;
+      } catch {
+        // count is cosmetic — never fail a save over it
+      }
+      return {
+        ok: true,
+        summary: setSummary(set.exerciseName, set.weightKg, set.reps),
+        saved: {
+          setId,
+          exerciseId: set.exerciseId,
+          exercise: ex,
+          name: set.exerciseName,
+          weightKg: set.weightKg,
+          reps: set.reps,
+          rir: set.rir,
+          volumeKg: set.weightKg * set.reps,
+          setCountToday,
+        },
+      };
+    },
+    [db, ensureSession, logSet, load, setSummary],
+  );
+
   /**
    * Parse + log one free-text line. LOCAL-FIRST (spec: logging speed > flashiness): the on-device
    * rule parser runs FIRST, so a clean "벤치 100 5" is saved + JUICE-fired instantly with zero
-   * network wait. Only lines the rules can't read (messy language / multi-set) go to the AI proxy,
-   * bounded by a short timeout so logging never hangs on gym LTE. Returns ok + a summary of what
-   * was saved, or a reason for a hint ('ai_offline' = AI unreachable, distinct from parse failures).
+   * network wait. A genuinely ambiguous match (near-tie candidates) saves NOTHING and returns
+   * 'ambiguous' + options so the UI can offer a one-tap pick (submitWith). Only lines the rules
+   * can't read (messy language / multi-set) go to the AI proxy, bounded by a short timeout so
+   * logging never hangs on gym LTE.
    */
   const submitText = useCallback(
-    async (text: string): Promise<{ ok: boolean; reason?: string; summary?: string }> => {
+    async (text: string): Promise<QuickSubmitResult> => {
       // 1) On-device rule parser — instant, offline, the common path.
       const local = parseEntry(text, candidates, unitSystem);
       if (local.ok) {
-        const sid = await ensureSession();
-        if (!sid) return { ok: false, reason: 'no_session' };
-        const ex = exMap.current.get(local.set.exerciseId);
-        await logSet({
-          sessionId: sid,
-          exerciseId: local.set.exerciseId,
-          weight: local.set.weightKg,
-          reps: local.set.reps,
-          rir: local.set.rir,
-          hitTargetReps: ex ? local.set.reps >= ex.rep_low : true,
-          loggedVia: 'quick',
-        });
-        void load();
-        return { ok: true, summary: setSummary(local.set.exerciseName, local.set.weightKg, local.set.reps) };
+        if (local.candidates != null && local.candidates.length > 1) {
+          return { ok: false, reason: 'ambiguous', options: local.candidates };
+        }
+        const r = await saveParsed(local.set);
+        return r.ok ? { ok: true, summary: r.summary, saved: [r.saved] } : r;
       }
 
       // 2) AI fallback — only for what the rules couldn't read (and only if an endpoint is configured).
       if (QUICKLOG_ENDPOINT) {
+        let sets: ParsedSet[];
         try {
           const ctrl = new AbortController();
           const timer = setTimeout(() => ctrl.abort(), 3500); // never hang logging on a slow network
-          let sets;
           try {
             sets = await parseEntryAI(text, candidates, unitSystem, QUICKLOG_ENDPOINT, ctrl.signal);
           } finally {
             clearTimeout(timer);
-          }
-          if (sets.length > 0) {
-            const sid = await ensureSession();
-            if (sid) {
-              for (const s of sets) {
-                // catalog match, or create the exercise on the fly (burpees, farmer's walk, …)
-                const exId =
-                  s.exerciseId && exMap.current.has(s.exerciseId)
-                    ? s.exerciseId
-                    : await ensureExercise(db, { name: s.exerciseName, isBodyweight: s.isBodyweight });
-                const ex = exMap.current.get(exId);
-                await logSet({
-                  sessionId: sid,
-                  exerciseId: exId,
-                  weight: s.weightKg,
-                  reps: s.reps,
-                  rir: s.rir,
-                  hitTargetReps: ex ? s.reps >= ex.rep_low : true,
-                  loggedVia: 'quick',
-                });
-              }
-              void load();
-              const head = setSummary(sets[0].exerciseName, sets[0].weightKg, sets[0].reps);
-              return { ok: true, summary: sets.length > 1 ? `${head}  +${sets.length - 1}` : head };
-            }
           }
         } catch {
           // network / timeout / proxy error — the set was NOT parseable on-device either, so tell
           // the user the AI is unreachable (actionable: use the "name weight reps" format).
           return { ok: false, reason: 'ai_offline' };
         }
+        if (sets.length > 0) {
+          const savedAll: SavedQuickSet[] = [];
+          for (const s of sets) {
+            // catalog match, or create the exercise on the fly (burpees, farmer's walk, …)
+            const exId =
+              s.exerciseId && exMap.current.has(s.exerciseId)
+                ? s.exerciseId
+                : await ensureExercise(db, { name: s.exerciseName, isBodyweight: s.isBodyweight });
+            await getExerciseRow(exId); // warm exMap so saveParsed sees the fresh row
+            const r = await saveParsed({ ...s, exerciseId: exId });
+            if (!r.ok) return r;
+            savedAll.push(r.saved);
+          }
+          const head = setSummary(sets[0].exerciseName, sets[0].weightKg, sets[0].reps);
+          return {
+            ok: true,
+            summary: sets.length > 1 ? `${head}  +${sets.length - 1}` : head,
+            saved: savedAll,
+          };
+        }
       }
 
       // Neither the rules nor the AI could read it → parse-failure hint (format guidance).
       return { ok: false, reason: local.reason };
     },
-    [db, candidates, unitSystem, ensureSession, logSet, load, setSummary],
+    [db, candidates, unitSystem, saveParsed, getExerciseRow, setSummary],
   );
 
-  /** One-tap repeat of a recent lift (same weight×reps). */
+  /**
+   * Resolve an ambiguous entry with the exercise the user tapped: re-parse the SAME text against
+   * only that candidate (so ITS alias is the one stripped before number reading) and save through
+   * the identical instant path.
+   */
+  const submitWith = useCallback(
+    async (text: string, option: ParseCandidate): Promise<QuickSubmitResult> => {
+      const r = parseEntry(text, [option], unitSystem);
+      if (!r.ok) return { ok: false, reason: r.reason };
+      const s = await saveParsed(r.set);
+      return s.ok ? { ok: true, summary: s.summary, saved: [s.saved] } : s;
+    },
+    [unitSystem, saveParsed],
+  );
+
+  /** One-tap repeat of a recent lift (same weight×reps). Returns the saved set for the confirm card. */
   const repeat = useCallback(
-    async (chip: RecentChip): Promise<void> => {
-      const sid = await ensureSession();
-      if (!sid) return;
-      const ex = exMap.current.get(chip.exerciseId);
-      await logSet({
-        sessionId: sid,
+    async (chip: RecentChip): Promise<SavedQuickSet | null> => {
+      const r = await saveParsed({
         exerciseId: chip.exerciseId,
-        weight: chip.weight,
+        exerciseName: chip.name,
+        weightKg: chip.weight,
         reps: chip.reps,
         rir: chip.rir,
-        hitTargetReps: ex ? chip.reps >= ex.rep_low : true,
-        loggedVia: 'quick',
       });
-      void load();
+      return r.ok ? r.saved : null;
     },
-    [ensureSession, logSet, load],
+    [saveParsed],
   );
 
-  return { candidates, recents, submitText, repeat };
+  /**
+   * Undo the JUST-saved set (confirm card [취소]): delete the row, hand its volume back to the
+   * Forge session counters, recompute Combat Power (same pattern as history.tsx onDeleteSet).
+   */
+  const undoSave = useCallback(
+    async (saved: SavedQuickSet): Promise<void> => {
+      await deleteSet(db, saved.setId);
+      useSessionStore.getState().undoSet(saved.volumeKg);
+      const result = await recomputeAndStore(db);
+      useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+      void load();
+    },
+    [db, load],
+  );
+
+  return { candidates, recents, submitText, submitWith, repeat, undoSave };
 }

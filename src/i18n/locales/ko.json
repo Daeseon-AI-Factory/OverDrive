@@ -66,6 +66,14 @@
     "prBadge": "PR ⚡",
     "weekly": "이번 주",
     "noneThisWeek": "이번 주 안 함",
+    "timeline": "일별 타임라인",
+    "day": {
+      "today": "오늘",
+      "yesterday": "어제",
+      "date": "{month}월 {day}일"
+    },
+    "emptyCta": "첫 세트 기록하러 가기",
+    "deleteHint": "꾹 눌러 이 세트를 삭제.",
     "delete": {
       "title": "이 세트 삭제?",
       "confirm": "삭제",

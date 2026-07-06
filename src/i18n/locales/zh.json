@@ -66,6 +66,14 @@
     "prBadge": "PR ⚡",
     "weekly": "本周",
     "noneThisWeek": "本周未训练",
+    "timeline": "每日时间线",
+    "day": {
+      "today": "今天",
+      "yesterday": "昨天",
+      "date": "{month}月{day}日"
+    },
+    "emptyCta": "去记录第一组",
+    "deleteHint": "长按删除这组。",
     "delete": {
       "title": "删除这组?",
       "confirm": "删除",

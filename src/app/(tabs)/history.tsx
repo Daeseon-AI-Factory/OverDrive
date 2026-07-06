@@ -1,48 +1,93 @@
+// HISTORY — a daily timeline. '주간' region-volume card pinned on top, then the last 14 days with
+// data as day sections (오늘/어제/M월 D일): summary digits + a vertical rail of exercise groups and
+// cardio entries. Long-press a set chip = delete (confirm Alert → deleteSet → recomputeAndStore).
+
 import { useSQLiteContext } from 'expo-sqlite';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
-import { deleteSet } from '@/db/repos/setLogRepo';
-import { EXERCISE_TO_REGION, type BodyRegionId } from '@/features/character/regions';
+import { getCardioWithDateSince } from '@/db/repos/cardioRepo';
+import { deleteSet, getSetsWithDateSince } from '@/db/repos/setLogRepo';
+import { EXERCISE_TO_REGION } from '@/features/character/regions';
+import { DayTimeline } from '@/features/history/DayTimeline';
+import { buildDaySections, type DaySection } from '@/features/history/timeline';
+import { emptyWeekly, WeeklyCard, type Weekly } from '@/features/history/WeeklyCard';
 import { localDateDaysAgo } from '@/lib/date';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
-import { formatWeight, kgToDisplay, weightUnit } from '@/lib/units';
-import { useSettingsStore } from '@/stores/settingsStore';
-import { Card, Metric, Muted, Screen, SectionTitle } from '@/ui/primitives';
-import { colors, hangulSafeLetterSpacing, space, tracking, typeScale } from '@/ui/theme/tokens';
+import { Button, Card, Muted, Screen, SectionTitle } from '@/ui/primitives';
+import { useSkin } from '@/ui/skins/SkinContext';
+import { space, typeScale } from '@/ui/theme/tokens';
 
-const WEEKLY_ORDER: BodyRegionId[] = ['chest', 'shoulders', 'back', 'arms', 'core', 'legs'];
-type Weekly = Record<BodyRegionId, { sets: number; volumeKg: number }>;
-const emptyWeekly = (): Weekly => ({
-  chest: { sets: 0, volumeKg: 0 },
-  shoulders: { sets: 0, volumeKg: 0 },
-  back: { sets: 0, volumeKg: 0 },
-  arms: { sets: 0, volumeKg: 0 },
-  core: { sets: 0, volumeKg: 0 },
-  legs: { sets: 0, volumeKg: 0 },
-});
+const TIMELINE_DAYS = 14;
 
-interface RecentRow {
-  id: string;
-  weight: number;
-  reps: number;
-  rir: number | null;
-  is_pr: number;
-  exercise_id: string;
+interface HistoryData {
+  weekly: Weekly;
+  weeklyCardio: { sessions: number; minutes: number };
+  days: DaySection[];
 }
 
 export default function HistoryScreen() {
   const db = useSQLiteContext();
   const { t } = useTranslation();
-  const unitSystem = useSettingsStore((s) => s.unitSystem);
-  const [weekly, setWeekly] = useState<Weekly>(emptyWeekly);
-  const [cardio, setCardio] = useState({ sessions: 0, minutes: 0 });
-  const [recent, setRecent] = useState<RecentRow[]>([]);
+  const router = useRouter();
+  const skin = useSkin();
+  const [data, setData] = useState<HistoryData>({
+    weekly: emptyWeekly(),
+    weeklyCardio: { sessions: 0, minutes: 0 },
+    days: [],
+  });
+
+  const load = useCallback(async (): Promise<HistoryData> => {
+    // '주간' pinned summary — last 7 days.
+    const weekSince = localDateDaysAgo(6);
+    const weekSets = await db.getAllAsync<{ exercise_id: string; weight: number; reps: number }>(
+      `SELECT sl.exercise_id, sl.weight, sl.reps FROM set_log sl
+       JOIN workout_session ws ON ws.id = sl.session_id WHERE ws.date >= ?`,
+      [weekSince],
+    );
+    const weekly = emptyWeekly();
+    for (const s of weekSets) {
+      const r = EXERCISE_TO_REGION[s.exercise_id];
+      if (r) {
+        weekly[r].sets += 1;
+        weekly[r].volumeKg += s.weight * s.reps;
+      }
+    }
+    const card = await db.getFirstAsync<{ n: number; sec: number }>(
+      `SELECT COUNT(*) AS n, COALESCE(SUM(cl.duration_sec), 0) AS sec FROM cardio_log cl
+       JOIN workout_session ws ON ws.id = cl.session_id WHERE ws.date >= ?`,
+      [weekSince],
+    );
+
+    // Daily timeline — last 14 days with data.
+    const since = localDateDaysAgo(TIMELINE_DAYS - 1);
+    const [sets, cardio] = await Promise.all([
+      getSetsWithDateSince(db, since),
+      getCardioWithDateSince(db, since),
+    ]);
+    return {
+      weekly,
+      weeklyCardio: { sessions: card?.n ?? 0, minutes: Math.round((card?.sec ?? 0) / 60) },
+      days: buildDaySections(sets, cardio),
+    };
+  }, [db]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      void load().then((d) => {
+        if (alive) setData(d);
+      });
+      return () => {
+        alive = false;
+      };
+    }, [load]),
+  );
 
   const onDeleteSet = useCallback(
-    (item: RecentRow, label: string) => {
+    (setId: string, label: string) => {
       Alert.alert(t('history.delete.title'), label, [
         { text: t('history.delete.cancel'), style: 'cancel' },
         {
@@ -50,8 +95,8 @@ export default function HistoryScreen() {
           style: 'destructive',
           onPress: () => {
             void (async () => {
-              await deleteSet(db, item.id);
-              setRecent((rs) => rs.filter((r) => r.id !== item.id));
+              await deleteSet(db, setId);
+              setData(await load());
               const result = await recomputeAndStore(db);
               useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
             })();
@@ -59,137 +104,30 @@ export default function HistoryScreen() {
         },
       ]);
     },
-    [db, t],
+    [db, load, t],
   );
-
-  useFocusEffect(
-    useCallback(() => {
-      let alive = true;
-      (async () => {
-        const since = localDateDaysAgo(6);
-        const sets = await db.getAllAsync<{ exercise_id: string; weight: number; reps: number }>(
-          `SELECT sl.exercise_id, sl.weight, sl.reps FROM set_log sl
-           JOIN workout_session ws ON ws.id = sl.session_id WHERE ws.date >= ?`,
-          [since],
-        );
-        const map = emptyWeekly();
-        for (const s of sets) {
-          const r = EXERCISE_TO_REGION[s.exercise_id];
-          if (r) {
-            map[r].sets += 1;
-            map[r].volumeKg += s.weight * s.reps;
-          }
-        }
-        const card = await db.getFirstAsync<{ n: number; sec: number }>(
-          `SELECT COUNT(*) AS n, COALESCE(SUM(cl.duration_sec), 0) AS sec FROM cardio_log cl
-           JOIN workout_session ws ON ws.id = cl.session_id WHERE ws.date >= ?`,
-          [since],
-        );
-        const r = await db.getAllAsync<RecentRow>(
-          `SELECT id, weight, reps, rir, is_pr, exercise_id FROM set_log ORDER BY logged_at DESC LIMIT 60`,
-        );
-        if (!alive) return;
-        setWeekly(map);
-        setCardio({ sessions: card?.n ?? 0, minutes: Math.round((card?.sec ?? 0) / 60) });
-        setRecent(r);
-      })();
-      return () => {
-        alive = false;
-      };
-    }, [db]),
-  );
-
-  const minUnit = t('cardio.min');
 
   return (
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space.xxl }}>
-        <Text style={styles.title}>{t('history.title')}</Text>
+        <Text style={[styles.title, { color: skin.palette.text }]}>{t('history.title')}</Text>
 
         <SectionTitle>{t('history.weekly')}</SectionTitle>
-        <Card>
-          {WEEKLY_ORDER.map((region) => {
-            const w = weekly[region];
-            const done = w.sets > 0;
-            return (
-              <View key={region} style={styles.weekRow}>
-                {/* Trained regions get full text, untrained recede to text3 — status by light, not hue. */}
-                <Text style={[styles.regionLabel, { color: done ? colors.text : colors.text3 }]}>
-                  {t(`region.${region}`)}
-                </Text>
-                {done ? (
-                  <View style={styles.statCluster}>
-                    <Metric value={w.sets} unit="SET" size="small" />
-                    {w.volumeKg > 0 ? (
-                      <>
-                        <Text style={styles.statDot}>·</Text>
-                        <Metric value={Math.round(kgToDisplay(w.volumeKg, unitSystem))} unit={weightUnit(unitSystem)} size="small" />
-                      </>
-                    ) : null}
-                  </View>
-                ) : (
-                  <Muted style={styles.none}>{t('history.noneThisWeek')}</Muted>
-                )}
-              </View>
-            );
-          })}
-          <View style={[styles.weekRow, styles.cardioRow]}>
-            <Text style={[styles.regionLabel, { color: cardio.sessions > 0 ? colors.text : colors.text3 }]}>
-              {t('today.cardioSheetTitle')}
-            </Text>
-            {cardio.sessions > 0 ? (
-              <View style={styles.statCluster}>
-                <Metric value={cardio.sessions} size="small" />
-                <Text style={styles.statDot}>·</Text>
-                <Metric
-                  value={cardio.minutes}
-                  unit={minUnit}
-                  size="small"
-                  unitStyle={{ letterSpacing: hangulSafeLetterSpacing(minUnit, tracking.overline) }}
-                />
-              </View>
-            ) : (
-              <Muted style={styles.none}>{t('history.noneThisWeek')}</Muted>
-            )}
-          </View>
-        </Card>
+        <WeeklyCard weekly={data.weekly} cardio={data.weeklyCardio} />
 
-        <SectionTitle>{t('history.title')}</SectionTitle>
-        {recent.length === 0 ? (
+        <SectionTitle>{t('history.timeline')}</SectionTitle>
+        {data.days.length === 0 ? (
+          // Honest empty state — nothing logged in the window yet; the only CTA is the first set.
           <Card>
             <Muted>{t('history.empty')}</Muted>
+            <View style={styles.emptyCta}>
+              <Button label={t('history.emptyCta')} onPress={() => router.navigate('/')} />
+            </View>
           </Card>
         ) : (
-          <Card style={styles.listCard}>
-            {recent.map((item, idx) => {
-              const main =
-                item.weight > 0
-                  ? `${formatWeight(item.weight, unitSystem)} × ${item.reps}`
-                  : t('history.repsOnly', { reps: item.reps });
-              const exName = t(`exercise.${item.exercise_id}`, { defaultValue: item.exercise_id });
-              return (
-                <Pressable
-                  key={item.id}
-                  style={({ pressed }) => [
-                    styles.row,
-                    idx < recent.length - 1 && styles.rowSep,
-                    pressed && styles.rowPressed,
-                  ]}
-                  onLongPress={() => onDeleteSet(item, `${exName} · ${main}`)}
-                  delayLongPress={400}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.ex}>{exName}</Text>
-                    <Muted>
-                      {main}
-                      {item.rir != null ? t('history.rirSuffix', { rir: item.rir }) : ''}
-                    </Muted>
-                  </View>
-                  {item.is_pr === 1 ? <Text style={styles.pr}>{t('history.prBadge')}</Text> : null}
-                </Pressable>
-              );
-            })}
-          </Card>
+          data.days.map((section) => (
+            <DayTimeline key={section.date} section={section} onDeleteSet={onDeleteSet} />
+          ))
         )}
       </ScrollView>
     </Screen>
@@ -197,24 +135,6 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { ...typeScale.title, color: colors.text, marginTop: space.lg },
-  weekRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: space.sm },
-  cardioRow: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, marginTop: space.xs },
-  regionLabel: { ...typeScale.body },
-  statCluster: { flexDirection: 'row', alignItems: 'flex-end', gap: space.xs },
-  statDot: { ...typeScale.caption, color: colors.text3, paddingBottom: 1 },
-  none: { color: colors.text3 },
-  // One machined panel for the whole log — rows + hairline seams instead of per-row mini-cards.
-  listCard: { padding: 0 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 52,
-    paddingHorizontal: space.lg,
-    paddingVertical: space.sm,
-  },
-  rowSep: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
-  rowPressed: { backgroundColor: colors.surface2 },
-  ex: { ...typeScale.body, color: colors.text },
-  pr: { ...typeScale.label, color: colors.positive },
+  title: { ...typeScale.title, marginTop: space.lg },
+  emptyCta: { marginTop: space.md },
 });

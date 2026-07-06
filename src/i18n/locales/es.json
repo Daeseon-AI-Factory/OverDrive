@@ -66,6 +66,14 @@
     "prBadge": "PR ⚡",
     "weekly": "Esta semana",
     "noneThisWeek": "Sin entrenar esta semana",
+    "timeline": "Línea de tiempo diaria",
+    "day": {
+      "today": "Hoy",
+      "yesterday": "Ayer",
+      "date": "{day}/{month}"
+    },
+    "emptyCta": "Registra tu primera serie",
+    "deleteHint": "Mantén pulsado para borrar esta serie.",
     "delete": {
       "title": "¿Borrar esta serie?",
       "confirm": "Borrar",
