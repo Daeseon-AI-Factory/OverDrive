@@ -432,3 +432,11 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 <!-- skipped: 9bc7747 docs: override note for 112b1b9 log-commit recursion [no-log] -->
 <!-- skipped: 05d304a docs(log): MONOLITH visual language T2 record (ac0d450) [no-log] -->
 <!-- skipped: 138a64a docs(log): HUD skin engine T2 record (ab1eaba) [no-log] -->
+
+## 기록 루프에 확인 단계가 없었다 — 오인식이 침묵 저장되고, 히스토리는 타임라인이 아니었다
+
+- **Symptom**: 빌더 실기기 피드백(빌드 7): "말하면 → 뭘 알아들었는지 좁혀서 보여주고 → 운동 그림(GIF처럼) → 최종 컨펌 → 일별 타임라인" 기대 대비, 코드 실측: 파서는 최장 별칭 매치 하나를 침묵 선택(후보 UI 없음), 운동 이미지 에셋 0개, 저장 후 텍스트 에코만(수정/취소 불가), history 탭은 주간 부위 집계+평면 최근 목록.
+- **Cause**: 스펙 §6(즉시 저장)을 "확인 단계 금지"로 과잉 해석. 확인·수정·시각 피드백이 전부 미구현.
+- **Fix**: save-first 유지 + confirm-as-undo 패턴. `exercise-art/`(12 동작 패밀리 2-키프레임 Skia 포즈 애니메이션, usePathInterpolation UI-thread 루프), parseEntry near-tie 후보 반환 → 애매할 때만 후보 칩(저장 보류), 저장 직후 ConfirmUndoCard(포즈+수치+[수정][취소], 4.5s 자동 소멸, undoSave→deleteSet+CP 재계산), history.tsx 일별 타임라인 재구축(일 요약 헤더+시간순 레일+PR 칩+운동별 그룹).
+- **Commit**: c723937
+- **Pattern**: "즉시 저장"과 "확실한 확인"은 충돌하지 않는다 — 저장을 먼저 하고 확인을 되돌리기로 만들면 둘 다 가진다.
