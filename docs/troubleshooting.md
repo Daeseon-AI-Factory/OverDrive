@@ -440,3 +440,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: save-first 유지 + confirm-as-undo 패턴. `exercise-art/`(12 동작 패밀리 2-키프레임 Skia 포즈 애니메이션, usePathInterpolation UI-thread 루프), parseEntry near-tie 후보 반환 → 애매할 때만 후보 칩(저장 보류), 저장 직후 ConfirmUndoCard(포즈+수치+[수정][취소], 4.5s 자동 소멸, undoSave→deleteSet+CP 재계산), history.tsx 일별 타임라인 재구축(일 요약 헤더+시간순 레일+PR 칩+운동별 그룹).
 - **Commit**: c723937
 - **Pattern**: "즉시 저장"과 "확실한 확인"은 충돌하지 않는다 — 저장을 먼저 하고 확인을 되돌리기로 만들면 둘 다 가진다.
+<!-- skipped: c04ae46 docs(log): certainty loop record (c723937) [no-log] -->

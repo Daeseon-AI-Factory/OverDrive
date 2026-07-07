@@ -2,19 +2,37 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
 import { getDisciplineToday, setDisciplineToday } from '@/db/repos/disciplineRepo';
 import { classifyEvent } from '@/features/juice/classifyEvent';
 import { useJuice } from '@/features/juice/JuiceProvider';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
-import { Card, Pill, SectionTitle } from '@/ui/primitives';
-import { space } from '@/ui/theme/tokens';
+import { Card, SectionTitle, useSkinAccent } from '@/ui/primitives';
+import { useSkinOrNull } from '@/ui/skins/SkinContext';
+import { border, colors, radius, space, typeScale } from '@/ui/theme/tokens';
 
 /**
  * One-tap daily discipline (protein hit / slept well). Feeds the Combat Power discipline component
  * (activates once tracked). Low-friction comprehensive-health toehold; food/sleep auto-import is Phase 2.
+ *
+ * DE-TEXTED: two BIG toggle tiles — the locale's emoji as the icon, the word at ≤12pt, state = the
+ * accent tint-fill + a positive ✓ (done = achieved status, §9). Same toggle path (optimistic →
+ * persist → CP recompute → JUICE on turn-on), zero prose.
  */
+
+// Locale labels are "<emoji> <word>" ("🥩 단백질") — split so the emoji becomes the tile icon and
+// only the word renders as (small) text. Labels without an emoji prefix render word-only.
+const LEAD_TOKEN = /^(\S+)\s+(.+)$/;
+function splitLabel(label: string): { icon: string | null; word: string } {
+  const m = LEAD_TOKEN.exec(label);
+  if (m) {
+    const first = m[1].codePointAt(0) ?? 0;
+    // Emoji / pictograph leading token (🥩 U+1F969, 😴 U+1F634, ☑ U+2611, …) — not a word.
+    if (first >= 0x1f000 || (first >= 0x2600 && first <= 0x27bf)) return { icon: m[1], word: m[2] };
+  }
+  return { icon: null, word: label };
+}
 export function DisciplineCard() {
   const db = useSQLiteContext();
   const { t } = useTranslation();
@@ -69,14 +87,43 @@ export function DisciplineCard() {
     [busy, protein, rest, db, juice],
   );
 
+  const skin = useSkinOrNull();
+  const accent = useSkinAccent();
+  const positive = skin != null ? skin.palette.positive : colors.positive;
+
+  const tile = (key: 'protein' | 'rest', active: boolean) => {
+    const label = t(`discipline.${key}`);
+    const { icon, word } = splitLabel(label);
+    return (
+      <Pressable
+        onPress={() => void toggle(key)}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ selected: active, busy }}
+        style={({ pressed }) => [
+          styles.tile,
+          skin != null && { backgroundColor: skin.palette.surface2, borderColor: skin.palette.line },
+          // Active = accent tint-fill (12%) + 40% border — never a solid neon fill (MONOLITH law).
+          active && { backgroundColor: accent.fill, borderColor: accent.border },
+          pressed && { opacity: 0.75 },
+        ]}
+      >
+        {active ? <Text style={[styles.check, { color: positive }]}>✓</Text> : null}
+        {icon != null ? <Text style={styles.icon}>{icon}</Text> : null}
+        <Text style={[styles.word, active && { color: accent.solid }]} numberOfLines={1}>
+          {word}
+        </Text>
+      </Pressable>
+    );
+  };
+
   return (
     <View style={styles.wrap}>
       <SectionTitle>{t('discipline.title')}</SectionTitle>
       <Card>
         <View style={styles.row}>
-          {/* Active state = persona-accent tint-fill via the Pill primitive — never a solid neon fill. */}
-          <Pill label={t('discipline.protein')} active={protein} onPress={() => toggle('protein')} />
-          <Pill label={t('discipline.rest')} active={rest} onPress={() => toggle('rest')} />
+          {tile('protein', protein)}
+          {tile('rest', rest)}
         </View>
       </Card>
     </View>
@@ -86,4 +133,19 @@ export function DisciplineCard() {
 const styles = StyleSheet.create({
   wrap: { marginTop: space.xs },
   row: { flexDirection: 'row', gap: space.sm },
+  // Big machined toggle block: icon + ≤12pt word; ~4× the old Pill's touch area.
+  tile: {
+    flex: 1,
+    minHeight: 84,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.xs,
+    borderRadius: radius.md,
+    borderWidth: border.thin,
+    borderColor: colors.line,
+    backgroundColor: colors.surface2,
+  },
+  icon: { fontSize: 28, lineHeight: 34 },
+  word: { ...typeScale.caption, color: colors.text2 },
+  check: { position: 'absolute', top: space.sm, right: space.sm + 2, ...typeScale.label },
 });

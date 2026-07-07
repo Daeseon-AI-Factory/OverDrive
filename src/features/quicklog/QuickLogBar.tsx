@@ -1,24 +1,23 @@
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import { ExercisePose } from '@/features/exercise-art/ExercisePose';
 import { exerciseFamily } from '@/features/exercise-art/families';
 import { formatWeight } from '@/lib/units';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { Button, IconSquare, Input } from '@/ui/primitives';
+import { Button, Input } from '@/ui/primitives';
 import { useSkinOrNull } from '@/ui/skins/SkinContext';
 import { border, colors, numType, radius, space, typeScale } from '@/ui/theme/tokens';
-import { QUICKLOG_ENDPOINT } from './config';
 import { ConfirmUndoCard } from './ConfirmUndoCard';
 import { useEditIntentStore } from './editIntentStore';
+import { MicButton, parseFailHint, type MicHintKind, type MicPending, type MicState } from './MicButton';
 import type { ParseCandidate } from './parseEntry';
-import { transcribeAudio } from './transcribe';
 import { useQuickLog, type RecentChip, type SavedQuickSet } from './useQuickLog';
 
 /**
  * The one input. Type or SPEAK "벤치 100 5" → parse → log → explosion. Or tap a recent lift to repeat.
- * Voice: hold-free toggle mic → record → Groq whisper transcribes (server-side key) → same parser.
+ * Voice: the whole record→transcribe→submit flow lives in MicButton (size 'bar'); the bar only
+ * wires its UI reactions (transcript echo, save card, hints) through the MicButton callbacks.
  * No menus, no body-map — killing choice overload. Manual full entry lives behind a "수동" toggle.
  *
  * Certainty loop (spec §6 — save-first stays sacred):
@@ -36,22 +35,22 @@ export function QuickLogBar() {
   const { t, i18n } = useTranslation();
   const skin = useSkinOrNull(); // themed CTA word (주입/단조/KO!…) — the skin's voice on the one log button
   const unitSystem = useSettingsStore((s) => s.unitSystem);
-  const locale = useSettingsStore((s) => s.locale); // transcribe in the UI language (Whisper code)
   const { recents, submitText, submitWith, repeat, undoSave } = useQuickLog();
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [text, setText] = useState('');
   const [hint, setHint] = useState<string | null>(null); // failure hints (warning text)
   const [confirm, setConfirm] = useState<string | null>(null); // "what got saved" echo (positive text)
-  const [busy, setBusy] = useState(false);
-  const [recording, setRecording] = useState(false);
-  const [transcribing, setTranscribing] = useState(false);
+  const [busy, setBusy] = useState(false); // typed submit / disambiguation pick in flight
+  const [micState, setMicState] = useState<MicState>('idle'); // mirrored from MicButton
   const [repeatingId, setRepeatingId] = useState<string | null>(null);
   // Disambiguation: the parse was a near-tie → NOTHING saved yet; one chip tap resolves it.
   const [pending, setPending] = useState<{ text: string; options: ParseCandidate[] } | null>(null);
   // Confirm-as-undo card for the JUST-saved set. A new save replaces it (nonce restarts its clock).
   const [card, setCard] = useState<{ nonce: number; saved: SavedQuickSet } | null>(null);
   const cardNonce = useRef(0);
-  const voiceGen = useRef(0); // bump = cancel the in-flight transcription (result gets dropped)
+
+  const recording = micState === 'recording';
+  const transcribing = micState === 'transcribing';
+  const anyBusy = busy || micState === 'submitting'; // typed OR voice submit — one shared lock
 
   const ko = i18n.language.startsWith('ko');
   // New copy not yet in the locale catalogs (owned elsewhere) — per-locale defaults until translated.
@@ -61,47 +60,53 @@ export function QuickLogBar() {
     setCard({ nonce: ++cardNonce.current, saved });
   }, []);
 
+  // ── Shared submit reactions (typed path + MicButton callbacks — identical by construction) ──
+  const onSaved = useCallback(
+    (saved: SavedQuickSet[], summary: string) => {
+      setText('');
+      setHint(null);
+      setPending(null);
+      setConfirm(summary ? `✓ ${summary}` : null); // echo WHAT was logged — misparses are visible
+      const last = saved[saved.length - 1]; // multi-set AI saves: the card acts on the newest
+      if (last) showCard(last);
+    },
+    [showCard],
+  );
+
+  const onAmbiguous = useCallback((p: MicPending) => {
+    // Nothing saved — keep the entered line (numbers retained) and ask which exercise.
+    setConfirm(null);
+    setHint(null);
+    setPending(p);
+  }, []);
+
+  const onMicHint = useCallback((msg: string | null, kind: MicHintKind) => {
+    if (kind === 'parse') {
+      // The line submitted but couldn't be parsed/saved — stale echo + pending row are invalid.
+      setConfirm(null);
+      setPending(null);
+    } else if (kind === 'save') {
+      setConfirm(null);
+    }
+    setHint(msg);
+  }, []);
+
   const runSubmit = useCallback(
     async (value: string) => {
       try {
         const r = await submitText(value);
-        if (r.ok) {
-          setText('');
-          setHint(null);
-          setPending(null);
-          setConfirm(r.summary ? `✓ ${r.summary}` : null); // echo WHAT was logged — misparses are visible
-          const last = r.saved[r.saved.length - 1]; // multi-set AI saves: the card acts on the newest
-          if (last) showCard(last);
-        } else if (r.reason === 'ambiguous') {
-          // Nothing saved — keep the typed line (numbers retained) and ask which exercise.
-          setConfirm(null);
-          setHint(null);
-          setPending({ text: value, options: r.options });
-        } else {
-          setConfirm(null);
-          setPending(null);
-          setHint(
-            r.reason === 'ai_offline'
-              ? t('quicklog.fail.ai_offline', {
-                  defaultValue: dv('AI 연결 실패 — "벤치 100 5" 형식으로 써봐.', 'Couldn\'t reach AI — try the "bench 100 5" format.'),
-                })
-              : r.reason === 'no_exercise'
-                ? t('quicklog.fail.no_exercise')
-                : r.reason === 'no_reps' || r.reason === 'empty'
-                  ? t('quicklog.fail.no_reps')
-                  : t('quicklog.fail.log'),
-          );
-        }
+        if (r.ok) onSaved(r.saved, r.summary);
+        else if (r.reason === 'ambiguous') onAmbiguous({ text: value, options: r.options });
+        else onMicHint(parseFailHint(r.reason, t, ko), 'parse');
       } catch {
-        setConfirm(null);
-        setHint(t('quicklog.fail.log'));
+        onMicHint(t('quicklog.fail.log'), 'save');
       }
     },
-    [submitText, showCard, t, dv],
+    [submitText, onSaved, onAmbiguous, onMicHint, t, ko],
   );
 
   const onSubmit = async () => {
-    if (!text.trim() || busy) return;
+    if (!text.trim() || anyBusy) return;
     setBusy(true);
     try {
       await runSubmit(text);
@@ -113,7 +118,7 @@ export function QuickLogBar() {
   /** Disambiguation chip tap → save with THAT exercise through the same instant path. */
   const onPick = useCallback(
     async (option: ParseCandidate) => {
-      if (!pending || busy) return;
+      if (!pending || anyBusy) return;
       setBusy(true);
       try {
         const r = await submitWith(pending.text, option);
@@ -134,7 +139,7 @@ export function QuickLogBar() {
         setBusy(false);
       }
     },
-    [pending, busy, submitWith, showCard, t],
+    [pending, anyBusy, submitWith, showCard, t],
   );
 
   /** Confirm card [수정] → open the screen-level SetLoggerSheet prefilled (via the intent store). */
@@ -159,74 +164,6 @@ export function QuickLogBar() {
     },
     [undoSave, t, dv],
   );
-
-  const toggleMic = useCallback(async () => {
-    // Escape hatch: tapping the mic while transcribing CANCELS the wait — the bar is never locked.
-    if (transcribing) {
-      voiceGen.current += 1;
-      setTranscribing(false);
-      setHint(null);
-      return;
-    }
-    if (!QUICKLOG_ENDPOINT) {
-      setHint(
-        t('quicklog.fail.voice_unavailable', {
-          defaultValue: dv('음성 기록은 지금 사용할 수 없어 — 직접 입력해줘.', "Voice logging isn't available right now — type it instead."),
-        }),
-      );
-      return;
-    }
-
-    if (recording) {
-      setRecording(false);
-      let gen = -1;
-      try {
-        await recorder.stop();
-        await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
-        const uri = recorder.uri;
-        if (!uri) {
-          setHint(t('quicklog.fail.no_recording'));
-          return;
-        }
-        gen = ++voiceGen.current;
-        setTranscribing(true);
-        const heard = await transcribeAudio(uri, QUICKLOG_ENDPOINT, locale); // transcribe in UI language
-        if (gen !== voiceGen.current) return; // cancelled mid-upload — drop the result silently
-        setTranscribing(false);
-        if (!heard) {
-          setHint(t('quicklog.fail.empty_voice'));
-          return;
-        }
-        setText(heard);
-        setBusy(true); // same in-flight state as a typed submit → visible "logging…" + no double submit
-        try {
-          await runSubmit(heard);
-        } finally {
-          setBusy(false);
-        }
-      } catch {
-        if (gen !== -1 && gen !== voiceGen.current) return; // cancelled — stay quiet
-        setTranscribing(false);
-        setHint(t('quicklog.fail.voice'));
-      }
-      return;
-    }
-
-    try {
-      const perm = await AudioModule.requestRecordingPermissionsAsync();
-      if (!perm.granted) {
-        setHint(t('quicklog.fail.mic_denied'));
-        return;
-      }
-      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-      await recorder.prepareToRecordAsync();
-      recorder.record();
-      setRecording(true);
-      setHint(null);
-    } catch {
-      setHint(t('quicklog.fail.record'));
-    }
-  }, [recording, transcribing, recorder, runSubmit, locale, t, dv]);
 
   const onRepeat = useCallback(
     async (chip: RecentChip) => {
@@ -264,12 +201,12 @@ export function QuickLogBar() {
     ? t('quicklog.recording')
     : transcribing
       ? t('quicklog.transcribing')
-      : busy
+      : anyBusy
         ? t('quicklog.logging', { defaultValue: dv('기록 중…', 'Logging…') })
         : (hint ?? confirm ?? t('quicklog.help'));
   const statusColor = recording
     ? colors.danger
-    : transcribing || busy
+    : transcribing || anyBusy
       ? colors.text3
       : hint
         ? colors.warning
@@ -291,18 +228,15 @@ export function QuickLogBar() {
       ) : null}
 
       <View style={styles.inputRow}>
-        <IconSquare
-          glyph={recording ? '●' : transcribing ? '✕' : '🎤︎'}
-          tone={recording ? 'danger' : 'neutral'}
-          onPress={() => void toggleMic()}
+        <MicButton
+          size="bar"
+          submit={submitText}
           disabled={busy}
-          accessibilityLabel={
-            recording
-              ? t('quicklog.stopRecording')
-              : transcribing
-                ? t('quicklog.cancelTranscribe', { defaultValue: dv('음성 인식 취소', 'Cancel voice transcription') })
-                : t('quicklog.startRecording')
-          }
+          onStateChange={setMicState}
+          onTranscript={setText}
+          onSaved={onSaved}
+          onAmbiguous={onAmbiguous}
+          onHint={onMicHint}
         />
         <Input
           value={text}
@@ -326,7 +260,7 @@ export function QuickLogBar() {
           onPress={() => void onSubmit()}
           variant="secondary"
           compact
-          disabled={!text.trim() || busy}
+          disabled={!text.trim() || anyBusy}
         />
       </View>
 
@@ -344,11 +278,11 @@ export function QuickLogBar() {
             <Pressable
               key={o.id}
               onPress={() => void onPick(o)}
-              disabled={busy}
+              disabled={anyBusy}
               accessibilityRole="button"
               accessibilityLabel={o.name}
-              accessibilityState={{ disabled: busy }}
-              style={[styles.pickChip, busy && styles.disabled]}
+              accessibilityState={{ disabled: anyBusy }}
+              style={[styles.pickChip, anyBusy && styles.disabled]}
               hitSlop={4}
             >
               <ExercisePose family={exerciseFamily(o.id)} size={22} animated={false} />

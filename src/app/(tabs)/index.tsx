@@ -6,11 +6,12 @@ import { ArenaCard } from '@/features/arena/ArenaCard';
 import { gradeForScore } from '@/features/combat-power/grades';
 import { MyCharacter } from '@/features/character/MyCharacter';
 import { CARDIO_EXERCISE_IDS, REGIONS, type BodyRegionId } from '@/features/character/regions';
+import { CoachCard } from '@/features/coach/CoachCard';
+import { MicDock } from '@/features/coach/MicDock';
 import { DailyGoalsCard } from '@/features/dailyGoals/DailyGoalsCard';
 import { DisciplineCard } from '@/features/discipline/DisciplineCard';
 import { FoodCard } from '@/features/food/FoodCard';
 import { AmbientAura } from '@/features/juice/AmbientAura';
-import { RestTimerBar } from '@/features/rest/RestTimerBar';
 import { ForgeBar } from '@/features/forge/ForgeBar';
 import { ForgeRitualOverlay } from '@/features/forge/ForgeRitualOverlay';
 import { useSessionStore } from '@/features/forge/sessionStore';
@@ -35,11 +36,12 @@ import {
 } from '@/ui/theme/tokens';
 
 /**
- * Today — ONE vertical scroll: Combat Power + the programmed Active Workout up top, then the card
- * stack (arena → daily goals → food → discipline → manual logging). Scroll down to reach everything.
- * Replaced the horizontal snap-paging deck: the primary user kept scrolling DOWN for Daily Goals and
- * the `flex: 1` deck squished each card into a thin strip. A plain vertical stack: nothing hidden
- * behind a sideways swipe, no scroll region competing with a fixed header for height.
+ * Today — ONE vertical scroll, ACTION FIRST: the CoachCard (next-action hero — the app decides,
+ * the user confirms) leads, with the full ActiveWorkoutCard collapsed behind its '자세히' toggle.
+ * Then the Combat Power shrine and the card stack (warrior → arena → daily goals → food →
+ * discipline → manual logging). The MicDock floats in the thumb zone so voice logging is one tap
+ * away at any scroll position. The standalone RestTimerBar is gone — the CoachCard owns the rest
+ * countdown (derived from the last save, incl. the rest-over ding).
  */
 export default function TodayScreen() {
   const { t } = useTranslation();
@@ -52,6 +54,7 @@ export default function TodayScreen() {
   const [activeRegion, setActiveRegion] = useState<BodyRegionId | null>(null);
   const [picker, setPicker] = useState<RegionPicker | null>(null);
   const [activeExercise, setActiveExercise] = useState<ExerciseRow | null>(null);
+  const [showDetail, setShowDetail] = useState(false); // ActiveWorkoutCard behind CoachCard's '자세히'
 
   // Implicit session start (first set / body-map tap): skip the 1.6s enter ritual so the gesture
   // completes immediately — JUICE must never block logging (spec §6). The ritual stays for an
@@ -101,6 +104,19 @@ export default function TodayScreen() {
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
       >
+        {/* THE hero surface — one glance, one button (next set / start / finish). ActiveWorkoutCard
+            stays reachable as the detail view behind the card's '자세히' toggle. */}
+        <CoachCard
+          ensureSession={ensureSession}
+          onOpenExercise={(exercise) => setActiveExercise(exercise)}
+          onFinishWorkout={finish}
+          detailOpen={showDetail}
+          onToggleDetail={() => setShowDetail((v) => !v)}
+        />
+        {showDetail ? (
+          <ActiveWorkoutCard ensureSession={ensureSession} onOpenCardio={(exercise) => setActiveExercise(exercise)} onFinishWorkout={finish} />
+        ) : null}
+
         {/* Shrine header — floats directly on the aura, no card chrome. Glow slot 1 of 2: the CP
             number's textShadow. Grade word is Anton (Latin only) — Korean grades fall back to the
             system font (Anton renders Hangul as tofu). Disclaimer = spec §8 fun-score label. */}
@@ -117,8 +133,6 @@ export default function TodayScreen() {
 
         <WarriorCard />
 
-        <ActiveWorkoutCard ensureSession={ensureSession} onOpenCardio={(exercise) => setActiveExercise(exercise)} onFinishWorkout={finish} />
-        <RestTimerBar />
         {/* Active-session bar only (timer · sets · 수련 완료). The idle '용광로 진입' button competed
             with ActiveWorkoutCard's own primary CTA and its hint claimed a false precondition —
             sessions auto-start on the first log / body-map tap. */}
@@ -131,6 +145,9 @@ export default function TodayScreen() {
         <QuickLogBar />
         <MyCharacter activeRegion={activeRegion} onRegionPress={onRegionPress} onCardioPress={onCardioPress} />
       </ScrollView>
+
+      {/* Floating voice log — one thumb tap from anywhere in the scroll (same instant save path). */}
+      <MicDock />
 
       <ExerciseRegionSheet
         picker={picker}

@@ -432,6 +432,8 @@
     "title": "Arena",
     "ahead": "You're AHEAD by {n}",
     "behind": "{n} behind — close the gap",
+    "statusAhead": "AHEAD",
+    "statusChasing": "CHASING",
     "weekYou": "YOU",
     "winning": "WINNING",
     "losing": "LOSING",

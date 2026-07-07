@@ -15,7 +15,7 @@ import { todayLocal } from '@/lib/date';
 import { displayToKg, formatDistance, formatWeight, kgToDisplay, weightStepDisplay, weightUnit } from '@/lib/units';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { Button, Card, IconSquare, LiveDot, Metric, Muted, Pill, useAccent } from '@/ui/primitives';
+import { Button, Card, IconSquare, Metric, Muted, Pill, useAccent } from '@/ui/primitives';
 import {
   border,
   colors,
@@ -106,10 +106,10 @@ function cardioPresetsFor(exerciseId: string): CardioPreset[] {
 }
 
 /**
- * Today's programmed workout — THE live card on the Today screen (MONOLITH: 2pt accent rail +
- * LiveDot + accent overline mark the one thing that is alive right now). Steppers are machined
- * IconSquares around Orbitron readouts; the complete-set CTA is the screen's single solid-accent
- * primary Button. Everything else recedes into the monochrome ladder.
+ * Today's programmed workout — the DETAIL surface behind the CoachCard's '자세히' toggle (the
+ * CoachCard is now THE live hero on Today; this card keeps the full steppers/RIR/preset controls
+ * for when the one-tap suggestion isn't what happened). Demoted chrome: neutral overline, no
+ * LiveDot, no live rail — at most ONE live card per screen.
  */
 export function ActiveWorkoutCard({
   ensureSession,
@@ -449,14 +449,13 @@ export function ActiveWorkoutCard({
   const eyebrowLabel = t('activeWorkout.eyebrow');
 
   return (
-    <Card live style={styles.card}>
-      {/* Glow slot 2 of 2 (Today screen): LiveDot + accent overline — this card is what's alive. */}
+    <Card style={styles.card}>
+      {/* Neutral overline — the live LiveDot/accent chrome moved to the CoachCard hero. */}
       <View style={styles.liveRow}>
-        <LiveDot />
         <Text
           style={[
             styles.eyebrow,
-            { color: accent.solid, letterSpacing: hangulSafeLetterSpacing(eyebrowLabel, tracking.overline) },
+            { color: colors.text3, letterSpacing: hangulSafeLetterSpacing(eyebrowLabel, tracking.overline) },
           ]}
         >
           {eyebrowLabel}

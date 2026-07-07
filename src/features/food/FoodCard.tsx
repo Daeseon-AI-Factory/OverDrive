@@ -12,7 +12,8 @@ import { QUICKLOG_ENDPOINT } from '@/features/quicklog/config';
 import { downscaleForUpload } from '@/lib/image';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { Button, Card, IconSquare, Input, Muted, ProgressTrack, SectionTitle, useAccent } from '@/ui/primitives';
+import { Button, Card, IconSquare, Input, Metric, Muted, SectionTitle, useAccent } from '@/ui/primitives';
+import { RingGauge } from '@/ui/RingGauge';
 import { colors, hangulSafeLetterSpacing, numType, space, tracking, typeScale } from '@/ui/theme/tokens';
 import * as ImagePicker from 'expo-image-picker';
 import { parseFoodPhoto, parseFoodText } from './parseFoodAI';
@@ -22,8 +23,9 @@ import { parseFoodPhoto, parseFoodText } from './parseFoodAI';
  * kcal+protein → logged. Hitting your protein target auto-completes the discipline protein check
  * (→ real Combat Power) with a JUICE pop. Photo mode rides the same /food endpoint (native batch).
  *
- * MONOLITH chrome: neutral Card, instrument-readout protein line (overline + Orbitron digits),
- * 6pt ProgressTrack (accent fill → positive at target). Status feedback is ≤13pt semantic text.
+ * DE-TEXTED instrument tile: the protein reading is a STATIC Skia ring gauge (g / target, accent →
+ * positive at target) with the digits in the center — no prose readout line. kcal is a Metric.
+ * The input row stays; hint/confirm text appears ONLY on a state change (failure / fresh log).
  */
 export function FoodCard() {
   const db = useSQLiteContext();
@@ -149,43 +151,43 @@ export function FoodCard() {
     <View style={styles.wrap}>
       <SectionTitle>{t('food.title')}</SectionTitle>
       <Card>
-        <View style={styles.statRow}>
-          <View style={styles.proteinCol}>
+        <View style={styles.gaugeRow}>
+          {/* Protein ring — the reading IS the instrument (digits in the center, arc = g/target). */}
+          <RingGauge
+            value={today.proteinG}
+            target={proteinTargetG ?? 0}
+            accessibilityLabel={`${proteinLabel} ${today.proteinG}${proteinTargetG ? ` / ${proteinTargetG}` : ''}g`}
+          >
+            <Text style={styles.ringNum}>{today.proteinG}</Text>
+            <Text style={styles.ringUnit}>G</Text>
+          </RingGauge>
+          <View style={styles.gaugeMeta}>
             <Text
               style={[styles.proteinOverline, { letterSpacing: hangulSafeLetterSpacing(proteinLabel, tracking.overline) }]}
             >
               {proteinLabel}
             </Text>
             {proteinTargetG ? (
-              <View style={styles.proteinValueRow}>
-                <Text style={styles.proteinNum}>{today.proteinG}</Text>
-                <Text style={styles.proteinTarget}>{` / ${proteinTargetG}g`}</Text>
-              </View>
+              <Text style={styles.proteinTarget}>{`/ ${proteinTargetG}g`}</Text>
             ) : (
-              // No target yet → a bare "0g" means nothing; offer the one-tap setup instead.
+              // No target yet → an empty ring means nothing; offer the one-tap setup instead.
               <Pressable
                 onPress={() => router.push('/settings')}
                 accessibilityRole="button"
                 accessibilityLabel={setTargetLabel}
                 hitSlop={8}
               >
-                <View style={styles.proteinValueRow}>
-                  {today.proteinG > 0 ? (
-                    <>
-                      <Text style={styles.proteinNum}>{today.proteinG}</Text>
-                      <Text style={styles.proteinTarget}>{'g · '}</Text>
-                    </>
-                  ) : null}
-                  <Text style={[styles.setTarget, { color: accent.solid }]}>{setTargetLabel}</Text>
-                </View>
+                <Text style={[styles.setTarget, { color: accent.solid }]}>{setTargetLabel}</Text>
               </Pressable>
             )}
+            {today.kcal > 0 ? (
+              // Localized full reading for screen readers — the visual is digits + micro-unit only.
+              <View accessible accessibilityLabel={t('food.kcal', { n: today.kcal })}>
+                <Metric value={today.kcal.toLocaleString()} unit="KCAL" size="mid" style={styles.kcal} />
+              </View>
+            ) : null}
           </View>
-          <Muted style={styles.kcal}>{today.kcal > 0 ? t('food.kcal', { n: today.kcal }) : ''}</Muted>
         </View>
-        {proteinTargetG ? (
-          <ProgressTrack progress={today.proteinG / proteinTargetG} style={styles.track} />
-        ) : null}
 
         <View style={styles.inputRow}>
           <IconSquare
@@ -228,17 +230,15 @@ export function FoodCard() {
 
 const styles = StyleSheet.create({
   wrap: { marginTop: space.xs },
-  statRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: space.md },
-  proteinCol: { flexShrink: 1 },
+  gaugeRow: { flexDirection: 'row', alignItems: 'center', gap: space.lg },
+  gaugeMeta: { flexShrink: 1, gap: space.xxs },
   proteinOverline: { ...typeScale.overline },
-  // Instrument readout: Orbitron digits + quiet " / target" — deliberately NOT alignItems:'baseline'
-  // (inconsistent across RN platforms with custom fonts); fixed seat paddings instead.
-  proteinValueRow: { flexDirection: 'row', alignItems: 'flex-end', marginTop: space.xxs },
-  proteinNum: { ...numType.mid, color: colors.text },
-  proteinTarget: { ...typeScale.caption, color: colors.text3, paddingBottom: 2 },
-  setTarget: { ...typeScale.caption, paddingBottom: 2 },
-  kcal: { color: colors.text2 },
-  track: { marginTop: space.sm },
+  // Ring center readout: Orbitron digits over a Latin micro-unit (Metric convention).
+  ringNum: { ...numType.mid, color: colors.text },
+  ringUnit: { fontSize: 10, fontWeight: '600', lineHeight: 12, letterSpacing: tracking.overline, color: colors.text3 },
+  proteinTarget: { ...typeScale.caption, color: colors.text3 },
+  setTarget: { ...typeScale.caption },
+  kcal: { marginTop: space.xs },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.md },
   input: { flex: 1 },
   hintText: { color: colors.warning, marginTop: space.xs },
