@@ -441,3 +441,11 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: c723937
 - **Pattern**: "즉시 저장"과 "확실한 확인"은 충돌하지 않는다 — 저장을 먼저 하고 확인을 되돌리기로 만들면 둘 다 가진다.
 <!-- skipped: c04ae46 docs(log): certainty loop record (c723937) [no-log] -->
+
+## 홈이 정보 나열이라 터치가 많았다 — 다음 액션 엔진으로 전환
+
+- **Symptom**: 빌더 실기기 피드백(빌드 9): "여전히 텍스트 위주, 액션별 분리가 안 됨, 손 대는 걸 최소화해야" — 세트 기록에 입력창 타이핑 또는 시트 조작 필요, 홈 카드들이 글줄 위주.
+- **Cause**: 홈이 '상태 표시' 중심 설계. 운동 중 실사용 순간(세트 사이 5초)에 필요한 건 다음 액션 하나인데 그걸 유저가 조립해야 했음.
+- **Fix**: src/features/coach/ — nextAction.ts 순수 상태 엔진(시작/휴식 중 제안/방치/마무리, 단위 테스트 21개), CoachCard 히어로(포즈+제안 세트 대형 숫자+자동 휴식 카운트다운+[했어] 원탭 → 기존 useLogSet 핫패스), MicButton 추출+홈 FAB(MicDock), RingGauge 등 4개 카드 탈텍스트 타일화. tsc 0/lint 0/jest 184.
+- **Commit**: 0ca0e20
+- **Pattern**: 모바일 도구 앱의 홈은 대시보드가 아니라 다음 액션의 버튼이어야 한다 — 상태는 엔진이 읽고, 유저는 확인만.
