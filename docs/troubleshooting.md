@@ -460,3 +460,11 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Pattern**: UI는 코드가 아니라 픽셀이 진실이다 — 모든 UI 변경은 시뮬레이터 스크린샷 검증 통과 후 출고(expo run:ios Release → 전 화면 캡처 → 육안 대조). textShadow는 새 아키텍처에서 금지, 글로우는 Skia로.
 <!-- override-trigger: 39bf77d docs(log): sim-audit visual pass record (c7c8852) [no-log] — log-commit recursion, FOURTH occurrence (57d4e56, 21f2909, 112b1b9): 39bf77d only appends the troubleshooting.md entry that LOGS work commit c7c8852; "audit" appears solely in the log commit's subject describing what was logged. The audited work is fully dual-written by exactly this commit. Root fix adopted: log-commit subjects will use neutral wording (e.g. "docs(log): record for <hash>") from now on. -->
 <!-- skipped: 3d95b57 docs: override note for 39bf77d [no-log] -->
+
+## 코치 원탭 루프가 앱 재실행 후 사라짐 — 진행 중 세션이 부팅 시 복원되지 않음
+
+- **Symptom**: 시뮬레이터에 진행 중 세션(오늘 스쿼트 2세트, 45초 전 마지막)을 seed하고 앱을 재실행하니, 홈 코치 카드가 "휴식 중·다음 세트" 대신 처음부터 "HIIT Intervals — Start"를 표시. 진행 중이던 운동을 앱이 잊음.
+- **Cause**: `sessionStore.activeSessionId`가 매 실행 `null`로 시작하는데 `Boot.tsx`가 DB의 open session(`completed_at IS NULL`)을 `resume()`하지 않음. `useCoachPlan.compute`는 `active = activeSessionId != null`로 게이트 → 세션이 DB엔 있지만 코치는 "세션 없음"으로 판단 → 휴식/다음세트/[했어] 루프 미표시. 헬스장에서 iOS가 백그라운드 앱을 죽이면 "손 최소화" 플래그십 루프가 소실.
+- **Fix**: `Boot.tsx` 하이드레이션에 `getOpenSessionForDate → getSessionActivitySummary → sessionStore.resume` 추가(기존 enter()/finish() 복원 경로와 동일 인프라 재사용). 휴식 앵커는 `useCoachPlan`이 set_log.logged_at에서 재파생하므로 resume(lastSetAt:null)로 충분. 시뮬레이터 seed→재실행으로 복원 확인(코치가 "IN SESSION·Set 3/3·100×5·Continue" 표시).
+- **Commit**: ba80eed
+- **Pattern**: 세션성 UX 상태(진행 중 운동)는 인메모리 스토어만이 아니라 부팅 시 DB에서 재수화해야 한다 — 모바일 앱은 언제든 죽고 다시 뜬다. 기능은 "한 세션 안에서" 되는 걸로 완성이 아니다.
