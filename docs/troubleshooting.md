@@ -459,3 +459,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: c7c8852
 - **Pattern**: UI는 코드가 아니라 픽셀이 진실이다 — 모든 UI 변경은 시뮬레이터 스크린샷 검증 통과 후 출고(expo run:ios Release → 전 화면 캡처 → 육안 대조). textShadow는 새 아키텍처에서 금지, 글로우는 Skia로.
 <!-- override-trigger: 39bf77d docs(log): sim-audit visual pass record (c7c8852) [no-log] — log-commit recursion, FOURTH occurrence (57d4e56, 21f2909, 112b1b9): 39bf77d only appends the troubleshooting.md entry that LOGS work commit c7c8852; "audit" appears solely in the log commit's subject describing what was logged. The audited work is fully dual-written by exactly this commit. Root fix adopted: log-commit subjects will use neutral wording (e.g. "docs(log): record for <hash>") from now on. -->
+<!-- skipped: 3d95b57 docs: override note for 39bf77d [no-log] -->

@@ -7,6 +7,9 @@ import i18n, { DEFAULT_LOCALE, isSupportedLocale, type AppLocale } from '@/i18n'
 import { computeCombatPower } from '@/features/combat-power/computeCombatPower';
 import { loadSfx } from '@/features/juice/audio/engine';
 import { OnboardingFlow } from '@/features/onboarding/OnboardingFlow';
+import { getOpenSessionForDate, getSessionActivitySummary } from '@/db/repos/sessionRepo';
+import { useSessionStore } from '@/features/forge/sessionStore';
+import { todayLocal } from '@/lib/date';
 import { buildInput, upsertSnapshot } from '../../db/repos/combatPowerRepo';
 import { getSettings, getUser, updateLocale } from '../../db/repos/userRepo';
 import { useCombatPowerStore } from '../../stores/combatPowerStore';
@@ -47,6 +50,19 @@ export function Boot({ children }: { children: React.ReactNode }) {
       const result = computeCombatPower(input);
       // First snapshot: align prev to score so the odometer doesn't slam on launch.
       useCombatPowerStore.setState({ score: result.score, prev: result.score, gradeKey: result.grade.key });
+
+      // Rehydrate an in-progress workout so the coach's rest/next-set loop survives an app
+      // relaunch or an iOS background-kill mid-session (otherwise activeSessionId starts null and
+      // the coach forgets you're training — the flagship "손 최소화" loop silently disappears). The
+      // rest anchor re-derives from set_log.logged_at in useCoachPlan, so resume(lastSetAt:null) is
+      // fine. cpAtStart uses the just-computed score, matching the existing enter()/finish() resume.
+      if (useSessionStore.getState().activeSessionId == null) {
+        const open = await getOpenSessionForDate(db, todayLocal());
+        if (open) {
+          const summary = await getSessionActivitySummary(db, open.id);
+          useSessionStore.getState().resume(open.id, result.score, summary.itemCount, summary.volumeKg);
+        }
+      }
       if (alive) setReady(true);
       // Persist today's snapshot off the critical path (idempotent upsert; in-memory score already set).
       void upsertSnapshot(db, result).catch(() => {});
