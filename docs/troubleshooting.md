@@ -450,3 +450,11 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 0ca0e20
 - **Pattern**: 모바일 도구 앱의 홈은 대시보드가 아니라 다음 액션의 버튼이어야 한다 — 상태는 엔진이 읽고, 유저는 확인만.
 <!-- skipped: 665f969 docs(log): next-action engine record (0ca0e20) [no-log] -->
+
+## 실기기/시뮬레이터 렌더 검증 없이 10개 빌드 출고 — 육안 3초면 잡힐 결함 8건이 누적
+
+- **Symptom**: 빌더가 "이게 최대냐" 지적 → 첫 시뮬레이터 스크린샷 감사에서 즉시 8건: Orbitron 슬래시-제로가 소형 크기에서 ⊘(에러 글리프)로 렌더, CP 히어로 숫자 뒤 사각 글로우 박스, "Measu/re" 단어 중간 줄바꿈(width:44 고정), 코치 카드 데드스페이스+88pt 포즈 미니어처, History 빈 주간 "Not trained" 8줄 반복, 로케일 이모지(💪📸✨) 노출.
+- **Cause**: (1) 파이프라인에 렌더 검증 단계 부재 — 코드→빌드→TestFlight 직행. (2) 글로우 박스의 근본 원인: RN 새 아키텍처 iOS에서 Text의 textShadow가 글리프가 아닌 뷰 사각형 레이어 섀도로 떨어짐. (3) Orbitron의 0은 디자인상 슬래시 — 20pt 미만에서 판독 불가.
+- **Fix**: numType.mid/small → 시스템 폰트 tabular(Orbitron은 대형 전용), Metric 히어로 글로우를 Skia GradientDigits 경로로 통일(플랫 스킨은 2-stop 동일색 그라디언트, blur 패딩 1.6×), heroTextGlow 호출 제거, CoachCard 2열 그리드+포즈 128pt, WeeklyCard 빈 부위 1줄 축약, 이모지 4개 로케일 제거. 시뮬레이터 v2/v3 스크린샷으로 8건 전부 해소 실측.
+- **Commit**: c7c8852
+- **Pattern**: UI는 코드가 아니라 픽셀이 진실이다 — 모든 UI 변경은 시뮬레이터 스크린샷 검증 통과 후 출고(expo run:ios Release → 전 화면 캡처 → 육안 대조). textShadow는 새 아키텍처에서 금지, 글로우는 Skia로.
