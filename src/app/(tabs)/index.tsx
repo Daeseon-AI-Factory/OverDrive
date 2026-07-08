@@ -29,7 +29,6 @@ import {
   displayGrade,
   hangulSafeLetterSpacing,
   hasHangul,
-  heroTextGlow,
   space,
   tracking,
   typeScale,
@@ -124,7 +123,7 @@ export default function TodayScreen() {
           <Text style={[styles.overline, { letterSpacing: hangulSafeLetterSpacing(cpLabel, tracking.overline) }]}>
             {cpLabel}
           </Text>
-          <Metric value={score} unit="CP" size="hero" valueStyle={heroTextGlow(accent)} />
+          <Metric value={score} unit="CP" size="hero" />
           <Text style={[hasHangul(gradeWord) ? styles.gradeHangul : styles.grade, { color: accent.solid }]}>
             {gradeWord}
           </Text>

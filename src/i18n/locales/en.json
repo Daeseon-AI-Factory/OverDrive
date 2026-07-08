@@ -99,7 +99,8 @@
       "title": "Delete this set?",
       "confirm": "Delete",
       "cancel": "Cancel"
-    }
+    },
+    "emptyWeek": "Your first set this week lands here."
   },
   "food": {
     "title": "Fuel",
@@ -203,7 +204,7 @@
       "bodyweight": "Bodyweight"
     },
     "generate": "Build my plan ⚡",
-    "entry": "✨ Auto-build a plan",
+    "entry": "Auto-build a plan",
     "entryHint": "Pick goal + days → done"
   },
   "boot": {
@@ -402,7 +403,7 @@
   "evolution": {
     "title": "Evolution",
     "intro": "Pick a photo of yourself — the AI evolves it to match your grade. It only ever levels UP.",
-    "pick": "Pick my photo 📸",
+    "pick": "Pick my photo",
     "evolving": "EVOLVING…",
     "tagEvolved": "{grade} FORM — tap to compare",
     "tagOriginal": "ORIGINAL — tap to flip back",
@@ -559,18 +560,42 @@
     }
   },
   "skin": {
-    "reactor": { "name": "REACTOR" },
-    "foundry": { "name": "FOUNDRY" },
-    "arena": { "name": "ARENA" },
-    "kiburst": { "name": "KI BURST" },
-    "primal": { "name": "PRIMAL" },
-    "ironcult": { "name": "IRON CULT" },
-    "murim": { "name": "MURIM" },
-    "darkkeep": { "name": "DARK KEEP" },
-    "blackops": { "name": "BLACK OPS" },
-    "colosseum": { "name": "COLOSSEUM" },
-    "redline": { "name": "REDLINE" },
-    "dojo": { "name": "DOJO" }
+    "reactor": {
+      "name": "REACTOR"
+    },
+    "foundry": {
+      "name": "FOUNDRY"
+    },
+    "arena": {
+      "name": "ARENA"
+    },
+    "kiburst": {
+      "name": "KI BURST"
+    },
+    "primal": {
+      "name": "PRIMAL"
+    },
+    "ironcult": {
+      "name": "IRON CULT"
+    },
+    "murim": {
+      "name": "MURIM"
+    },
+    "darkkeep": {
+      "name": "DARK KEEP"
+    },
+    "blackops": {
+      "name": "BLACK OPS"
+    },
+    "colosseum": {
+      "name": "COLOSSEUM"
+    },
+    "redline": {
+      "name": "REDLINE"
+    },
+    "dojo": {
+      "name": "DOJO"
+    }
   },
   "warrior": {
     "title": "WARRIOR FORGE",
@@ -580,7 +605,7 @@
       "discipline": "Discipline"
     },
     "measure": "Measure",
-    "next": "Next: forge your {axis} 💪",
+    "next": "Next: forge your {axis}",
     "complete": "Warrior complete — push the next rank 🔥"
   }
 }

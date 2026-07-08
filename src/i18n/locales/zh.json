@@ -78,7 +78,8 @@
       "title": "删除这组?",
       "confirm": "删除",
       "cancel": "取消"
-    }
+    },
+    "emptyWeek": "本周的第一组会记录在这里。"
   },
   "settings": {
     "title": "设置",
@@ -170,7 +171,7 @@
       "bodyweight": "徒手"
     },
     "generate": "生成计划 ⚡",
-    "entry": "✨ 自动生成计划",
+    "entry": "自动生成计划",
     "entryHint": "选目标 + 天数即可"
   },
   "boot": {
@@ -464,7 +465,7 @@
   "evolution": {
     "title": "进化",
     "intro": "选一张你的照片 — AI 按你的等级进化它。只会变强。",
-    "pick": "选择我的照片 📸",
+    "pick": "选择我的照片",
     "evolving": "进化中…",
     "tagEvolved": "{grade} 形态 — 点按对比",
     "tagOriginal": "原图 — 点按返回",
@@ -559,18 +560,42 @@
     }
   },
   "skin": {
-    "reactor": { "name": "反应堆" },
-    "foundry": { "name": "熔炉" },
-    "arena": { "name": "擂台" },
-    "kiburst": { "name": "气爆" },
-    "primal": { "name": "野性" },
-    "ironcult": { "name": "铁教团" },
-    "murim": { "name": "武林" },
-    "darkkeep": { "name": "暗黑要塞" },
-    "blackops": { "name": "特战" },
-    "colosseum": { "name": "角斗场" },
-    "redline": { "name": "红线" },
-    "dojo": { "name": "道场" }
+    "reactor": {
+      "name": "反应堆"
+    },
+    "foundry": {
+      "name": "熔炉"
+    },
+    "arena": {
+      "name": "擂台"
+    },
+    "kiburst": {
+      "name": "气爆"
+    },
+    "primal": {
+      "name": "野性"
+    },
+    "ironcult": {
+      "name": "铁教团"
+    },
+    "murim": {
+      "name": "武林"
+    },
+    "darkkeep": {
+      "name": "暗黑要塞"
+    },
+    "blackops": {
+      "name": "特战"
+    },
+    "colosseum": {
+      "name": "角斗场"
+    },
+    "redline": {
+      "name": "红线"
+    },
+    "dojo": {
+      "name": "道场"
+    }
   },
   "warrior": {
     "title": "战士铸造",
@@ -580,7 +605,7 @@
       "discipline": "自律"
     },
     "measure": "测量",
-    "next": "下一步：锻造你的{axis} 💪",
+    "next": "下一步：锻造你的{axis}",
     "complete": "战士已成 — 冲下一阶 🔥"
   }
 }

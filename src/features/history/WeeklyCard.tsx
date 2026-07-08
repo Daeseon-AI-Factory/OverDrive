@@ -36,37 +36,44 @@ export function WeeklyCard({ weekly, cardio }: WeeklyCardProps) {
   const unitSystem = useSettingsStore((s) => s.unitSystem);
   const minUnit = t('cardio.min');
 
+  // An untrained week must not render 7 identical "none" rows (build-10 sim audit): trained
+  // regions get full rows; the untrained rest collapse into ONE quiet summary line.
+  const trained = WEEKLY_ORDER.filter((r) => weekly[r].sets > 0);
+  const untrained = WEEKLY_ORDER.filter((r) => weekly[r].sets === 0);
+
   return (
     <Card>
-      {WEEKLY_ORDER.map((region) => {
+      {trained.map((region) => {
         const w = weekly[region];
-        const done = w.sets > 0;
         return (
           <View key={region} style={styles.weekRow}>
-            {/* Trained regions get full text, untrained recede to text3 — status by light, not hue. */}
-            <Text style={[styles.regionLabel, { color: done ? palette.text : palette.text3 }]}>
-              {t(`region.${region}`)}
-            </Text>
-            {done ? (
-              <View style={styles.statCluster}>
-                <Metric value={w.sets} unit="SET" size="small" />
-                {w.volumeKg > 0 ? (
-                  <>
-                    <Text style={[styles.statDot, { color: palette.text3 }]}>·</Text>
-                    <Metric
-                      value={Math.round(kgToDisplay(w.volumeKg, unitSystem))}
-                      unit={weightUnit(unitSystem)}
-                      size="small"
-                    />
-                  </>
-                ) : null}
-              </View>
-            ) : (
-              <Muted style={{ color: palette.text3 }}>{t('history.noneThisWeek')}</Muted>
-            )}
+            <Text style={[styles.regionLabel, { color: palette.text }]}>{t(`region.${region}`)}</Text>
+            <View style={styles.statCluster}>
+              <Metric value={w.sets} unit="SET" size="small" />
+              {w.volumeKg > 0 ? (
+                <>
+                  <Text style={[styles.statDot, { color: palette.text3 }]}>·</Text>
+                  <Metric
+                    value={Math.round(kgToDisplay(w.volumeKg, unitSystem))}
+                    unit={weightUnit(unitSystem)}
+                    size="small"
+                  />
+                </>
+              ) : null}
+            </View>
           </View>
         );
       })}
+      {untrained.length > 0 ? (
+        <View style={styles.weekRow}>
+          <Muted style={[styles.untrainedLine, { color: palette.text3 }]}>
+            {trained.length === 0
+              ? t('history.emptyWeek', { defaultValue: '이번 주 첫 세트가 여기 쌓인다.' })
+              : untrained.map((r) => t(`region.${r}`)).join(' · ')}
+          </Muted>
+          {trained.length > 0 ? <Muted style={{ color: palette.text3 }}>{t('history.noneThisWeek')}</Muted> : null}
+        </View>
+      ) : null}
       <View style={[styles.weekRow, styles.cardioRow, { borderTopColor: palette.line }]}>
         <Text style={[styles.regionLabel, { color: cardio.sessions > 0 ? palette.text : palette.text3 }]}>
           {t('today.cardioSheetTitle')}
@@ -96,4 +103,5 @@ const styles = StyleSheet.create({
   regionLabel: { ...typeScale.body },
   statCluster: { flexDirection: 'row', alignItems: 'flex-end', gap: space.xs },
   statDot: { ...typeScale.caption, paddingBottom: 1 },
+  untrainedLine: { flexShrink: 1 },
 });

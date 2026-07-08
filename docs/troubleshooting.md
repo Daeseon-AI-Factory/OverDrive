@@ -449,3 +449,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: src/features/coach/ — nextAction.ts 순수 상태 엔진(시작/휴식 중 제안/방치/마무리, 단위 테스트 21개), CoachCard 히어로(포즈+제안 세트 대형 숫자+자동 휴식 카운트다운+[했어] 원탭 → 기존 useLogSet 핫패스), MicButton 추출+홈 FAB(MicDock), RingGauge 등 4개 카드 탈텍스트 타일화. tsc 0/lint 0/jest 184.
 - **Commit**: 0ca0e20
 - **Pattern**: 모바일 도구 앱의 홈은 대시보드가 아니라 다음 액션의 버튼이어야 한다 — 상태는 엔진이 읽고, 유저는 확인만.
+<!-- skipped: 665f969 docs(log): next-action engine record (0ca0e20) [no-log] -->

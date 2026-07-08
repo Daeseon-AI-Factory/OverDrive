@@ -423,19 +423,22 @@ export function GradientDigits({
   }
   const metrics = font.getMetrics();
   const textW = font.measureText(text).width;
-  const pad = Math.ceil(glowRadius / 2);
-  const baseline = (lineHeight - (metrics.descent - metrics.ascent)) / 2 - metrics.ascent;
+  // Glow must FADE inside the canvas or its clip edge renders as a visible box (build-10 sim audit).
+  // Blur spreads well past sigma, so pad a full glowRadius on every side; negative margins keep the
+  // layout box at lineHeight so surrounding flow is unchanged.
+  const pad = Math.ceil(glowRadius * 1.6);
+  const baseline = pad + (lineHeight - (metrics.descent - metrics.ascent)) / 2 - metrics.ascent;
   const width = Math.ceil(textW) + pad * 2 + 2;
   const glowColor = stops[Math.min(1, stops.length - 1)];
   return (
-    <Canvas style={{ width, height: lineHeight }}>
+    <Canvas style={{ width, height: lineHeight + pad * 2, marginVertical: -pad, marginHorizontal: -pad }}>
       {glowRadius > 0 ? (
-        <SkText x={pad + 1} y={baseline} text={text} font={font} color={glowColor} opacity={0.55}>
+        <SkText x={pad + 1} y={baseline} text={text} font={font} color={glowColor} opacity={0.4}>
           <BlurMask blur={glowRadius / 2} style="normal" />
         </SkText>
       ) : null}
       <SkText x={pad + 1} y={baseline} text={text} font={font}>
-        <LinearGradient start={vec(0, 0)} end={vec(0, lineHeight)} colors={[...stops]} />
+        <LinearGradient start={vec(0, pad)} end={vec(0, pad + lineHeight)} colors={[...stops]} />
       </SkText>
     </Canvas>
   );

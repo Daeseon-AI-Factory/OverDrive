@@ -70,7 +70,7 @@ export function WarriorCard() {
         <Text style={[styles.title, { letterSpacing: hangulSafeLetterSpacing(title, tracking.overline) }]}>
           {title}
         </Text>
-        <Metric value={pct} unit="%" size="large" />
+        <Metric value={pct} unit="%" size="mid" />
       </View>
 
       {completion.axes.map((a) => (
@@ -104,6 +104,6 @@ const styles = StyleSheet.create({
   axisLabel: { fontSize: 13, fontWeight: '400', lineHeight: 18, color: colors.text2, width: 64 },
   track: { flex: 1, marginHorizontal: space.sm },
   axisPct: { ...numType.small, color: colors.text2, width: 32, textAlign: 'right' },
-  measure: { ...typeScale.label, width: 44, textAlign: 'right' },
+  measure: { ...typeScale.label, flexShrink: 0, textAlign: 'right' },
   next: { marginTop: space.md, color: colors.text3 },
 });

@@ -13,7 +13,7 @@ import { TIER_DURATION_MS } from '@/features/juice/constants';
 import { RankSection } from '@/features/rank/RankSection';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { Button, Card, Metric, Muted, ProgressTrack, Screen, SectionTitle, useAccent } from '@/ui/primitives';
-import { colors, displayGrade, hasHangul, heroTextGlow, numType, space, tracking, typeScale } from '@/ui/theme/tokens';
+import { colors, displayGrade, hasHangul, numType, space, tracking, typeScale } from '@/ui/theme/tokens';
 
 export default function PowerScreen() {
   const db = useSQLiteContext();
@@ -70,7 +70,7 @@ export default function PowerScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space.xxl }}>
         {/* The shrine — biggest single element in the app. Glow slot 1 of 2 = the CP number. */}
         <View style={styles.hero}>
-          <Metric value={score} unit="CP" size="heroXL" valueStyle={heroTextGlow(accent)} />
+          <Metric value={score} unit="CP" size="heroXL" />
           {/* Anton is Latin-only (Hangul renders fallback tofu) — Korean grade words drop to system 600. */}
           <Text style={[hasHangul(gradeWord) ? styles.gradeHangul : styles.grade, { color: accent.solid }]}>
             {gradeWord}

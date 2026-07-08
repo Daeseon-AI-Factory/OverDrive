@@ -18,7 +18,7 @@ import type { NextAction, SetSuggestion } from './nextAction';
 import { RestCountdownBar } from './RestCountdownBar';
 import { useCoachPlan } from './useCoachPlan';
 
-const POSE_SIZE = 88;
+const POSE_SIZE = 128;
 
 /**
  * The Today hero surface — the app decides, the user confirms ("손 치는 걸 최소화"). One glance:
@@ -281,44 +281,44 @@ export function CoachCard({
         </View>
 
         {suggestion != null && sugRow != null ? (
-          <>
-            <View style={styles.heroRow}>
-              <ExercisePose
-                family={exerciseFamily(suggestion.exerciseId)}
-                size={POSE_SIZE}
-                animated={action.kind === 'resting' || action.kind === 'start_program_day'}
-              />
-              <View style={styles.heroInfo}>
-                <Text style={styles.exName} numberOfLines={1}>
-                  {exName(suggestion.exerciseId)}
+          // Two-column grid — left: name → digits → rest, packed tight; right: the pose, BIG.
+          // Kills the floating dead-center the build-10 sim audit caught.
+          <View style={styles.grid}>
+            <View style={styles.gridLeft}>
+              <Text style={styles.exName} numberOfLines={2}>
+                {exName(suggestion.exerciseId)}
+              </Text>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaText}>
+                  {t('activeWorkout.setProgress', {
+                    current: Math.min(suggestion.setNumber, suggestion.targetSets),
+                    total: suggestion.targetSets,
+                  })}
                 </Text>
-                <View style={styles.metaRow}>
-                  <Text style={styles.metaText}>
-                    {t('activeWorkout.setProgress', {
-                      current: Math.min(suggestion.setNumber, suggestion.targetSets),
-                      total: suggestion.targetSets,
-                    })}
-                  </Text>
-                  {suggestion.prChance ? (
-                    <Text style={[styles.prText, { color: accent.solid }]}>{dv('PR 기회 +2.5', 'PR chance +2.5')}</Text>
-                  ) : null}
+                {suggestion.prChance ? (
+                  <Text style={[styles.prText, { color: accent.solid }]}>{dv('PR 기회 +2.5', 'PR chance +2.5')}</Text>
+                ) : null}
+              </View>
+
+              {stat != null ? <Metric value={stat} unit={statUnit} size="hero" style={styles.stat} /> : null}
+
+              {action.kind === 'resting' && action.restStartedAt != null ? (
+                <View style={styles.restRow}>
+                  <RestCountdownBar anchorMs={action.restStartedAt} targetSec={action.restTargetSec} />
+                  {remainLabel != null ? (
+                    <Text style={styles.restTime}>{remainLabel}</Text>
+                  ) : (
+                    <Text style={[styles.readyText, { color: colors.positive }]}>{dv('준비됨', 'Ready')}</Text>
+                  )}
                 </View>
-              </View>
+              ) : null}
             </View>
-
-            {stat != null ? <Metric value={stat} unit={statUnit} size="hero" style={styles.stat} /> : null}
-
-            {action.kind === 'resting' && action.restStartedAt != null ? (
-              <View style={styles.restRow}>
-                <RestCountdownBar anchorMs={action.restStartedAt} targetSec={action.restTargetSec} />
-                {remainLabel != null ? (
-                  <Text style={styles.restTime}>{remainLabel}</Text>
-                ) : (
-                  <Text style={[styles.readyText, { color: colors.positive }]}>{dv('준비됨', 'Ready')}</Text>
-                )}
-              </View>
-            ) : null}
-          </>
+            <ExercisePose
+              family={exerciseFamily(suggestion.exerciseId)}
+              size={POSE_SIZE}
+              animated={action.kind === 'resting' || action.kind === 'start_program_day'}
+            />
+          </View>
         ) : null}
 
         {action.kind === 'rest_day' ? (
@@ -385,14 +385,16 @@ const styles = StyleSheet.create({
   eyebrow: { ...typeScale.overline, flexShrink: 1 },
   spacer: { flex: 1 },
   detailLink: { ...typeScale.label, color: colors.text3 },
+  grid: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.sm },
+  gridLeft: { flex: 1, minWidth: 0 },
   heroRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.md },
   heroInfo: { flex: 1, minWidth: 0 },
   exName: { ...typeScale.title, color: colors.text },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.xs, flexWrap: 'wrap' },
   metaText: { ...typeScale.caption, color: colors.text3 },
   prText: { ...typeScale.label },
-  stat: { marginTop: space.xs },
-  restRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.md },
+  stat: { marginTop: space.sm },
+  restRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.sm },
   restTime: { ...numType.mid, color: colors.text2 },
   readyText: { ...typeScale.label },
   doneText: { ...typeScale.label },

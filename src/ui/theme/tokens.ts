@@ -202,10 +202,12 @@ export const numType: Record<'heroXL' | 'hero' | 'large' | 'mid' | 'small', Text
   hero: { fontFamily: 'Orbitron_700Bold', fontSize: 56, lineHeight: 64, letterSpacing: 0, fontVariant: ['tabular-nums'] },
   /** Sheet steppers (weight/reps). */
   large: { fontFamily: 'Orbitron_700Bold', fontSize: 28, lineHeight: 34, letterSpacing: 0, fontVariant: ['tabular-nums'] },
+  // mid/small use the system face: Orbitron's slashed zero reads as an error glyph (⊘) below ~20pt
+  // (verified on-sim, build 10 audit). Orbitron stays display-only (large/hero/heroXL).
   /** Inline stats (protein g, set counts). */
-  mid: { fontFamily: 'Orbitron_700Bold', fontSize: 17, lineHeight: 22, letterSpacing: 0, fontVariant: ['tabular-nums'] },
+  mid: { fontWeight: '700', fontSize: 17, lineHeight: 22, letterSpacing: 0.2, fontVariant: ['tabular-nums'] },
   /** Bar percents, chip numbers. */
-  small: { fontFamily: 'Orbitron_700Bold', fontSize: 13, lineHeight: 18, letterSpacing: 0, fontVariant: ['tabular-nums'] },
+  small: { fontWeight: '700', fontSize: 13, lineHeight: 18, letterSpacing: 0.2, fontVariant: ['tabular-nums'] },
 };
 
 // Anton — hero grade word + JUICE callouts ONLY. Latin/digits only: Hangul renders tofu/fallback,

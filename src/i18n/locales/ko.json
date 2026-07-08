@@ -78,7 +78,8 @@
       "title": "이 세트 삭제?",
       "confirm": "삭제",
       "cancel": "취소"
-    }
+    },
+    "emptyWeek": "이번 주 첫 세트가 여기 쌓인다."
   },
   "settings": {
     "title": "설정",
@@ -170,7 +171,7 @@
       "bodyweight": "맨몸"
     },
     "generate": "플랜 만들기 ⚡",
-    "entry": "✨ 자동으로 플랜 짜기",
+    "entry": "자동으로 플랜 짜기",
     "entryHint": "목표 + 요일만 고르면 끝"
   },
   "boot": {
@@ -464,7 +465,7 @@
   "evolution": {
     "title": "진화",
     "intro": "네 사진 한 장 골라 — AI가 네 등급에 맞게 진화시킨다. 오르기만 한다.",
-    "pick": "내 사진 고르기 📸",
+    "pick": "내 사진 고르기",
     "evolving": "진화 중…",
     "tagEvolved": "{grade} 폼 — 탭해서 비교",
     "tagOriginal": "원본 — 탭해서 복귀",
@@ -559,18 +560,42 @@
     }
   },
   "skin": {
-    "reactor": { "name": "리액터" },
-    "foundry": { "name": "파운드리" },
-    "arena": { "name": "아레나" },
-    "kiburst": { "name": "기 버스트" },
-    "primal": { "name": "프라이멀" },
-    "ironcult": { "name": "아이언 컬트" },
-    "murim": { "name": "무림" },
-    "darkkeep": { "name": "다크 킵" },
-    "blackops": { "name": "블랙 옵스" },
-    "colosseum": { "name": "콜로세움" },
-    "redline": { "name": "레드라인" },
-    "dojo": { "name": "도장" }
+    "reactor": {
+      "name": "리액터"
+    },
+    "foundry": {
+      "name": "파운드리"
+    },
+    "arena": {
+      "name": "아레나"
+    },
+    "kiburst": {
+      "name": "기 버스트"
+    },
+    "primal": {
+      "name": "프라이멀"
+    },
+    "ironcult": {
+      "name": "아이언 컬트"
+    },
+    "murim": {
+      "name": "무림"
+    },
+    "darkkeep": {
+      "name": "다크 킵"
+    },
+    "blackops": {
+      "name": "블랙 옵스"
+    },
+    "colosseum": {
+      "name": "콜로세움"
+    },
+    "redline": {
+      "name": "레드라인"
+    },
+    "dojo": {
+      "name": "도장"
+    }
   },
   "warrior": {
     "title": "전사 완성도",
@@ -580,7 +605,7 @@
       "discipline": "규율"
     },
     "measure": "측정",
-    "next": "다음: {axis} 채우기 💪",
+    "next": "다음: {axis} 채우기",
     "complete": "전사 완성 — 다음 등급으로 🔥"
   }
 }

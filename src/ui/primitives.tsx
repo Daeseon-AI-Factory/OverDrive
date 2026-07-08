@@ -537,14 +537,17 @@ export function Metric({
     color ?? (skin != null ? (heroSize ? (skin.palette.accentHi ?? skin.palette.text) : skin.palette.text) : colors.text);
   const resolvedUnitColor = unitColor ?? (skin != null ? skin.palette.text3 : colors.text3);
   const spec = numType[size];
-  const hero =
-    skin != null &&
-    (size === 'hero' || size === 'heroXL') &&
-    color == null &&
-    skin.hero.numberGradient != null &&
-    skin.hero.numberGradient.length >= 2
-      ? { colors: skin.hero.numberGradient, glow: skin.hero.glowRadius }
-      : null;
+  // Hero digits ALWAYS render through Skia when the skin wants glow: RN textShadow on new-arch iOS
+  // falls back to a rectangular layer shadow (the "box behind the number" from the build-10 sim
+  // audit). Glyph-shaped glow needs Skia, so flat-color skins get a 2-stop identity gradient.
+  const wantsHero = skin != null && (size === 'hero' || size === 'heroXL') && color == null;
+  const heroStops =
+    wantsHero && skin.hero.numberGradient != null && skin.hero.numberGradient.length >= 2
+      ? skin.hero.numberGradient
+      : wantsHero && skin.hero.glowRadius > 0
+        ? [digitColor, digitColor]
+        : null;
+  const hero = heroStops != null ? { colors: heroStops, glow: skin!.hero.glowRadius } : null;
   return (
     <View style={[styles.metricRow, style]}>
       {hero != null ? (

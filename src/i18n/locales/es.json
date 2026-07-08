@@ -78,7 +78,8 @@
       "title": "¿Borrar esta serie?",
       "confirm": "Borrar",
       "cancel": "Cancelar"
-    }
+    },
+    "emptyWeek": "Tu primera serie de la semana aparecerá aquí."
   },
   "settings": {
     "title": "Ajustes",
@@ -170,7 +171,7 @@
       "bodyweight": "Peso corporal"
     },
     "generate": "Crear mi plan ⚡",
-    "entry": "✨ Crear plan automático",
+    "entry": "Crear plan automático",
     "entryHint": "Objetivo + días → listo"
   },
   "boot": {
@@ -464,7 +465,7 @@
   "evolution": {
     "title": "Evolución",
     "intro": "Elige una foto tuya — la IA la evoluciona según tu rango. Solo sube.",
-    "pick": "Elegir mi foto 📸",
+    "pick": "Elegir mi foto",
     "evolving": "EVOLUCIONANDO…",
     "tagEvolved": "FORMA {grade} — toca para comparar",
     "tagOriginal": "ORIGINAL — toca para volver",
@@ -559,18 +560,42 @@
     }
   },
   "skin": {
-    "reactor": { "name": "REACTOR" },
-    "foundry": { "name": "FUNDICIÓN" },
-    "arena": { "name": "ARENA" },
-    "kiburst": { "name": "RÁFAGA KI" },
-    "primal": { "name": "PRIMAL" },
-    "ironcult": { "name": "CULTO DEL HIERRO" },
-    "murim": { "name": "MURIM" },
-    "darkkeep": { "name": "TORREÓN OSCURO" },
-    "blackops": { "name": "OPS ENCUBIERTAS" },
-    "colosseum": { "name": "COLISEO" },
-    "redline": { "name": "REDLINE" },
-    "dojo": { "name": "DOJO" }
+    "reactor": {
+      "name": "REACTOR"
+    },
+    "foundry": {
+      "name": "FUNDICIÓN"
+    },
+    "arena": {
+      "name": "ARENA"
+    },
+    "kiburst": {
+      "name": "RÁFAGA KI"
+    },
+    "primal": {
+      "name": "PRIMAL"
+    },
+    "ironcult": {
+      "name": "CULTO DEL HIERRO"
+    },
+    "murim": {
+      "name": "MURIM"
+    },
+    "darkkeep": {
+      "name": "TORREÓN OSCURO"
+    },
+    "blackops": {
+      "name": "OPS ENCUBIERTAS"
+    },
+    "colosseum": {
+      "name": "COLISEO"
+    },
+    "redline": {
+      "name": "REDLINE"
+    },
+    "dojo": {
+      "name": "DOJO"
+    }
   },
   "warrior": {
     "title": "FORJA DE GUERRERO",
@@ -580,7 +605,7 @@
       "discipline": "Disciplina"
     },
     "measure": "Medir",
-    "next": "Sigue: forja tu {axis} 💪",
+    "next": "Sigue: forja tu {axis}",
     "complete": "Guerrero completo — sube de rango 🔥"
   }
 }
