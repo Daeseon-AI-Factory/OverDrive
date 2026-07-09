@@ -468,3 +468,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: `Boot.tsx` 하이드레이션에 `getOpenSessionForDate → getSessionActivitySummary → sessionStore.resume` 추가(기존 enter()/finish() 복원 경로와 동일 인프라 재사용). 휴식 앵커는 `useCoachPlan`이 set_log.logged_at에서 재파생하므로 resume(lastSetAt:null)로 충분. 시뮬레이터 seed→재실행으로 복원 확인(코치가 "IN SESSION·Set 3/3·100×5·Continue" 표시).
 - **Commit**: ba80eed
 - **Pattern**: 세션성 UX 상태(진행 중 운동)는 인메모리 스토어만이 아니라 부팅 시 DB에서 재수화해야 한다 — 모바일 앱은 언제든 죽고 다시 뜬다. 기능은 "한 세션 안에서" 되는 걸로 완성이 아니다.
+<!-- skipped: 6c30d3b docs(log): record for ba80eed [no-log] -->
