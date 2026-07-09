@@ -1,9 +1,9 @@
 import { Tabs } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Text, type ColorValue } from 'react-native';
+import { StyleSheet, Text, View, type ColorValue } from 'react-native';
 import { useSkinAccent } from '@/ui/primitives';
 import { useSkinOrNull } from '@/ui/skins/SkinContext';
-import { colors } from '@/ui/theme/tokens';
+import { border, colors, radius } from '@/ui/theme/tokens';
 
 function tabIcon(glyph: string) {
   const Icon = ({ color }: { color: ColorValue }) => <Text style={{ color, fontSize: 18 }}>{glyph}</Text>;
@@ -17,6 +17,8 @@ export default function TabsLayout() {
   // (tests, unskinned trees) both fall back to the legacy MONOLITH tokens + persona accent.
   const accent = useSkinAccent();
   const skin = useSkinOrNull();
+  const logLabel = t('tabs.log', { defaultValue: t('food.log') });
+  const exploreLabel = t('tabs.exercises', { defaultValue: 'Explore' });
   return (
     <Tabs
       screenOptions={{
@@ -34,10 +36,53 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: t('tabs.today'), tabBarIcon: tabIcon('◆') }} />
-      {/* U+FE0E (VS15) forces text presentation — bare U+26A1 draws the color emoji, ignoring tab tint. */}
-      <Tabs.Screen name="power" options={{ title: t('tabs.power'), tabBarIcon: tabIcon('⚡\uFE0E') }} />
+      <Tabs.Screen
+        name="exercises"
+        options={{ title: exploreLabel, tabBarAccessibilityLabel: exploreLabel, tabBarIcon: tabIcon('⌕') }}
+      />
+      <Tabs.Screen
+        name="log"
+        options={{
+          title: logLabel,
+          tabBarAccessibilityLabel: logLabel,
+          tabBarIcon: ({ focused }) => (
+            <View
+              style={[
+                styles.logIcon,
+                {
+                  backgroundColor: focused ? accent.solid : accent.fill,
+                  borderColor: focused ? accent.solid : accent.border,
+                },
+              ]}
+            >
+              <Text
+                accessible={false}
+                style={[
+                  styles.logGlyph,
+                  { color: focused ? (skin?.palette.bg0 ?? colors.bg) : accent.solid },
+                ]}
+              >
+                +
+              </Text>
+            </View>
+          ),
+        }}
+      />
       <Tabs.Screen name="history" options={{ title: t('tabs.history'), tabBarIcon: tabIcon('≡') }} />
-      <Tabs.Screen name="settings" options={{ title: t('tabs.settings'), tabBarIcon: tabIcon('⚙') }} />
+      <Tabs.Screen name="settings" options={{ title: t('tabs.settings'), tabBarIcon: tabIcon('⚙\uFE0E') }} />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  logIcon: {
+    width: 48,
+    height: 48,
+    marginTop: -14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    borderWidth: border.rail,
+  },
+  logGlyph: { fontSize: 30, lineHeight: 32, fontWeight: '400' },
+});

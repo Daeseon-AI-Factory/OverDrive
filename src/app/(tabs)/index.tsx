@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react';
+import { Fragment, useCallback, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { ExerciseRow } from '@/db/types';
 import { ArenaCard } from '@/features/arena/ArenaCard';
 import { gradeForScore } from '@/features/combat-power/grades';
@@ -20,6 +21,7 @@ import { CardioLoggerSheet } from '@/features/logging/CardioLoggerSheet';
 import { ExerciseRegionSheet, type RegionPicker } from '@/features/logging/ExerciseRegionSheet';
 import { SetLoggerSheet } from '@/features/logging/SetLoggerSheet';
 import { QuickLogBar } from '@/features/quicklog/QuickLogBar';
+import { todayActionOrder, type TodayActionSurface } from '@/features/today/actionOrder';
 import { ActiveWorkoutCard } from '@/features/workout/ActiveWorkoutCard';
 import { WarriorCard } from '@/features/warrior/WarriorCard';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
@@ -35,15 +37,15 @@ import {
 } from '@/ui/theme/tokens';
 
 /**
- * Today — ONE vertical scroll, ACTION FIRST: the CoachCard (next-action hero — the app decides,
- * the user confirms) leads, with the full ActiveWorkoutCard collapsed behind its '자세히' toggle.
- * Then the Combat Power shrine and the card stack (warrior → arena → daily goals → food →
- * discipline → manual logging). The MicDock floats in the thumb zone so voice logging is one tap
- * away at any scroll position. The standalone RestTimerBar is gone — the CoachCard owns the rest
- * countdown (derived from the last save, incl. the rest-over ding).
+ * Today — context first, decoration second. CoachCard always leads. While training, the live
+ * session strip + manual/recent logging + body map stay together before any CP/game surfaces. When
+ * idle, FoodCard takes the second slot so a meal is reachable without scrolling. Everything remains
+ * in one vertical scroll; this is a priority change, not feature removal. MicDock stays floating in
+ * the thumb zone and CoachCard owns the rest countdown.
  */
 export default function TodayScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   // The ONE accent of this view — persona ramp, resolved once at screen level (MONOLITH).
   const accent = useAccent();
   const score = useCombatPowerStore((s) => s.score);
@@ -94,6 +96,29 @@ export default function TodayScreen() {
   const cpLabel = t('today.combatPowerLabel');
   const gradeWord = t(`grade.${grade.key}`);
 
+  const renderActionSurface = (surface: TodayActionSurface) => {
+    switch (surface) {
+      case 'forge':
+        return <ForgeBar onEnter={enter} onFinish={finish} />;
+      case 'quicklog':
+        return <QuickLogBar />;
+      case 'food':
+        return <FoodCard />;
+      case 'character':
+        return (
+          <MyCharacter
+            activeRegion={activeRegion}
+            onRegionPress={onRegionPress}
+            onCardioPress={onCardioPress}
+          />
+        );
+      case 'goals':
+        return <DailyGoalsCard />;
+      case 'discipline':
+        return <DisciplineCard />;
+    }
+  };
+
   return (
     <Screen background={<AmbientAura />}>
       <ScrollView
@@ -116,10 +141,23 @@ export default function TodayScreen() {
           <ActiveWorkoutCard ensureSession={ensureSession} onOpenCardio={(exercise) => setActiveExercise(exercise)} onFinishWorkout={finish} />
         ) : null}
 
+        {/* The high-frequency lane changes with context. Stable keys preserve typed input and
+            confirmations when a first log flips the screen from idle → in-session. */}
+        <View>
+          {todayActionOrder(activeSessionId != null).map((surface) => (
+            <Fragment key={surface}>{renderActionSurface(surface)}</Fragment>
+          ))}
+        </View>
+
         {/* Shrine header — floats directly on the aura, no card chrome. Glow slot 1 of 2: the CP
             number's textShadow. Grade word is Anton (Latin only) — Korean grades fall back to the
             system font (Anton renders Hangul as tofu). Disclaimer = spec §8 fun-score label. */}
-        <View style={styles.header}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('tabs.power')}
+          onPress={() => router.push('/power')}
+          style={({ pressed }) => [styles.header, pressed && styles.headerPressed]}
+        >
           <Text style={[styles.overline, { letterSpacing: hangulSafeLetterSpacing(cpLabel, tracking.overline) }]}>
             {cpLabel}
           </Text>
@@ -128,21 +166,10 @@ export default function TodayScreen() {
             {gradeWord}
           </Text>
           <Text style={styles.disclaimer}>{t('power.disclaimer')}</Text>
-        </View>
+        </Pressable>
 
         <WarriorCard />
-
-        {/* Active-session bar only (timer · sets · 수련 완료). The idle '용광로 진입' button competed
-            with ActiveWorkoutCard's own primary CTA and its hint claimed a false precondition —
-            sessions auto-start on the first log / body-map tap. */}
-        {activeSessionId ? <ForgeBar onEnter={enter} onFinish={finish} /> : null}
-
         <ArenaCard />
-        <DailyGoalsCard />
-        <FoodCard />
-        <DisciplineCard />
-        <QuickLogBar />
-        <MyCharacter activeRegion={activeRegion} onRegionPress={onRegionPress} onCardioPress={onCardioPress} />
       </ScrollView>
 
       {/* Floating voice log — one thumb tap from anywhere in the scroll (same instant save path). */}
@@ -152,7 +179,6 @@ export default function TodayScreen() {
         picker={picker}
         onSelect={(ex) => {
           setActiveExercise(ex);
-          setPicker(null);
         }}
         onClose={() => {
           setPicker(null);
@@ -182,6 +208,7 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { paddingTop: space.md, paddingBottom: space.xxxl },
   header: { alignItems: 'center', marginTop: space.sm },
+  headerPressed: { opacity: 0.72 },
   overline: { ...typeScale.overline, marginBottom: space.xs },
   grade: { ...displayGrade, marginTop: space.xs },
   // System-font fallback for Hangul grade words (Anton is Latin/digits only).

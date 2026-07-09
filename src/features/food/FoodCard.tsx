@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
 import { getDisciplineToday, setDisciplineToday } from '@/db/repos/disciplineRepo';
-import { addFoodItems, getFoodToday } from '@/db/repos/foodRepo';
+import { addFoodItems, getFoodToday, getLatestFoodBatch } from '@/db/repos/foodRepo';
+import type { FoodItemInput, FoodMealBatch, FoodSource } from '@/db/repos/foodRepo';
 import { classifyEvent } from '@/features/juice/classifyEvent';
 import { useJuice } from '@/features/juice/JuiceProvider';
 import { QUICKLOG_ENDPOINT } from '@/features/quicklog/config';
@@ -35,6 +36,7 @@ export function FoodCard() {
   const accent = useAccent();
   const proteinTargetG = useSettingsStore((s) => s.proteinTargetG);
   const [today, setToday] = useState({ kcal: 0, proteinG: 0, entries: 0 });
+  const [latestMeal, setLatestMeal] = useState<FoodMealBatch | null>(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string | null>(null); // failure hints (warning text)
@@ -51,9 +53,19 @@ export function FoodCard() {
     t('food.aiOffline', {
       defaultValue: dv('AI 연결 실패 — 잠시 후 다시 해봐.', "Couldn't reach AI — try again in a moment."),
     });
+  const saveFailed = () =>
+    t('food.saveFailed', {
+      defaultValue: dv(
+        '식사를 저장하지 못했어. 기록은 추가되지 않았어 — 다시 해봐.',
+        "Couldn't save that meal. Nothing was added — try again.",
+      ),
+    });
 
   const reload = useCallback(async () => {
-    setToday(await getFoodToday(db));
+    const [nextToday, nextLatestMeal] = await Promise.all([getFoodToday(db), getLatestFoodBatch(db)]);
+    setToday(nextToday);
+    setLatestMeal(nextLatestMeal);
+    return nextToday;
   }, [db]);
 
   useFocusEffect(
@@ -63,7 +75,7 @@ export function FoodCard() {
   );
 
   /** Shared tail for text + photo logging: persist, refresh, protein-target → discipline + pop. */
-  const logItems = async (items: { name: string; kcal: number; proteinG: number }[], source: 'text' | 'photo') => {
+  const logItems = async (items: FoodItemInput[], source: FoodSource) => {
     if (!items || items.length === 0) {
       setHint(t('food.fail')); // the AI answered but estimated nothing → genuinely a wording problem
       return;
@@ -75,20 +87,25 @@ export function FoodCard() {
     const kcal = Math.round(items.reduce((a, i) => a + i.kcal, 0));
     const prot = Math.round(items.reduce((a, i) => a + i.proteinG, 0));
     setConfirm(`✓ ${items.map((i) => i.name).join(' + ')} · ${kcal}kcal · ${prot}g`);
-    await reload();
-    const after = await getFoodToday(db);
+    const after = await reload();
 
     // Crossing the protein target auto-completes the discipline check → real CP + a pop.
     if (proteinTargetG && before < proteinTargetG && after.proteinG >= proteinTargetG) {
-      const disc = await getDisciplineToday(db);
-      if (!disc.protein) {
-        const prev = useCombatPowerStore.getState().score;
-        await setDisciplineToday(db, { ...disc, protein: true });
-        const result = await recomputeAndStore(db);
-        useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
-        juice.fire(
-          classifyEvent({ kind: 'set', isPr: false, rir: 2, hitTargetReps: true, deltaCp: result.score - prev }),
-        );
+      // Food is already durable at this point. Derived discipline/CP work must never turn a
+      // successful meal save into a failure message or block the logging hot path.
+      try {
+        const disc = await getDisciplineToday(db);
+        if (!disc.protein) {
+          const prev = useCombatPowerStore.getState().score;
+          await setDisciplineToday(db, { ...disc, protein: true });
+          const result = await recomputeAndStore(db);
+          useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+          juice.fire(
+            classifyEvent({ kind: 'set', isPr: false, rir: 2, hitTargetReps: true, deltaCp: result.score - prev }),
+          );
+        }
+      } catch {
+        // Non-blocking derived metric: the meal itself remains saved and truthfully confirmed.
       }
     }
   };
@@ -112,7 +129,11 @@ export function FoodCard() {
       } finally {
         clearTimeout(timer);
       }
-      await logItems(items, 'text');
+      try {
+        await logItems(items, 'text');
+      } catch {
+        setHint(saveFailed());
+      }
     } catch {
       setHint(aiOffline()); // network/proxy failure ≠ parse failure — don't tell the user to reword
     } finally {
@@ -134,9 +155,29 @@ export function FoodCard() {
     setConfirm(null);
     try {
       const uri = await downscaleForUpload(res.assets[0].uri);
-      await logItems(await parseFoodPhoto(uri, QUICKLOG_ENDPOINT), 'photo');
+      const items = await parseFoodPhoto(uri, QUICKLOG_ENDPOINT);
+      try {
+        await logItems(items, 'photo');
+      } catch {
+        setHint(saveFailed());
+      }
     } catch {
       setHint(aiOffline());
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Latest meal repeat — entirely local and routed through the same save/refresh/discipline tail. */
+  const repeatLatest = async () => {
+    if (!latestMeal || busy) return;
+    setBusy(true);
+    setHint(null);
+    setConfirm(null);
+    try {
+      await logItems(latestMeal.items, latestMeal.source);
+    } catch {
+      setHint(saveFailed());
     } finally {
       setBusy(false);
     }
@@ -189,6 +230,17 @@ export function FoodCard() {
           </View>
         </View>
 
+        {latestMeal ? (
+          <Button
+            label={t('food.repeatLast')}
+            onPress={() => void repeatLatest()}
+            variant="ghost"
+            compact
+            disabled={busy}
+            style={styles.repeatButton}
+          />
+        ) : null}
+
         <View style={styles.inputRow}>
           <IconSquare
             compact
@@ -239,6 +291,7 @@ const styles = StyleSheet.create({
   proteinTarget: { ...typeScale.caption, color: colors.text3 },
   setTarget: { ...typeScale.caption },
   kcal: { marginTop: space.xs },
+  repeatButton: { marginTop: space.md },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.md },
   input: { flex: 1 },
   hintText: { color: colors.warning, marginTop: space.xs },

@@ -122,7 +122,7 @@ export function SetLoggerSheet({
         {exercise ? (
           <>
             <View style={styles.grabber} />
-            <Text style={styles.title}>{t(`exercise.${exercise.id}`)}</Text>
+            <Text style={styles.title}>{t(`exercise.${exercise.id}`, { defaultValue: exercise.name })}</Text>
             <Muted style={styles.meta}>
               {lastSetText}
               {count > 0 ? t('logger.sessionSetCount', { count }) : ''}

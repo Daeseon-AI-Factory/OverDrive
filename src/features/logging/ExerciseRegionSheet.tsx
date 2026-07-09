@@ -1,16 +1,42 @@
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { ExerciseRow } from '@/db/types';
-import { Muted } from '@/ui/primitives';
+import { getRecentExercises } from '@/db/repos/setLogRepo';
+import type { ExerciseRow, ExerciseType } from '@/db/types';
+import type { BodyRegionId } from '@/features/character/regions';
+import {
+  buildExerciseDiscoveryItems,
+  discoverExercises,
+  type ExerciseDiscoveryItem,
+  type RecentExerciseSet,
+} from '@/features/exercises/discovery';
+import { formatWeight } from '@/lib/units';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { Input, Muted } from '@/ui/primitives';
 import { colors, radius, space, typeScale } from '@/ui/theme/tokens';
 
 export interface RegionPicker {
   title: string;
-  exerciseIds: string[];
+  /** Curated empty-state order. Search intentionally expands beyond this list. */
+  exerciseIds?: readonly string[];
+  /** Optional hard boundary; inferred from exerciseIds for existing body-map callers. */
+  type?: ExerciseType;
 }
+
+const MUSCLE_GROUP_REGION: Readonly<Partial<Record<string, BodyRegionId>>> = {
+  chest: 'chest',
+  shoulders: 'shoulders',
+  back: 'back',
+  biceps: 'arms',
+  triceps: 'arms',
+  core: 'core',
+  quads: 'legs',
+  posterior_chain: 'legs',
+  hamstrings: 'legs',
+  calves: 'legs',
+};
 
 /**
  * Bottom sheet listing the exercises for a tapped body region (or cardio). Tap → onSelect.
@@ -29,61 +55,143 @@ export function ExerciseRegionSheet({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [rows, setRows] = useState<ExerciseRow[]>([]);
-  const idsKey = picker ? picker.exerciseIds.join(',') : '';
+  const [recentSets, setRecentSets] = useState<RecentExerciseSet[]>([]);
+  const [query, setQuery] = useState('');
+  const pendingSelection = useRef<ExerciseRow | null>(null);
+  const unitSystem = useSettingsStore((state) => state.unitSystem);
+  const visible = picker != null;
 
   useEffect(() => {
-    if (!picker || picker.exerciseIds.length === 0) {
-      return; // modal hidden when picker is null; stale rows aren't shown
-    }
+    if (!visible) return;
     let alive = true;
-    const ids = picker.exerciseIds;
     (async () => {
-      const r = await db.getAllAsync<ExerciseRow>(
-        `SELECT * FROM exercise WHERE id IN (${ids.map(() => '?').join(',')})`,
-        ids,
-      );
+      const catalog = await db.getAllAsync<ExerciseRow>('SELECT * FROM exercise');
+      const recents = await getRecentExercises(db, Math.max(1, catalog.length));
       if (!alive) return;
-      // preserve the explicit region order
-      setRows(ids.map((id) => r.find((x) => x.id === id)).filter(Boolean) as ExerciseRow[]);
-    })();
+      setRows(catalog);
+      setRecentSets(recents);
+    })().catch(() => {
+      if (!alive) return;
+      setRows([]);
+      setRecentSets([]);
+    });
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db, idsKey]);
+  }, [db, visible]);
+
+  const items = useMemo(
+    () =>
+      buildExerciseDiscoveryItems(
+        rows,
+        (exercise) => t(`exercise.${exercise.id}`, { defaultValue: exercise.name }),
+        recentSets,
+        (exercise) => {
+          const region = MUSCLE_GROUP_REGION[exercise.muscle_group];
+          if (region) return [t(`region.${region}`)];
+          if (exercise.type === 'cardio') return [t('today.cardioSheetTitle')];
+          return [];
+        },
+      ),
+    [recentSets, rows, t],
+  );
+  const visibleItems = useMemo(
+    () =>
+      picker
+        ? discoverExercises(items, {
+            query,
+            explicitIds: picker.exerciseIds,
+            type: picker.type,
+          })
+        : [],
+    [items, picker, query],
+  );
+
+  const deliverSelection = useCallback(() => {
+    const exercise = pendingSelection.current;
+    pendingSelection.current = null;
+    if (exercise) onSelect(exercise);
+  }, [onSelect]);
+
+  const close = () => {
+    pendingSelection.current = null;
+    setQuery('');
+    onClose();
+  };
+
+  const select = (item: ExerciseDiscoveryItem) => {
+    pendingSelection.current = item.exercise;
+    setQuery('');
+    onClose();
+    // iOS reports the end of the native slide animation via onDismiss. Android removes a hidden
+    // Modal on the next render, so defer selection one frame there. Either path guarantees the
+    // logger Modal never mounts on top of the picker Modal.
+    if (Platform.OS !== 'ios') requestAnimationFrame(deliverSelection);
+  };
+
+  const exerciseMeta = (item: ExerciseDiscoveryItem): string => {
+    if (item.recentSet) {
+      const weight = formatWeight(item.recentSet.weight, unitSystem);
+      const set = `${weight ? `${weight} × ` : ''}${item.recentSet.reps}`;
+      return t('logger.lastSet', { set });
+    }
+    const exercise = item.exercise;
+    if (exercise.type === 'cardio') return t('exerciseDiscovery.cardioMeta');
+    return `${exercise.is_bodyweight ? t('logger.exerciseMeta.bodyweightPrefix') : ''}${t(
+      'logger.exerciseMeta.repRange',
+      { low: exercise.rep_low, high: exercise.rep_high },
+    )}`;
+  };
 
   return (
-    <Modal visible={!!picker} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={close}
+      onDismiss={deliverSelection}
+    >
+      <Pressable style={styles.backdrop} onPress={close} />
       <View style={[styles.sheet, { paddingBottom: Math.max(space.lg, insets.bottom) }]}>
         <View pointerEvents="none" style={styles.sheetEdge} />
         {picker ? (
           <>
             <View style={styles.grabber} />
             <Text style={styles.title}>{picker.title}</Text>
+            <Input
+              value={query}
+              onChangeText={setQuery}
+              placeholder={t('exerciseDiscovery.searchPlaceholder')}
+              accessibilityLabel={t('exerciseDiscovery.searchPlaceholder')}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoFocus={picker.exerciseIds == null && picker.type == null}
+              returnKeyType="search"
+              style={styles.search}
+            />
             <FlatList
-              data={rows}
-              keyExtractor={(e) => e.id}
+              data={visibleItems}
+              keyExtractor={(item) => item.exercise.id}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingVertical: space.sm }}
               renderItem={({ item }) => (
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.localizedName}. ${exerciseMeta(item)}`}
                   style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-                  onPress={() => onSelect(item)}
+                  onPress={() => select(item)}
                 >
                   <View style={styles.rowBody}>
-                    <Text style={styles.exName}>{t(`exercise.${item.id}`)}</Text>
-                    <Muted>
-                      {item.is_bodyweight ? t('logger.exerciseMeta.bodyweightPrefix') : ''}
-                      {t('logger.exerciseMeta.repRange', { low: item.rep_low, high: item.rep_high })}
-                    </Muted>
+                    <Text style={styles.exName}>{item.localizedName}</Text>
+                    <Muted>{exerciseMeta(item)}</Muted>
                   </View>
                   <Text style={styles.chevron}>›</Text>
                 </Pressable>
               )}
               ListEmptyComponent={<Muted style={{ paddingVertical: space.lg }}>{t('logger.exerciseListEmpty')}</Muted>}
             />
-            <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={8}>
+            <Pressable onPress={close} style={styles.closeBtn} hitSlop={8}>
               <Muted>{t('logger.close')}</Muted>
             </Pressable>
           </>
@@ -114,6 +222,7 @@ const styles = StyleSheet.create({
     marginBottom: space.md,
   },
   title: { ...typeScale.title, color: colors.text, marginBottom: space.xs },
+  search: { marginTop: space.sm, marginBottom: space.xs },
   row: {
     minHeight: 52,
     flexDirection: 'row',

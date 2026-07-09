@@ -1,9 +1,38 @@
 {
   "tabs": {
     "today": "今日",
+    "exercises": "探索",
+    "log": "记录",
     "power": "战力",
-    "history": "记录",
+    "history": "历史",
     "settings": "设置"
+  },
+  "exerciseDiscovery": {
+    "searchPlaceholder": "搜索动作",
+    "cardioMeta": "时长 · 距离 · 强度"
+  },
+  "logScreen": {
+    "title": "记录",
+    "subtitle": "用最快路径记录力量、有氧或饮食。",
+    "quickEyebrow": "力量快速记录",
+    "browse": "搜索完整目录",
+    "strength": "力量",
+    "strengthBody": "搜索全部力量动作并立即记录一组。",
+    "cardio": "有氧",
+    "cardioBody": "选择项目，然后记录时间、距离和强度。"
+  },
+  "exerciseScreen": {
+    "title": "动作库",
+    "subtitle": "搜索完整目录，或直接从身体部位开始。",
+    "searchEyebrow": "查找任意动作",
+    "searchAll": "搜索全部动作",
+    "searchBody": "在同一列表中搜索名称、部位、力量和有氧。",
+    "strength": "力量动作库",
+    "strengthBody": "包含今日计划以外的全部力量动作。",
+    "cardio": "有氧动作库",
+    "cardioBody": "跑步、骑行、间歇、划船等。",
+    "byRegion": "按身体部位浏览",
+    "regionBody": "选择部位，快速查看以其为主的动作。"
   },
   "today": {
     "combatPowerLabel": "战斗力",
@@ -441,8 +470,10 @@
     "placeholder": "例如  鸡胸肉300克 + 米饭",
     "photo": "通过照片估算饮食",
     "log": "记录",
+    "repeatLast": "重复上一餐",
     "kcal": "{n} 千卡",
     "fail": "无法估算 — 试试更简单的描述。",
+    "saveFailed": "这餐未能保存，也没有新增记录 — 请重试。",
     "photoUnavailable": "照片估算需要设置 AI 端点(.env)。"
   },
   "rest": {

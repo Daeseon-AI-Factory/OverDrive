@@ -61,7 +61,7 @@ export function CardioLoggerSheet({
         {exercise ? (
           <>
             <View style={styles.grabber} />
-            <Text style={styles.title}>{t(`exercise.${exercise.id}`)}</Text>
+            <Text style={styles.title}>{t(`exercise.${exercise.id}`, { defaultValue: exercise.name })}</Text>
             <Muted style={styles.meta}>{count > 0 ? t('logger.sessionSetCount', { count }) : ''}</Muted>
 
             <Stepper label={t('cardio.duration')} value={minutes} step={5} min={0} max={600} precision={0} unit={t('cardio.min')} onChange={setMinutes} />

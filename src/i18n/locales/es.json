@@ -1,9 +1,38 @@
 {
   "tabs": {
     "today": "Hoy",
+    "exercises": "Explorar",
+    "log": "Registrar",
     "power": "Poder",
     "history": "Historial",
     "settings": "Ajustes"
+  },
+  "exerciseDiscovery": {
+    "searchPlaceholder": "Buscar ejercicios",
+    "cardioMeta": "Duración · distancia · esfuerzo"
+  },
+  "logScreen": {
+    "title": "Registrar",
+    "subtitle": "La ruta más rápida para fuerza, cardio o comida.",
+    "quickEyebrow": "REGISTRO RÁPIDO DE FUERZA",
+    "browse": "BUSCAR EN EL CATÁLOGO",
+    "strength": "Fuerza",
+    "strengthBody": "Busca cualquier ejercicio de fuerza y registra una serie.",
+    "cardio": "Cardio",
+    "cardioBody": "Elige una modalidad y registra tiempo, distancia y esfuerzo."
+  },
+  "exerciseScreen": {
+    "title": "Ejercicios",
+    "subtitle": "Busca en todo el catálogo o empieza por una zona del cuerpo.",
+    "searchEyebrow": "ENCUENTRA CUALQUIER MOVIMIENTO",
+    "searchAll": "Buscar todos los ejercicios",
+    "searchBody": "Nombres, zonas, fuerza y cardio en una sola lista.",
+    "strength": "Catálogo de fuerza",
+    "strengthBody": "Todos los ejercicios, incluso fuera del plan de hoy.",
+    "cardio": "Catálogo de cardio",
+    "cardioBody": "Carrera, ciclismo, intervalos, remo y más.",
+    "byRegion": "BUSCAR POR ZONA CORPORAL",
+    "regionBody": "Elige una zona para ver sus movimientos principales."
   },
   "today": {
     "combatPowerLabel": "PODER DE COMBATE",
@@ -441,8 +470,10 @@
     "placeholder": "ej.  pechuga 300g + arroz",
     "photo": "Estimar comida desde una foto",
     "log": "REGISTRAR",
+    "repeatLast": "Repetir la última comida",
     "kcal": "{n} kcal",
     "fail": "No se pudo estimar — simplifica.",
+    "saveFailed": "No se pudo guardar esta comida. No se añadió nada — inténtalo de nuevo.",
     "photoUnavailable": "La estimación por foto necesita el endpoint AI (.env)."
   },
   "rest": {

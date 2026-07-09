@@ -1,8 +1,8 @@
 import { useSQLiteContext } from 'expo-sqlite';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { getLatest } from '@/db/repos/combatPowerRepo';
 import type { CombatPowerComponent } from '@/features/combat-power/combatPower.types';
 import { gradeForScore } from '@/features/combat-power/grades';
@@ -18,6 +18,7 @@ import { colors, displayGrade, hasHangul, numType, space, tracking, typeScale } 
 export default function PowerScreen() {
   const db = useSQLiteContext();
   const { t } = useTranslation();
+  const router = useRouter();
   const accent = useAccent();
   const score = useCombatPowerStore((s) => s.score);
   const [breakdown, setBreakdown] = useState<CombatPowerComponent[]>([]);
@@ -68,6 +69,15 @@ export default function PowerScreen() {
   return (
     <Screen background={<AmbientAura />}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: space.xxl }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('common.back')}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+          style={({ pressed }) => [styles.backButton, pressed && styles.backPressed]}
+        >
+          <Text style={styles.backLabel}>‹ {t('common.back')}</Text>
+        </Pressable>
+
         {/* The shrine — biggest single element in the app. Glow slot 1 of 2 = the CP number. */}
         <View style={styles.hero}>
           <Metric value={score} unit="CP" size="heroXL" />
@@ -116,6 +126,14 @@ export default function PowerScreen() {
 }
 
 const styles = StyleSheet.create({
+  backButton: {
+    minHeight: 44,
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
+    paddingHorizontal: space.md,
+  },
+  backPressed: { opacity: 0.72 },
+  backLabel: { ...typeScale.label, color: colors.text2 },
   hero: { alignItems: 'center', marginTop: space.xl },
   grade: { ...displayGrade, marginTop: space.xs },
   // System-font fallback for Hangul grade words (Anton has no Hangul glyphs); tracking ≤0.5.
