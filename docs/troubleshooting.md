@@ -469,3 +469,14 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: ba80eed
 - **Pattern**: 세션성 UX 상태(진행 중 운동)는 인메모리 스토어만이 아니라 부팅 시 DB에서 재수화해야 한다 — 모바일 앱은 언제든 죽고 다시 뜬다. 기능은 "한 세션 안에서" 되는 걸로 완성이 아니다.
 <!-- skipped: 6c30d3b docs(log): record for ba80eed [no-log] -->
+
+## 전체 운동 검색에서 유산소가 `Bodyweight · 0–0 reps`로 표시됨
+
+- **Symptom**: 첫 시뮬레이터 운동 탐색 점검의 accessibility tree가 유산소 결과를 문자 그대로 다음처럼 보고했다.
+  ```text
+  Cycling, Bodyweight · 0–0 reps
+  ```
+  기존 부위 picker에는 검색 입력도 없어서 정적 `exerciseIds` 밖의 운동과 QuickLog가 만든 ad-hoc 운동을 찾을 수 없었다.
+- **Cause**: `ExerciseRegionSheet.tsx`가 모든 운동에 근력용 `is_bodyweight + rep_low–rep_high` 메타를 렌더했고, DB 전체 카탈로그가 아니라 `RegionPicker.exerciseIds`만 SQL `IN`으로 조회했다.
+- **Fix**: `src/features/exercises/discovery.ts`를 추가해 전체 DB 카탈로그를 현지화 이름·DB 이름·ID 토큰·근육군·현지화 부위어로 검색하고, 빈 검색에서는 기존 부위 추천을 최근 세트 순으로 유지했다. 유산소는 `시간/거리/강도` 메타로 분기했다. `src/app/(tabs)/exercises.tsx`와 `log.tsx`를 추가해 탐색과 중앙 기록 진입을 분리했고, 선택만으로 빈 세션이 생기지 않도록 세션 생성은 실제 저장 시점으로 미뤘다.
+- **Commit**: 490c039
