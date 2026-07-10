@@ -327,99 +327,252 @@ async function handleRankBoard(req, env) {
 // edit). The power/aura/gear escalates with grade — the person's real body type is preserved (a
 // larger build = a mighty juggernaut, not slimmed). Original IP only — generic epic hero, never a
 // named franchise.
-// Power escalates with grade (shared across themes — the "how strong"). Original IP only.
-const GRADE_RAMP = {
-  ordinary: 'a newly awakened, just-getting-started',
-  rookie: 'a rising, hungry',
-  fighter: 'a battle-hardened, proven',
-  warrior: 'an elite, peak-form',
-  beast: 'an unstoppable, dominant',
-  monster: 'a legendary, larger-than-life',
-  ascendant: 'a transcendent, god-tier ultimate-form',
-};
-
-// The persona (the "who") — selected by the user's theme. ORIGINAL designs, no named franchise.
-const THEME_PERSONA = {
-  aura: 'ORIGINAL energy-warrior hero — stylized anime/game splash art, glowing battle aura that grows with power, ' +
-    'crackling energy VFX, heroic armor/gear escalating with rank, strong rim lighting, electric particle effects',
-  mogul: 'self-made mogul / titan of industry — luxury magazine-cover portrait, sharp impeccably tailored power suit, ' +
-    'opulent penthouse skyline at golden hour, commanding confident posture, wealth-and-power presence (tasteful, not gaudy)',
-  pro: 'elite professional athlete at peak performance — dynamic sports-magazine action cover, athletic gear, ' +
-    'stadium floodlights and crowd haze, explosive powerful pose, sweat and grit, motion energy',
-  forged: 'disciplined stoic warrior-monk — forged-by-discipline aesthetic, minimalist dojo/training-hall, ' +
-    'dramatic chiaroscuro lighting, calm intense focus, restrained monochrome palette with jade accents, quiet unbreakable resolve',
-};
-
 async function handleEvolve(req, env) {
-  if (!env.GEMINI_API_KEY) return json({ error: 'evolve requires GEMINI_API_KEY secret' }, 500);
+  // The old client uploaded immediately after photo selection and had no explicit consent/delete
+  // contract. Keep a deterministic tombstone instead of falling through to /parse for older builds.
+  void req;
+  void env;
+  return json({ error: 'legacy evolve retired; use the consented /body-avatar flow' }, 410);
+}
+
+// ---- BODY AVATAR (consented sportswear turnaround atlas) --------------------
+// POST /body-avatar — multipart
+//   { file, outfit, adultConfirmed, ownershipConfirmed, aiConsent }
+// → { mimeType, image }
+// The image is pass-through only and is never stored by this Worker. The prompt is fixed except for
+// a whitelisted opaque sportswear choice; clients cannot inject free-form prompt text.
+const BODY_AVATAR_MAX_INPUT_BYTES = 5 * 1024 * 1024;
+const BODY_AVATAR_MAX_OUTPUT_BYTES = 12 * 1024 * 1024;
+const BODY_AVATAR_MAX_MULTIPART_BYTES = BODY_AVATAR_MAX_INPUT_BYTES + 256 * 1024;
+const BODY_AVATAR_MIN_WIDTH = 400;
+const BODY_AVATAR_MIN_HEIGHT = 500;
+const BODY_AVATAR_MAX_PIXELS = 4_000_000;
+const BODY_AVATAR_TARGET_ASPECT = 4 / 5;
+const BODY_AVATAR_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const BODY_AVATAR_OUTFITS = {
+  compression:
+    'a fully opaque long-sleeve compression training top with a high neckline, full-length athletic leggings, and plain training shoes',
+  sport_top:
+    'a fully opaque short-sleeve performance sport top, knee-length training shorts, and plain training shoes',
+  sleeveless:
+    'a fully opaque sleeveless performance top with a high neckline, knee-length training shorts, and plain training shoes',
+};
+
+function normalizeBodyAvatarMime(value) {
+  const mime = String(value || '').toLowerCase().split(';', 1)[0].trim();
+  if (mime === 'image/jpg') return 'image/jpeg';
+  return BODY_AVATAR_MIMES.has(mime) ? mime : null;
+}
+
+function bodyAvatarSignatureMatches(bytes, mime) {
+  if (mime === 'image/jpeg') return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  if (mime === 'image/png') {
+    return (
+      bytes.length >= 8 &&
+      bytes[0] === 0x89 &&
+      bytes[1] === 0x50 &&
+      bytes[2] === 0x4e &&
+      bytes[3] === 0x47 &&
+      bytes[4] === 0x0d &&
+      bytes[5] === 0x0a &&
+      bytes[6] === 0x1a &&
+      bytes[7] === 0x0a
+    );
+  }
+  return (
+    mime === 'image/webp' &&
+    bytes.length >= 12 &&
+    String.fromCharCode(...bytes.subarray(0, 4)) === 'RIFF' &&
+    String.fromCharCode(...bytes.subarray(8, 12)) === 'WEBP'
+  );
+}
+
+function base64DecodedBytes(value) {
+  const padding = value.endsWith('==') ? 2 : value.endsWith('=') ? 1 : 0;
+  return Math.floor((value.length * 3) / 4) - padding;
+}
+
+function decodeBodyAvatarBase64(value) {
+  if (
+    typeof value !== 'string' ||
+    value.length < 32 ||
+    value.length % 4 !== 0 ||
+    !/^[A-Za-z0-9+/]+={0,2}$/.test(value) ||
+    base64DecodedBytes(value) > BODY_AVATAR_MAX_OUTPUT_BYTES
+  ) {
+    return null;
+  }
+  try {
+    const binary = atob(value);
+    return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  } catch {
+    return null;
+  }
+}
+
+function bodyAvatarImageDimensions(bytes, mime) {
+  if (mime === 'image/png' && bytes.length >= 24) {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    return { width: view.getUint32(16), height: view.getUint32(20) };
+  }
+  if (mime !== 'image/jpeg' || bytes.length < 10) return null;
+
+  const startOfFrame = new Set([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf]);
+  let offset = 2;
+  while (offset + 8 < bytes.length) {
+    if (bytes[offset] !== 0xff) {
+      offset += 1;
+      continue;
+    }
+    const marker = bytes[offset + 1];
+    offset += 2;
+    if (marker === 0xd8 || marker === 0xd9 || (marker >= 0xd0 && marker <= 0xd7)) continue;
+    if (offset + 1 >= bytes.length) return null;
+    const segmentLength = (bytes[offset] << 8) | bytes[offset + 1];
+    if (segmentLength < 2 || offset + segmentLength > bytes.length) return null;
+    if (startOfFrame.has(marker) && segmentLength >= 7) {
+      return {
+        height: (bytes[offset + 3] << 8) | bytes[offset + 4],
+        width: (bytes[offset + 5] << 8) | bytes[offset + 6],
+      };
+    }
+    offset += segmentLength;
+  }
+  return null;
+}
+
+function validBodyAvatarDimensions(dimensions) {
+  if (!dimensions) return false;
+  const { width, height } = dimensions;
+  return (
+    Number.isInteger(width) &&
+    Number.isInteger(height) &&
+    width >= BODY_AVATAR_MIN_WIDTH &&
+    height >= BODY_AVATAR_MIN_HEIGHT &&
+    width * height <= BODY_AVATAR_MAX_PIXELS &&
+    Math.abs(width / height - BODY_AVATAR_TARGET_ASPECT) <= 0.05
+  );
+}
+
+async function handleBodyAvatar(req, env) {
+  const contentLength = Number(req.headers.get('content-length'));
+  if (Number.isFinite(contentLength) && contentLength > BODY_AVATAR_MAX_MULTIPART_BYTES) {
+    return json({ error: 'multipart body too large' }, 413);
+  }
   let form;
   try {
     form = await req.formData();
   } catch {
     return json({ error: 'expected multipart form-data' }, 400);
   }
+
   const file = form.get('file');
   if (!file || typeof file === 'string') return json({ error: 'missing file' }, 400);
-  const gradeKey = sanitize(form.get('gradeKey'), 24) || 'rookie';
-  const themeId = sanitize(form.get('themeId'), 16) || 'aura';
-  const ramp = GRADE_RAMP[gradeKey] || GRADE_RAMP.rookie;
-  const persona = THEME_PERSONA[themeId] || THEME_PERSONA.aura;
-  const look = `${ramp} ${persona}`;
+  if (
+    form.get('adultConfirmed') !== 'true' ||
+    form.get('ownershipConfirmed') !== 'true' ||
+    form.get('aiConsent') !== 'true'
+  ) {
+    return json({ error: 'adult, ownership, and AI-processing confirmations must all be true' }, 400);
+  }
+  const outfit = String(form.get('outfit') || '');
+  const outfitDescription = BODY_AVATAR_OUTFITS[outfit];
+  if (!outfitDescription) return json({ error: 'invalid outfit' }, 400);
 
-  const buf = new Uint8Array(await file.arrayBuffer());
-  let bin = '';
-  for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
-  const b64 = btoa(bin);
+  const inputMime = normalizeBodyAvatarMime(file.type);
+  if (!inputMime) return json({ error: 'unsupported image type' }, 415);
+  if (!Number.isFinite(file.size) || file.size <= 0) return json({ error: 'empty image' }, 400);
+  if (file.size > BODY_AVATAR_MAX_INPUT_BYTES) return json({ error: 'image too large' }, 413);
+  if (!env.GEMINI_API_KEY) return json({ error: 'body-avatar requires GEMINI_API_KEY secret' }, 500);
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes.length <= 0 || bytes.length > BODY_AVATAR_MAX_INPUT_BYTES) return json({ error: 'invalid image size' }, 413);
+  if (!bodyAvatarSignatureMatches(bytes, inputMime)) return json({ error: 'image content does not match its type' }, 415);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  const imageBase64 = btoa(binary);
+
+  const prompt =
+    `Create ONE fixed, neutral, two-panel full-body turnaround atlas of the same person in the input. ` +
+    `The canvas must be a tall two-panel atlas with an overall 4:5 width-to-height ratio: LEFT panel ` +
+    `is an exact neutral FRONT view; RIGHT panel is ` +
+    `an exact neutral BACK view. Both panels must show the complete figure from head to shoes at the ` +
+    `same scale, same camera height, same orthographic-like perspective, same relaxed A-pose, arms ` +
+    `slightly away from the torso, feet parallel, centered with identical tight padding on a perfectly ` +
+    `flat near-black studio background. Each half must be a tall 2:5 panel; align both heads and both ` +
+    `soles exactly so a fixed body-region overlay can be reused. ` +
+    `Render as stylized, clearly NON-PHOTOREAL original game-character concept art with clean shapes ` +
+    `and restrained cel shading—not a photograph and not a beauty/body transformation. Preserve only ` +
+    `the person's VISIBLE likeness, skin tone, hair, silhouette, and body proportions as shown. Do not ` +
+    `slim, bulk, lengthen, idealize, sexualize, or exaggerate anatomy. Do not infer or label sex, gender, ` +
+    `gender identity, health, fitness, body composition, disability, diagnosis, or any other sensitive ` +
+    `attribute. Do not invent hidden anatomical detail; make the back view a conservative, fully ` +
+    `garment-covered turnaround consistent with the visible silhouette. Dress the figure only in ` +
+    `${outfitDescription}. Clothing must remain opaque and non-revealing. No nudity, underwear, ` +
+    `lingerie, swimwear, transparent fabric, cleavage emphasis, fetish styling, or sexual pose. No text, ` +
+    `logos, brands, weapons, aura, action pose, props, scenery, or extra views. ORIGINAL IP only: do not ` +
+    `copy or imitate any existing franchise, character, mascot, costume, logo, or trademarked art style. ` +
+    `Return a single image containing exactly the front and back panels.`;
 
   const model = env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image';
-  const prompt =
-    `Reimagine the person in this photo as an EPIC ORIGINAL HERO CHARACTER — stylized digital ` +
-    `splash art / anime-game key art, NOT a photorealistic edit. This is a heroic power-up portrait. ` +
-    `KEEP their face and likeness clearly recognizable (must still look like the SAME person) AND keep ` +
-    `their real body type and build — do NOT slim them down, do NOT bulk or fatten them, do NOT change ` +
-    `their body shape. A larger or heavier build must be rendered as a MIGHTY, imposing juggernaut/tank ` +
-    `hero — any body type can look powerful and badass. Transform the styling into: ${look}. ` +
-    `Make them look genuinely badass, powerful and awe-inspiring (flattering and heroic only — never ` +
-    `mocking, never unflattering, and never a weight-loss "after" shot). Dramatic composition, bold colors, ` +
-    `strong rim lighting and energy effects, portrait orientation. ` +
-    `ORIGINAL design only — do NOT copy or imitate any existing franchise, named character, logo, mascot, or trademarked art style.`;
-
-  let res;
+  let response;
   try {
-    res = await fetch(
+    response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${env.GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           contents: [
-            { parts: [{ text: prompt }, { inline_data: { mime_type: file.type || 'image/jpeg', data: b64 } }] },
+            { parts: [{ text: prompt }, { inline_data: { mime_type: inputMime, data: imageBase64 } }] },
           ],
+          generationConfig: {
+            responseModalities: ['IMAGE'],
+            responseFormat: { image: { aspectRatio: '4:5' } },
+          },
         }),
       },
     );
-  } catch (e) {
-    return json({ error: 'gemini evolve fetch failed', detail: String(e) }, 502);
+  } catch (error) {
+    return json({ error: 'gemini body-avatar fetch failed', detail: String(error) }, 502);
   }
-  if (!res.ok) return json({ error: `gemini evolve ${res.status}`, detail: await res.text().catch(() => '') }, 502);
-  const data = await res.json().catch(() => null);
+  if (!response.ok) {
+    return json({ error: `gemini body-avatar ${response.status}`, detail: await response.text().catch(() => '') }, 502);
+  }
+  const data = await response.json().catch(() => null);
   const parts = data?.candidates?.[0]?.content?.parts ?? [];
-  const img = parts.find((p) => p.inlineData?.data || p.inline_data?.data);
-  const out = img?.inlineData ?? img?.inline_data;
-  if (!out?.data) return json({ error: 'no image in response', detail: JSON.stringify(parts).slice(0, 200) }, 502);
-  return json({ image: out.data, mimeType: out.mimeType ?? out.mime_type ?? 'image/png' });
+  const imagePart = parts.find((part) => part.inlineData?.data || part.inline_data?.data);
+  const output = imagePart?.inlineData ?? imagePart?.inline_data;
+  const outputMime = normalizeBodyAvatarMime(output?.mimeType ?? output?.mime_type);
+  if (!outputMime || typeof output?.data !== 'string' || output.data.length === 0) {
+    return json({ error: 'no supported image in body-avatar response' }, 502);
+  }
+  const outputBytes = decodeBodyAvatarBase64(output.data);
+  if (!outputBytes || !bodyAvatarSignatureMatches(outputBytes, outputMime)) {
+    return json({ error: 'body-avatar response is not a valid declared image' }, 502);
+  }
+  const dimensions = bodyAvatarImageDimensions(outputBytes, outputMime);
+  if (!validBodyAvatarDimensions(dimensions)) {
+    return json({ error: 'body-avatar response has invalid atlas dimensions' }, 502);
+  }
+  return json({ mimeType: outputMime, image: output.data });
 }
 
 export default {
   async fetch(req, env) {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
-    if (req.method !== 'POST') return json({ error: 'POST only (/parse, /transcribe, /food, /rank/*, /evolve)' }, 405);
+    if (req.method !== 'POST') {
+      return json({ error: 'POST only (/parse, /transcribe, /food, /rank/*, /evolve, /body-avatar)' }, 405);
+    }
     const { pathname } = new URL(req.url);
     if (pathname === '/transcribe') return handleTranscribe(req, env);
     if (pathname === '/food') return handleFood(req, env);
     if (pathname === '/rank/submit') return handleRankSubmit(req, env);
     if (pathname === '/rank/board') return handleRankBoard(req, env);
     if (pathname === '/evolve') return handleEvolve(req, env);
+    if (pathname === '/body-avatar') return handleBodyAvatar(req, env);
     return handleParse(req, env);
   },
 };

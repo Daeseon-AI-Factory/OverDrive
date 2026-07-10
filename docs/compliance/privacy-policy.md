@@ -1,13 +1,14 @@
 # Reploom — Privacy Policy
 
-_Last updated: 2026-06-30_
+_Last updated: 2026-07-09_
 
 Reploom ("Reploom", "the app", "we", "us") turns your real training into a game-style
 **Combat Power** score. This policy explains, in plain language, exactly what data the app
 uses, what never leaves your device, and the few things that are sent for processing.
 
-**One-line summary:** Your Apple Health data never leaves your device. Your workout/meal
-logs (text, voice, or photo) are sent only to turn them into structured entries. There are
+**One-line summary:** Your Apple Health data never leaves your device. Workout/meal inputs are
+sent only when you ask us to structure them, and an avatar photo is sent only after you explicitly
+confirm AI processing and tap Generate. There are
 **no accounts, no ads, no third-party trackers**, and we **never sell, rent, or mine** your data.
 
 ---
@@ -46,8 +47,8 @@ requirements.
 
 ## 3. Data that is sent off your device (and why)
 
-Reploom has no health-data backend. The **only** time information leaves your device is when you
-ask the app to interpret a log you created. That input is sent to our processing endpoint (a
+Reploom has no health-data backend. Information leaves your device only when you ask the app to
+interpret a log you created or explicitly generate a photo-based avatar. That input is sent to our processing endpoint (a
 Cloudflare Worker), which forwards it to a third-party AI service to convert it into structured
 data, then returns the result:
 
@@ -55,9 +56,11 @@ data, then returns the result:
 |---|---|---|---|
 | Type a workout/meal | The text you wrote | Groq, or Google Gemini (fallback) | Parse into sets / nutrition |
 | Speak a workout log | The audio you recorded | Groq (Whisper) | Speech-to-text |
-| Pick a meal photo / Evolution avatar photo | The image you chose | Google Gemini | Estimate nutrition / generate an avatar |
+| Pick a meal photo / Generate a sportswear avatar | The image you chose | Google Gemini | Estimate nutrition / generate an avatar |
 
-These inputs are sent **only to return your result**. We do not attach your identity to them
+Selecting an avatar photo copies it locally but does **not** upload it. Before avatar generation,
+the app separately asks you to confirm that you are 18 or older, that the photo is yours to use,
+and that you consent to Google AI processing. These inputs are sent **only to return your result**. We do not attach your identity to them
 (Reploom has no account), and we do not use them to build an advertising or tracking profile.
 Processing is handled by the providers above under their own terms; see Groq's and Google's
 privacy policies for how they handle data sent to their APIs. We do not send your Apple Health
@@ -79,7 +82,8 @@ You can stay off leaderboards entirely and use every core feature.
 
 Your workouts, sets, cardio, body-composition entries, daily goals, food logs, Combat Power
 history, and settings are stored **locally on your device** (in an on-device SQLite database).
-Deleting the app removes this data from your device.
+Avatar originals and generated avatar files are also stored locally in the app's private documents
+directory. The avatar controls can delete both immediately; deleting the app removes all local data.
 
 ## 6. What we do NOT do
 
@@ -111,6 +115,7 @@ labeled as such in the app. Don't use it as a health diagnosis.
 
 - Revoke Health, Microphone, or Photos access in iOS Settings.
 - Skip the optional leaderboard (default).
+- Delete an avatar original and generated avatar together from the avatar controls.
 - Delete the app to remove on-device data.
 
 ## 10. Changes

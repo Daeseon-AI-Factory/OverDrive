@@ -7,7 +7,9 @@ Last updated: 2026-06-30._
 > clear* (no exact mark; nearest neighbors `Replo` (SaaS), `RepRoom` (fitness) are distinguishable),
 > but app-store-collision / domain / global checks did not complete and a direct USPTO tmsearch
 > lookup is still recommended. (2) Register `reploom.app` (or chosen domain) + `support@reploom.app`.
-> (3) Host the privacy policy at a public URL.
+> (3) Host the privacy policy at a public URL. (4) Resolve the photo-avatar age gate before shipping:
+> the current Gemini API terms and this draft's 4+ rating are not yet compatible; the branch UI's
+> 18+ confirmation is a prototype safeguard, not a completed App Store age-distribution solution.
 
 ## App identity
 

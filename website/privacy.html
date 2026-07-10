@@ -25,11 +25,12 @@
   <article class="doc">
     <a class="back" href="index.html">← Back</a>
     <h1>Privacy Policy</h1>
-    <p class="updated">Last updated: 2026-06-30</p>
+    <p class="updated">Last updated: 2026-07-09</p>
 
     <div class="lead">
       <strong>One-line summary:</strong> Your Apple Health data never leaves your device. Your
-      workout/meal logs (text, voice, or photo) are sent only to turn them into structured entries.
+      workout/meal inputs are sent only when you ask us to structure them, and an avatar photo is
+      sent only after you explicitly confirm AI processing and tap Generate.
       There are <strong>no accounts, no ads, no third-party trackers</strong>, and we
       <strong>never sell, rent, or mine</strong> your data.
     </div>
@@ -64,17 +65,19 @@
       logged — never fabricated or “game” numbers.</p>
 
     <h2>3. Data that is sent off your device (and why)</h2>
-    <p>Reploom has no health-data backend. The only time information leaves your device is when you
-      ask the app to interpret a log you created. That input goes to our processing endpoint, which
+    <p>Reploom has no health-data backend. Information leaves your device only when you ask the app
+      to interpret a log or explicitly generate a photo-based avatar. That input goes to our processing endpoint, which
       forwards it to a third-party AI service to convert it into structured data, then returns the
       result:</p>
     <table>
       <tr><th>What you do</th><th>What is sent</th><th>Who processes it</th><th>Purpose</th></tr>
       <tr><td>Type a workout/meal</td><td>The text you wrote</td><td>Groq, or Google Gemini (fallback)</td><td>Parse into sets / nutrition</td></tr>
       <tr><td>Speak a workout log</td><td>The audio you recorded</td><td>Groq (Whisper)</td><td>Speech-to-text</td></tr>
-      <tr><td>Pick a meal / avatar photo</td><td>The image you chose</td><td>Google Gemini</td><td>Estimate nutrition / generate an avatar</td></tr>
+      <tr><td>Pick a meal photo / Generate a sportswear avatar</td><td>The image you chose</td><td>Google Gemini</td><td>Estimate nutrition / generate an avatar</td></tr>
     </table>
-    <p>These inputs are sent only to return your result. We do not attach your identity to them
+    <p>Selecting an avatar photo stores it locally but does not upload it. Before generation, the app
+      asks you to confirm that you are 18 or older, that the photo is yours to use, and that you
+      consent to Google AI processing. Inputs are sent only to return your result. We do not attach your identity to them
       (Reploom has no account) and do not use them for advertising or tracking profiles. We never
       send your Apple Health data, contacts, or location through this path.</p>
 
@@ -85,7 +88,9 @@
 
     <h2>5. On-device storage</h2>
     <p>Your workouts, sets, cardio, body-composition entries, daily goals, food logs, Combat Power
-      history, and settings are stored locally on your device. Deleting the app removes this data.</p>
+      history, and settings are stored locally on your device. Avatar originals and generated avatar
+      files are stored in the app's private documents directory and can be deleted together from the
+      avatar controls. Deleting the app removes all local data.</p>
 
     <h2>6. What we do NOT do</h2>
     <ul>
@@ -114,6 +119,7 @@
     <ul>
       <li>Revoke Health, Microphone, or Photos access in iOS Settings.</li>
       <li>Skip the optional leaderboard (default).</li>
+      <li>Delete an avatar original and generated avatar together from the avatar controls.</li>
       <li>Delete the app to remove on-device data.</li>
     </ul>
 
