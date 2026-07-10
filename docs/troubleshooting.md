@@ -480,3 +480,12 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Cause**: `ExerciseRegionSheet.tsx`가 모든 운동에 근력용 `is_bodyweight + rep_low–rep_high` 메타를 렌더했고, DB 전체 카탈로그가 아니라 `RegionPicker.exerciseIds`만 SQL `IN`으로 조회했다.
 - **Fix**: `src/features/exercises/discovery.ts`를 추가해 전체 DB 카탈로그를 현지화 이름·DB 이름·ID 토큰·근육군·현지화 부위어로 검색하고, 빈 검색에서는 기존 부위 추천을 최근 세트 순으로 유지했다. 유산소는 `시간/거리/강도` 메타로 분기했다. `src/app/(tabs)/exercises.tsx`와 `log.tsx`를 추가해 탐색과 중앙 기록 진입을 분리했고, 선택만으로 빈 세션이 생기지 않도록 세션 생성은 실제 저장 시점으로 미뤘다.
 - **Commit**: 490c039
+
+## 6개 고정 블록 바디맵이 실제 부위 탐색과 추천을 막았다
+
+- **Symptom**: 빌더 피드백은 "운동 부위별 추천·검색이 제대로 되지 않고, 몸을 직접 눌러 고르고 싶다"였다. 코드 실측에서도 기존 캐릭터는 6개 고정 사각형과 seed `exerciseIds`에 묶여 있었고, 첫 스포츠웨어 시안의 하체 좌표는 정강이 일부를 대퇴사두로 판정했다. 좁은 팔·종아리 타깃과 단일 접근성 버튼 때문에 헬스장 한손 터치와 VoiceOver 선택도 불안정했다.
+- **Cause**: 이미지, 터치 계약, 추천 데이터가 하나의 정적 목록에 결합돼 있었다. 비트맵 위치와 히트 영역을 별도로 보정하지 않았고, 부위 선택 시점에 세션을 미리 만들어 추천만 보고 닫아도 빈 운동이 남는 경로도 있었다.
+- **Fix**: 불투명 스포츠웨어 정면·후면 아바타와 자산 기준 10부위 polygon을 추가하고, 22pt nearest-edge 보정과 방향 무관 10부위 접근성 action을 적용했다. 추천은 DB 근육군을 기준으로 `오늘 프로그램 → 최근 기록 → 전체 부위 카탈로그` 순으로 만들고, 부위→운동→로거를 2동작으로 연결했다. 세션은 실제 저장 때만 생성한다. 사진형 아바타는 3중 동의, 실제 이미지·4:5 검사, 정면/후면 미리보기 확인 후에만 활성화하며 닫기·재시도는 pending 결과만 폐기한다.
+- **Commit**: b646643
+- **Verification**: Jest 29 suites / 245 tests, strict TypeScript, lint, diff check 통과. iPhone 17 Pro Release 빌드 0 errors / 기존 경고 3건. 시드 DB에서 등→Lat Pulldown→로거 2동작과 앞/뒤 10개 접근성 action을 확인했고, workout/session/food 행 수는 5/14/0으로 전후 동일했다.
+- **Pattern**: 몸 기반 탐색에서 비트맵은 표현이고 히트맵·추천 순위·저장 시점이 기능 계약이다. 생성 이미지는 프롬프트만 믿지 말고 envelope 검사와 사용자 activation gate를 둔다.
