@@ -6,7 +6,6 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { getLatest } from '@/db/repos/combatPowerRepo';
 import type { CombatPowerComponent } from '@/features/combat-power/combatPower.types';
 import { gradeForScore } from '@/features/combat-power/grades';
-import { EvolutionCard } from '@/features/evolution/EvolutionCard';
 import { AmbientAura } from '@/features/juice/AmbientAura';
 import { useJuice } from '@/features/juice/JuiceProvider';
 import { TIER_DURATION_MS } from '@/features/juice/constants';
@@ -87,8 +86,6 @@ export default function PowerScreen() {
           </Text>
           <Text style={styles.disclaimer}>{t('power.disclaimer')}</Text>
         </View>
-
-        <EvolutionCard />
 
         <RankSection />
 

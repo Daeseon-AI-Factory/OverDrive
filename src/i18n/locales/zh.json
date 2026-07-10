@@ -9,7 +9,11 @@
   },
   "exerciseDiscovery": {
     "searchPlaceholder": "搜索动作",
-    "cardioMeta": "时长 · 距离 · 强度"
+    "cardioMeta": "时长 · 距离 · 强度",
+    "reason": {
+      "today": "今日计划",
+      "recent": "最近训练"
+    }
   },
   "logScreen": {
     "title": "记录",
@@ -22,8 +26,8 @@
     "cardioBody": "选择项目，然后记录时间、距离和强度。"
   },
   "exerciseScreen": {
-    "title": "动作库",
-    "subtitle": "搜索完整目录，或直接从身体部位开始。",
+    "title": "从你的身体开始训练",
+    "subtitle": "搜索动作，或直接点选训练角色的身体部位。",
     "searchEyebrow": "查找任意动作",
     "searchAll": "搜索全部动作",
     "searchBody": "在同一列表中搜索名称、部位、力量和有氧。",
@@ -31,8 +35,9 @@
     "strengthBody": "包含今日计划以外的全部力量动作。",
     "cardio": "有氧动作库",
     "cardioBody": "跑步、骑行、间歇、划船等。",
-    "byRegion": "按身体部位浏览",
-    "regionBody": "选择部位，快速查看以其为主的动作。"
+    "byRegion": "训练角色",
+    "regionBody": "点选正面或背面，优先显示今日计划和最近训练。",
+    "avatarPreview": "默认运动服角色 · 只有你主动选择时才会生成照片角色。"
   },
   "today": {
     "combatPowerLabel": "战斗力",
@@ -211,8 +216,11 @@
       "front": "正面",
       "back": "背面"
     },
-    "cardioChip": "🏃 有氧 / 体能",
-    "hint": "点选身体部位选择动作。战斗力越高，气场越强。"
+    "cardioChip": "有氧 / 体能",
+    "hint": "点选身体即可打开对应动作。",
+    "ready": "点选你要训练的部位",
+    "accessibility": "选择训练角色的身体部位",
+    "accessibilityHint": "上下轻扫选择部位操作，或双击身体"
   },
   "region": {
     "chest": "胸",
@@ -220,7 +228,13 @@
     "back": "背",
     "arms": "手臂",
     "core": "核心",
-    "legs": "腿"
+    "legs": "腿",
+    "biceps": "肱二头肌",
+    "triceps": "肱三头肌",
+    "glutes": "臀肌",
+    "quads": "股四头肌",
+    "hamstrings": "腿后肌",
+    "calves": "小腿"
   },
   "grade": {
     "ordinary": "凡人",
@@ -504,9 +518,56 @@
     "changePhoto": "更换照片",
     "fail": "进化失败 —",
     "noEndpoint": "需要 AI 端点(.env) + GEMINI_API_KEY。",
-    "privacy": "照片仅在生成时经过你的服务器 — 不会被存储。",
+    "privacy": "照片会经 Reploom Worker 发送至 Google Gemini。Reploom 不会在服务器上保留照片。",
     "share": "🔥 分享",
     "shareCaption": "战斗力 {cp} · {grade} 💥 我把训练进化成了英雄 #健身 #撸铁 #运动"
+  },
+  "bodyAvatar": {
+    "open": "用我的照片创建角色",
+    "title": "照片训练角色",
+    "subtitle": "照片只用于生成固定正背面的运动服角色，生成结果不是身体测量数据。",
+    "outfit": {
+      "title": "运动服",
+      "sleeveless": "无袖上衣 + 短裤",
+      "sport_top": "功能上衣 + 短裤",
+      "compression": "压缩训练套装"
+    },
+    "photo": {
+      "pick": "选择我的照片",
+      "change": "重新选择照片",
+      "ready": "照片已保存在本机 · 尚未发送"
+    },
+    "consent": {
+      "title": "生成前确认",
+      "provider": "点击生成后，照片将经 Reploom Worker 发送至 Google Gemini，并适用 Google 的处理政策。",
+      "adultConfirmed": "我已年满 18 岁",
+      "ownershipConfirmed": "这是我的照片且我有权使用",
+      "aiConsent": "我同意 Google AI 处理并生成角色"
+    },
+    "generate": "生成运动服角色",
+    "generating": "正在生成角色…",
+    "cancelGeneration": "取消生成",
+    "cancel": "取消",
+    "preview": {
+      "title": "检查正面和背面预览",
+      "instructions": "仅当左侧为完整正面、右侧为完整背面，且两侧头部和脚部对齐时使用。",
+      "confirm": "两幅全身视图都存在且位置对齐",
+      "use": "使用此训练角色",
+      "activating": "正在应用角色…",
+      "retry": "丢弃并重新生成"
+    },
+    "delete": {
+      "title": "删除我的角色数据",
+      "body": "删除本机上的原始照片和生成角色。",
+      "action": "删除照片和角色"
+    },
+    "error": {
+      "pick": "无法准备这张照片，请换一张重试。",
+      "timeout": "生成超时，照片仍保存在本机。",
+      "generate": "无法生成角色，你仍可继续使用默认角色。",
+      "activate": "无法应用该预览，当前角色未更改。",
+      "delete": "无法删除角色数据，请重试。"
+    }
   },
   "common": {
     "back": "返回",

@@ -5,8 +5,9 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { ExerciseRow } from '@/db/types';
 import { ArenaCard } from '@/features/arena/ArenaCard';
 import { gradeForScore } from '@/features/combat-power/grades';
+import type { BodyHitRegionId } from '@/features/character/bodyHitMap';
 import { MyCharacter } from '@/features/character/MyCharacter';
-import { CARDIO_EXERCISE_IDS, REGIONS, type BodyRegionId } from '@/features/character/regions';
+import { CARDIO_EXERCISE_IDS } from '@/features/character/regions';
 import { CoachCard } from '@/features/coach/CoachCard';
 import { MicDock } from '@/features/coach/MicDock';
 import { DailyGoalsCard } from '@/features/dailyGoals/DailyGoalsCard';
@@ -20,6 +21,7 @@ import { useForge } from '@/features/forge/useForge';
 import { CardioLoggerSheet } from '@/features/logging/CardioLoggerSheet';
 import { ExerciseRegionSheet, type RegionPicker } from '@/features/logging/ExerciseRegionSheet';
 import { SetLoggerSheet } from '@/features/logging/SetLoggerSheet';
+import { useTodayProgram } from '@/features/program/useProgram';
 import { QuickLogBar } from '@/features/quicklog/QuickLogBar';
 import { todayActionOrder, type TodayActionSurface } from '@/features/today/actionOrder';
 import { ActiveWorkoutCard } from '@/features/workout/ActiveWorkoutCard';
@@ -51,15 +53,15 @@ export default function TodayScreen() {
   const score = useCombatPowerStore((s) => s.score);
   const { enter, finish } = useForge();
   const activeSessionId = useSessionStore((s) => s.activeSessionId);
+  const todayProgram = useTodayProgram();
 
-  const [activeRegion, setActiveRegion] = useState<BodyRegionId | null>(null);
+  const [activeRegion, setActiveRegion] = useState<BodyHitRegionId | null>(null);
   const [picker, setPicker] = useState<RegionPicker | null>(null);
   const [activeExercise, setActiveExercise] = useState<ExerciseRow | null>(null);
   const [showDetail, setShowDetail] = useState(false); // ActiveWorkoutCard behind CoachCard's '자세히'
 
-  // Implicit session start (first set / body-map tap): skip the 1.6s enter ritual so the gesture
-  // completes immediately — JUICE must never block logging (spec §6). The ritual stays for an
-  // explicit forge entry.
+  // Implicit session start on the first actual save: skip the 1.6s enter ritual so JUICE never
+  // blocks logging (spec §6). Merely browsing a body region must not create an empty session.
   const enterSilently = useCallback(async () => {
     useSessionStore.getState().setSilentStart(true);
     try {
@@ -73,24 +75,28 @@ export default function TodayScreen() {
     const active = useSessionStore.getState().activeSessionId;
     if (active) return active;
     await enterSilently();
-    return useSessionStore.getState().activeSessionId ?? '';
+    const started = useSessionStore.getState().activeSessionId;
+    if (!started) throw new Error('session_start_failed');
+    return started;
   }, [enterSilently]);
 
   const onRegionPress = useCallback(
-    (region: BodyRegionId) => {
-      // Open the picker in this SAME gesture; the session auto-starts silently in the background.
-      if (!useSessionStore.getState().activeSessionId) void enterSilently();
+    (region: BodyHitRegionId) => {
       setActiveRegion(region);
-      setPicker({ title: t(`region.${region}`), exerciseIds: REGIONS[region].exerciseIds });
+      setPicker({
+        title: t(`region.${region}`),
+        type: 'strength',
+        region,
+        programExerciseIds: todayProgram.slots.map((slot) => slot.exerciseId),
+      });
     },
-    [enterSilently, t],
+    [t, todayProgram.slots],
   );
 
   const onCardioPress = useCallback(() => {
-    if (!useSessionStore.getState().activeSessionId) void enterSilently();
     setActiveRegion(null);
     setPicker({ title: t('today.cardioSheetTitle'), exerciseIds: [...CARDIO_EXERCISE_IDS] });
-  }, [enterSilently, t]);
+  }, [t]);
 
   const grade = gradeForScore(score);
   const cpLabel = t('today.combatPowerLabel');

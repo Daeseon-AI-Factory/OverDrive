@@ -1,51 +1,20 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { ExerciseRow } from '@/db/types';
 import { MyCharacter } from '@/features/character/MyCharacter';
-import { CARDIO_EXERCISE_IDS, REGIONS, type BodyRegionId } from '@/features/character/regions';
+import { CARDIO_EXERCISE_IDS } from '@/features/character/regions';
+import type { BodyHitRegionId } from '@/features/character/bodyHitMap';
 import { useSessionStore } from '@/features/forge/sessionStore';
 import { useForge } from '@/features/forge/useForge';
 import { CardioLoggerSheet } from '@/features/logging/CardioLoggerSheet';
+import { BodyAvatarSetupSheet } from '@/features/evolution/BodyAvatarSetupSheet';
 import { ExerciseRegionSheet, type RegionPicker } from '@/features/logging/ExerciseRegionSheet';
 import { SetLoggerSheet } from '@/features/logging/SetLoggerSheet';
-import { Button, Card, Muted, Pill, Screen, SectionTitle } from '@/ui/primitives';
+import { useTodayProgram } from '@/features/program/useProgram';
+import { Button, Card, Muted, Screen } from '@/ui/primitives';
 import { useSkinOrNull } from '@/ui/skins/SkinContext';
 import { colors, space, typeScale } from '@/ui/theme/tokens';
-
-const REGION_ORDER: BodyRegionId[] = ['chest', 'shoulders', 'back', 'arms', 'core', 'legs'];
-
-function CatalogAction({
-  title,
-  body,
-  onPress,
-}: {
-  title: string;
-  body: string;
-  onPress: () => void;
-}) {
-  const skin = useSkinOrNull();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${title}. ${body}`}
-      onPress={onPress}
-      style={({ pressed }) => [styles.actionPress, pressed && styles.pressed]}
-    >
-      <Card style={styles.actionCard}>
-        <View style={styles.actionRow}>
-          <View style={styles.actionCopy}>
-            <Text style={[styles.actionTitle, { color: skin?.palette.text ?? colors.text }]}>{title}</Text>
-            <Muted style={styles.actionBody}>{body}</Muted>
-          </View>
-          <Text accessible={false} style={[styles.chevron, { color: skin?.palette.text3 ?? colors.text3 }]}>
-            ›
-          </Text>
-        </View>
-      </Card>
-    </Pressable>
-  );
-}
 
 export default function ExercisesScreen() {
   const { t } = useTranslation();
@@ -53,24 +22,25 @@ export default function ExercisesScreen() {
     () => ({
       title: t('exerciseScreen.title'),
       subtitle: t('exerciseScreen.subtitle'),
-      searchEyebrow: t('exerciseScreen.searchEyebrow'),
       searchAll: t('exerciseScreen.searchAll'),
-      searchBody: t('exerciseScreen.searchBody'),
-      strength: t('exerciseScreen.strength'),
-      strengthBody: t('exerciseScreen.strengthBody'),
       cardio: t('exerciseScreen.cardio'),
-      cardioBody: t('exerciseScreen.cardioBody'),
       byRegion: t('exerciseScreen.byRegion'),
       regionBody: t('exerciseScreen.regionBody'),
+      avatarPreview: t('exerciseScreen.avatarPreview'),
+      customizeAvatar: t('bodyAvatar.open'),
     }),
     [t],
   );
   const skin = useSkinOrNull();
   const { enter } = useForge();
+  const today = useTodayProgram();
+  const programExerciseIds = useMemo(() => today.slots.map((slot) => slot.exerciseId), [today.slots]);
 
   const [picker, setPicker] = useState<RegionPicker | null>(null);
-  const [activeRegion, setActiveRegion] = useState<BodyRegionId | null>(null);
+  const [activeRegion, setActiveRegion] = useState<BodyHitRegionId | null>(null);
   const [activeExercise, setActiveExercise] = useState<ExerciseRow | null>(null);
+  const [avatarSetupVisible, setAvatarSetupVisible] = useState(false);
+  const [avatarRefreshKey, setAvatarRefreshKey] = useState(0);
 
   const ensureSession = useCallback(async (): Promise<string> => {
     const active = useSessionStore.getState().activeSessionId;
@@ -87,15 +57,16 @@ export default function ExercisesScreen() {
   }, [enter]);
 
   const openRegion = useCallback(
-    (region: BodyRegionId) => {
+    (region: BodyHitRegionId) => {
       setActiveRegion(region);
       setPicker({
         title: t(`region.${region}`),
         type: 'strength',
-        exerciseIds: REGIONS[region].exerciseIds,
+        region,
+        programExerciseIds,
       });
     },
-    [t],
+    [programExerciseIds, t],
   );
 
   const openCardio = useCallback(() => {
@@ -112,10 +83,6 @@ export default function ExercisesScreen() {
     setActiveRegion(null);
   }, []);
 
-  // Selection itself is read-only. The logger calls ensureSession only when the user saves, which
-  // prevents a browse-and-close action from creating an empty resumable workout session.
-  const chooseExercise = useCallback((exercise: ExerciseRow) => setActiveExercise(exercise), []);
-
   return (
     <Screen>
       <ScrollView
@@ -128,54 +95,38 @@ export default function ExercisesScreen() {
           <Muted style={styles.subtitle}>{copy.subtitle}</Muted>
         </View>
 
-        <Card live eyebrow={copy.searchEyebrow}>
-          <Muted>{copy.searchBody}</Muted>
-          <Button
-            label={copy.searchAll}
-            onPress={() => {
-              setActiveRegion(null);
-              setPicker({ title: copy.searchAll });
-            }}
-            style={styles.searchButton}
-          />
-        </Card>
+        <Button
+          label={copy.searchAll}
+          variant="secondary"
+          onPress={() => {
+            setActiveRegion(null);
+            setPicker({ title: copy.searchAll });
+          }}
+          style={styles.searchButton}
+        />
 
-        <View style={styles.actionStack}>
-          <CatalogAction
-            title={copy.strength}
-            body={copy.strengthBody}
-            onPress={() => {
-              setActiveRegion(null);
-              setPicker({ title: copy.strength, type: 'strength' });
-            }}
-          />
-          <CatalogAction title={copy.cardio} body={copy.cardioBody} onPress={openCardio} />
-        </View>
-
-        <SectionTitle>{copy.byRegion}</SectionTitle>
-        <Card>
+        <Card live eyebrow={copy.byRegion} style={styles.avatarCard}>
           <Muted>{copy.regionBody}</Muted>
-          <View style={styles.regionChips}>
-            {REGION_ORDER.map((region) => (
-              <Pill
-                key={region}
-                label={t(`region.${region}`)}
-                active={activeRegion === region}
-                onPress={() => openRegion(region)}
-              />
-            ))}
-          </View>
           <MyCharacter
+            variant="hero"
             activeRegion={activeRegion}
             onRegionPress={openRegion}
             onCardioPress={openCardio}
+            avatarRefreshKey={avatarRefreshKey}
           />
+          <Button
+            label={copy.customizeAvatar}
+            variant="ghost"
+            onPress={() => setAvatarSetupVisible(true)}
+            style={styles.avatarButton}
+          />
+          <Muted style={styles.previewNote}>{copy.avatarPreview}</Muted>
         </Card>
       </ScrollView>
 
       <ExerciseRegionSheet
         picker={picker}
-        onSelect={(exercise) => void chooseExercise(exercise)}
+        onSelect={(exercise) => setActiveExercise(exercise)}
         onClose={closePicker}
       />
       <SetLoggerSheet
@@ -190,30 +141,22 @@ export default function ExercisesScreen() {
         ensureSession={ensureSession}
         onClose={() => setActiveExercise(null)}
       />
+      <BodyAvatarSetupSheet
+        visible={avatarSetupVisible}
+        onClose={() => setAvatarSetupVisible(false)}
+        onAvatarChanged={() => setAvatarRefreshKey((value) => value + 1)}
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingTop: space.lg, paddingBottom: space.xxxl },
-  header: { marginBottom: space.lg },
+  header: { marginBottom: space.md },
   title: { ...typeScale.title },
   subtitle: { marginTop: space.xs },
-  searchButton: { marginTop: space.lg },
-  actionStack: { gap: space.sm, marginTop: space.md },
-  actionPress: { minHeight: 72 },
-  actionCard: { minHeight: 72, justifyContent: 'center' },
-  actionRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  actionCopy: { flex: 1 },
-  actionTitle: { ...typeScale.title },
-  actionBody: { marginTop: space.xs },
-  chevron: { fontSize: 22, lineHeight: 26 },
-  pressed: { opacity: 0.72 },
-  regionChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: space.md,
-    marginTop: space.lg,
-    marginBottom: space.sm,
-  },
+  searchButton: { marginBottom: space.md },
+  avatarCard: { paddingBottom: space.lg },
+  avatarButton: { marginTop: space.md },
+  previewNote: { textAlign: 'center', marginTop: space.md },
 });

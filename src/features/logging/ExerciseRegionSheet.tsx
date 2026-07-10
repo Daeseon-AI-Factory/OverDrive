@@ -5,13 +5,18 @@ import { FlatList, Modal, Platform, Pressable, StyleSheet, Text, View } from 're
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getRecentExercises } from '@/db/repos/setLogRepo';
 import type { ExerciseRow, ExerciseType } from '@/db/types';
-import type { BodyRegionId } from '@/features/character/regions';
 import {
   buildExerciseDiscoveryItems,
   discoverExercises,
   type ExerciseDiscoveryItem,
   type RecentExerciseSet,
 } from '@/features/exercises/discovery';
+import {
+  rankRegionRecommendations,
+  regionsForMuscleGroup,
+  type RegionRecommendationReason,
+  type TrainingRegion,
+} from '@/features/exercises/regionRecommendations';
 import { formatWeight } from '@/lib/units';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { Input, Muted } from '@/ui/primitives';
@@ -23,20 +28,11 @@ export interface RegionPicker {
   exerciseIds?: readonly string[];
   /** Optional hard boundary; inferred from exerciseIds for existing body-map callers. */
   type?: ExerciseType;
+  /** Avatar body region. Empty-query results become today → recent → full regional catalog. */
+  region?: TrainingRegion;
+  /** Today's program order, used only when region is present. */
+  programExerciseIds?: readonly string[];
 }
-
-const MUSCLE_GROUP_REGION: Readonly<Partial<Record<string, BodyRegionId>>> = {
-  chest: 'chest',
-  shoulders: 'shoulders',
-  back: 'back',
-  biceps: 'arms',
-  triceps: 'arms',
-  core: 'core',
-  quads: 'legs',
-  posterior_chain: 'legs',
-  hamstrings: 'legs',
-  calves: 'legs',
-};
 
 /**
  * Bottom sheet listing the exercises for a tapped body region (or cardio). Tap → onSelect.
@@ -87,24 +83,47 @@ export function ExerciseRegionSheet({
         (exercise) => t(`exercise.${exercise.id}`, { defaultValue: exercise.name }),
         recentSets,
         (exercise) => {
-          const region = MUSCLE_GROUP_REGION[exercise.muscle_group];
-          if (region) return [t(`region.${region}`)];
+          const regions = regionsForMuscleGroup(exercise.muscle_group);
+          if (regions.length > 0) return regions.map((region) => t(`region.${region}`));
           if (exercise.type === 'cardio') return [t('today.cardioSheetTitle')];
           return [];
         },
       ),
     [recentSets, rows, t],
   );
-  const visibleItems = useMemo(
+  const regionRank = useMemo(
     () =>
-      picker
-        ? discoverExercises(items, {
-            query,
-            explicitIds: picker.exerciseIds,
-            type: picker.type,
+      picker?.region
+        ? rankRegionRecommendations({
+            catalog: rows,
+            region: picker.region,
+            recentSets,
+            programExerciseIds: picker.programExerciseIds,
           })
         : [],
-    [items, picker, query],
+    [picker, recentSets, rows],
+  );
+  const recommendationReason = useMemo(
+    () => new Map(regionRank.map(({ exercise, reason }) => [exercise.id, reason] as const)),
+    [regionRank],
+  );
+  const visibleItems = useMemo(
+    () => {
+      if (!picker) return [];
+      if (picker.region && query.trim().length === 0) {
+        const byId = new Map(items.map((item) => [item.exercise.id, item] as const));
+        return regionRank.flatMap(({ exercise }) => {
+          const item = byId.get(exercise.id);
+          return item ? [item] : [];
+        });
+      }
+      return discoverExercises(items, {
+        query,
+        explicitIds: picker.exerciseIds,
+        type: picker.type,
+      });
+    },
+    [items, picker, query, regionRank],
   );
 
   const deliverSelection = useCallback(() => {
@@ -130,17 +149,27 @@ export function ExerciseRegionSheet({
   };
 
   const exerciseMeta = (item: ExerciseDiscoveryItem): string => {
+    const reason = recommendationReason.get(item.exercise.id);
+    const reasonPrefix = (value: RegionRecommendationReason | undefined): string | null => {
+      if (value === 'today') return t('exerciseDiscovery.reason.today');
+      if (value === 'recent') return t('exerciseDiscovery.reason.recent');
+      return null;
+    };
     if (item.recentSet) {
       const weight = formatWeight(item.recentSet.weight, unitSystem);
       const set = `${weight ? `${weight} × ` : ''}${item.recentSet.reps}`;
-      return t('logger.lastSet', { set });
+      const meta = t('logger.lastSet', { set });
+      const prefix = reasonPrefix(reason);
+      return prefix ? `${prefix} · ${meta}` : meta;
     }
     const exercise = item.exercise;
     if (exercise.type === 'cardio') return t('exerciseDiscovery.cardioMeta');
-    return `${exercise.is_bodyweight ? t('logger.exerciseMeta.bodyweightPrefix') : ''}${t(
+    const meta = `${exercise.is_bodyweight ? t('logger.exerciseMeta.bodyweightPrefix') : ''}${t(
       'logger.exerciseMeta.repRange',
       { low: exercise.rep_low, high: exercise.rep_high },
     )}`;
+    const prefix = reasonPrefix(reason);
+    return prefix ? `${prefix} · ${meta}` : meta;
   };
 
   return (

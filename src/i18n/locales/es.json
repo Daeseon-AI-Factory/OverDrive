@@ -9,7 +9,11 @@
   },
   "exerciseDiscovery": {
     "searchPlaceholder": "Buscar ejercicios",
-    "cardioMeta": "Duración · distancia · esfuerzo"
+    "cardioMeta": "Duración · distancia · esfuerzo",
+    "reason": {
+      "today": "Plan de hoy",
+      "recent": "Reciente"
+    }
   },
   "logScreen": {
     "title": "Registrar",
@@ -22,8 +26,8 @@
     "cardioBody": "Elige una modalidad y registra tiempo, distancia y esfuerzo."
   },
   "exerciseScreen": {
-    "title": "Ejercicios",
-    "subtitle": "Busca en todo el catálogo o empieza por una zona del cuerpo.",
+    "title": "Entrena desde tu cuerpo",
+    "subtitle": "Busca o toca una zona de tu avatar de entrenamiento.",
     "searchEyebrow": "ENCUENTRA CUALQUIER MOVIMIENTO",
     "searchAll": "Buscar todos los ejercicios",
     "searchBody": "Nombres, zonas, fuerza y cardio en una sola lista.",
@@ -31,8 +35,9 @@
     "strengthBody": "Todos los ejercicios, incluso fuera del plan de hoy.",
     "cardio": "Catálogo de cardio",
     "cardioBody": "Carrera, ciclismo, intervalos, remo y más.",
-    "byRegion": "BUSCAR POR ZONA CORPORAL",
-    "regionBody": "Elige una zona para ver sus movimientos principales."
+    "byRegion": "AVATAR DE ENTRENAMIENTO",
+    "regionBody": "Toca el frente o la espalda. Primero verás el plan de hoy y tus movimientos recientes.",
+    "avatarPreview": "Avatar deportivo predeterminado · el avatar basado en una foto solo se genera si lo eliges."
   },
   "today": {
     "combatPowerLabel": "PODER DE COMBATE",
@@ -211,8 +216,11 @@
       "front": "Frente",
       "back": "Espalda"
     },
-    "cardioChip": "🏃 Cardio / Acondicionamiento",
-    "hint": "Toca una zona del cuerpo para elegir un ejercicio. A medida que sube tu Poder de Combate, el aura se vuelve más fuerte."
+    "cardioChip": "Cardio / Acondicionamiento",
+    "hint": "Toca el cuerpo para abrir los ejercicios correspondientes.",
+    "ready": "Toca la zona que quieres entrenar",
+    "accessibility": "Elige una zona del avatar de entrenamiento",
+    "accessibilityHint": "Desliza arriba o abajo para elegir una zona, o toca dos veces el cuerpo"
   },
   "region": {
     "chest": "Pecho",
@@ -220,7 +228,13 @@
     "back": "Espalda",
     "arms": "Brazos",
     "core": "Core",
-    "legs": "Piernas"
+    "legs": "Piernas",
+    "biceps": "Bíceps",
+    "triceps": "Tríceps",
+    "glutes": "Glúteos",
+    "quads": "Cuádriceps",
+    "hamstrings": "Isquiotibiales",
+    "calves": "Pantorrillas"
   },
   "grade": {
     "ordinary": "Común",
@@ -504,9 +518,56 @@
     "changePhoto": "Cambiar foto",
     "fail": "Falló la evolución —",
     "noEndpoint": "Requiere endpoint AI (.env) + GEMINI_API_KEY.",
-    "privacy": "Tu foto solo pasa por tu servidor para generar — nunca se guarda.",
+    "privacy": "Tu foto se envía mediante el Worker de Reploom a Google Gemini. Reploom no la conserva en su servidor.",
     "share": "🔥 Compartir",
     "shareCaption": "Poder de Combate {cp} · {grade} 💥 evolucioné mis entrenos en un héroe #fitness #gym"
+  },
+  "bodyAvatar": {
+    "open": "Crear mi avatar desde una foto",
+    "title": "Avatar de entrenamiento basado en foto",
+    "subtitle": "La foto solo se envía para crear un avatar deportivo fijo de frente y espalda. No es una medición corporal.",
+    "outfit": {
+      "title": "Ropa deportiva",
+      "sleeveless": "Sin mangas + shorts",
+      "sport_top": "Camiseta técnica + shorts",
+      "compression": "Conjunto de compresión"
+    },
+    "photo": {
+      "pick": "Elegir mi foto",
+      "change": "Elegir otra foto",
+      "ready": "Foto lista en este dispositivo · aún no enviada"
+    },
+    "consent": {
+      "title": "Confirma antes de generar",
+      "provider": "Al generar, la foto se envía mediante el Worker de Reploom a Google Gemini y se aplican las políticas de Google.",
+      "adultConfirmed": "Tengo 18 años o más",
+      "ownershipConfirmed": "Es mi foto y tengo derecho a usarla",
+      "aiConsent": "Acepto el procesamiento de Google AI y la generación del avatar"
+    },
+    "generate": "Generar avatar deportivo",
+    "generating": "Generando avatar…",
+    "cancelGeneration": "Cancelar generación",
+    "cancel": "Cancelar",
+    "preview": {
+      "title": "Comprueba la vista frontal y trasera",
+      "instructions": "Úsalo solo si el panel izquierdo muestra el frente completo, el derecho la espalda completa, y cabezas y pies están alineados.",
+      "confirm": "Las dos vistas de cuerpo entero están presentes y alineadas",
+      "use": "Usar este avatar de entrenamiento",
+      "activating": "Aplicando avatar…",
+      "retry": "Descartar e intentar de nuevo"
+    },
+    "delete": {
+      "title": "Eliminar datos de mi avatar",
+      "body": "Eliminar la foto original y el avatar generado de este dispositivo.",
+      "action": "Eliminar foto y avatar"
+    },
+    "error": {
+      "pick": "No se pudo preparar la foto. Prueba con otra.",
+      "timeout": "La generación agotó el tiempo. La foto sigue en este dispositivo.",
+      "generate": "No se pudo generar el avatar. Puedes seguir usando el predeterminado.",
+      "activate": "No se pudo aplicar la vista previa. El avatar actual no cambió.",
+      "delete": "No se pudieron eliminar los datos del avatar. Inténtalo de nuevo."
+    }
   },
   "common": {
     "back": "Atrás",

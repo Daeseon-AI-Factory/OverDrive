@@ -9,7 +9,11 @@
   },
   "exerciseDiscovery": {
     "searchPlaceholder": "Search exercises",
-    "cardioMeta": "Duration · distance · effort"
+    "cardioMeta": "Duration · distance · effort",
+    "reason": {
+      "today": "Today's plan",
+      "recent": "Recent"
+    }
   },
   "logScreen": {
     "title": "Log",
@@ -22,8 +26,8 @@
     "cardioBody": "Pick a modality, then log duration, distance, and effort."
   },
   "exerciseScreen": {
-    "title": "Exercises",
-    "subtitle": "Search the complete catalog or start from the body.",
+    "title": "Train from your body",
+    "subtitle": "Search, or tap a region on your training avatar.",
     "searchEyebrow": "FIND ANY MOVEMENT",
     "searchAll": "Search all exercises",
     "searchBody": "Names, aliases, strength, and cardio in one searchable list.",
@@ -31,8 +35,9 @@
     "strengthBody": "Every lift, including movements outside today’s program.",
     "cardio": "Cardio catalog",
     "cardioBody": "Running, cycling, intervals, rowing, and more.",
-    "byRegion": "BROWSE BY BODY REGION",
-    "regionBody": "Choose a region to narrow the catalog to its primary movements."
+    "byRegion": "TRAINING AVATAR",
+    "regionBody": "Tap the front or back. Today's plan and your recent movements come first.",
+    "avatarPreview": "Default sportswear avatar · a photo-based avatar is generated only when you choose it."
   },
   "today": {
     "combatPowerLabel": "COMBAT POWER",
@@ -246,8 +251,11 @@
       "front": "Front",
       "back": "Back"
     },
-    "cardioChip": "🏃 Cardio / Conditioning",
-    "hint": "Tap a body region to pick an exercise. As your Combat Power rises, the aura grows stronger."
+    "cardioChip": "Cardio / Conditioning",
+    "hint": "Tap the body to open the matching exercises.",
+    "ready": "Tap the region you want to train",
+    "accessibility": "Choose a region on the training avatar",
+    "accessibilityHint": "Swipe up or down for a named region action, or double-tap the body"
   },
   "region": {
     "chest": "Chest",
@@ -255,7 +263,13 @@
     "back": "Back",
     "arms": "Arms",
     "core": "Core",
-    "legs": "Legs"
+    "legs": "Legs",
+    "biceps": "Biceps",
+    "triceps": "Triceps",
+    "glutes": "Glutes",
+    "quads": "Quads",
+    "hamstrings": "Hamstrings",
+    "calves": "Calves"
   },
   "grade": {
     "ordinary": "Ordinary",
@@ -442,9 +456,56 @@
     "changePhoto": "Change photo",
     "fail": "Evolution failed —",
     "noEndpoint": "Needs the AI endpoint (.env) + GEMINI_API_KEY on the worker.",
-    "privacy": "Your photo passes through your own server only for generation — never stored there.",
+    "privacy": "Your photo is sent through the Reploom Worker to Google Gemini. Reploom does not retain it on its server.",
     "share": "🔥 Share",
     "shareCaption": "Combat Power {cp} · {grade} 💥 I evolved my workouts into a hero #fitness #gym #workout"
+  },
+  "bodyAvatar": {
+    "open": "Create my photo-based avatar",
+    "title": "Photo-based training avatar",
+    "subtitle": "Your photo is sent only to make a fixed front-and-back sportswear avatar. The result is not a body measurement.",
+    "outfit": {
+      "title": "Sportswear",
+      "sleeveless": "Sleeveless + shorts",
+      "sport_top": "Performance top + shorts",
+      "compression": "Compression set"
+    },
+    "photo": {
+      "pick": "Choose my photo",
+      "change": "Choose another photo",
+      "ready": "Photo ready on this device · not sent yet"
+    },
+    "consent": {
+      "title": "Confirm before generation",
+      "provider": "When you generate, the selected photo is sent through the Reploom Worker to Google Gemini and Google's processing policies apply.",
+      "adultConfirmed": "I am 18 or older",
+      "ownershipConfirmed": "This is my photo and I have the right to use it",
+      "aiConsent": "I consent to Google AI processing and avatar generation"
+    },
+    "generate": "Generate sportswear avatar",
+    "generating": "Generating avatar…",
+    "cancelGeneration": "Cancel generation",
+    "cancel": "Cancel",
+    "preview": {
+      "title": "Check the front-and-back preview",
+      "instructions": "Use it only if the left panel is a complete front view, the right panel is a complete back view, and both heads and feet line up.",
+      "confirm": "Both full-body views are present and aligned",
+      "use": "Use this training avatar",
+      "activating": "Applying avatar…",
+      "retry": "Discard and try again"
+    },
+    "delete": {
+      "title": "Delete my avatar data",
+      "body": "Delete the original photo and generated avatar from this device.",
+      "action": "Delete photo and avatar"
+    },
+    "error": {
+      "pick": "Couldn't prepare that photo. Try another one.",
+      "timeout": "Generation timed out. Your photo is still on this device.",
+      "generate": "Couldn't generate the avatar. You can keep using the default avatar.",
+      "activate": "Couldn't apply that preview. The current avatar is unchanged.",
+      "delete": "Couldn't delete the avatar data. Try again."
+    }
   },
   "rank": {
     "title": "Rankings",

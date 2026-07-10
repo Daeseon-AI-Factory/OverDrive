@@ -9,7 +9,11 @@
   },
   "exerciseDiscovery": {
     "searchPlaceholder": "운동 검색",
-    "cardioMeta": "시간 · 거리 · 강도"
+    "cardioMeta": "시간 · 거리 · 강도",
+    "reason": {
+      "today": "오늘 프로그램",
+      "recent": "최근 운동"
+    }
   },
   "logScreen": {
     "title": "기록",
@@ -22,8 +26,8 @@
     "cardioBody": "종목을 고르고 시간·거리·강도를 기록한다."
   },
   "exerciseScreen": {
-    "title": "운동 찾기",
-    "subtitle": "전체 카탈로그를 검색하거나 몸의 부위에서 바로 고른다.",
+    "title": "내 몸에서 운동 찾기",
+    "subtitle": "검색하거나 캐릭터의 부위를 바로 터치한다.",
     "searchEyebrow": "모든 운동 검색",
     "searchAll": "전체 운동 검색",
     "searchBody": "이름·부위·근력·유산소를 한 목록에서 찾는다.",
@@ -31,8 +35,9 @@
     "strengthBody": "오늘 프로그램 밖의 운동까지 전부 찾는다.",
     "cardio": "유산소 카탈로그",
     "cardioBody": "러닝·사이클·인터벌·로잉 등을 찾는다.",
-    "byRegion": "부위별 탐색",
-    "regionBody": "부위를 고르면 주동근 기준 운동만 빠르게 좁힌다."
+    "byRegion": "트레이닝 아바타",
+    "regionBody": "앞·뒤 몸의 부위를 누르면 오늘 프로그램과 최근 운동부터 보여준다.",
+    "avatarPreview": "기본 스포츠웨어 캐릭터 · 사진 기반 캐릭터는 직접 선택해야 생성된다."
   },
   "today": {
     "combatPowerLabel": "전투력",
@@ -211,8 +216,11 @@
       "front": "앞",
       "back": "뒤"
     },
-    "cardioChip": "🏃 유산소 / 컨디셔닝",
-    "hint": "부위를 터치해서 운동을 골라. 전투력이 오르면 오라가 강해진다."
+    "cardioChip": "유산소 / 컨디셔닝",
+    "hint": "몸을 터치하면 운동 목록이 바로 열린다.",
+    "ready": "운동할 부위를 터치",
+    "accessibility": "트레이닝 캐릭터 몸 부위 선택",
+    "accessibilityHint": "위아래로 쓸어 부위 동작을 고르거나 몸을 두 번 탭하세요"
   },
   "region": {
     "chest": "가슴",
@@ -220,7 +228,13 @@
     "back": "등",
     "arms": "팔",
     "core": "코어",
-    "legs": "하체"
+    "legs": "하체",
+    "biceps": "이두",
+    "triceps": "삼두",
+    "glutes": "둔근",
+    "quads": "대퇴사두",
+    "hamstrings": "햄스트링",
+    "calves": "종아리"
   },
   "grade": {
     "ordinary": "일반인",
@@ -504,9 +518,56 @@
     "changePhoto": "사진 변경",
     "fail": "진화 실패 —",
     "noEndpoint": "AI 엔드포인트(.env) + 워커 GEMINI_API_KEY 필요.",
-    "privacy": "사진은 생성 순간에만 네 서버를 통과 — 저장되지 않음.",
+    "privacy": "사진은 Reploom Worker를 거쳐 Google Gemini로 전송된다. Reploom은 서버에 사진을 보관하지 않는다.",
     "share": "🔥 공유하기",
     "shareCaption": "전투력 {cp} · {grade} 💥 내 운동을 캐릭터로 진화시켰다 #운동 #전투력 #헬스"
+  },
+  "bodyAvatar": {
+    "open": "내 사진으로 캐릭터 만들기",
+    "title": "사진 기반 트레이닝 캐릭터",
+    "subtitle": "사진은 고정된 앞·뒤 스포츠웨어 캐릭터를 만들 때만 전송된다. 생성 이미지는 신체 측정값이 아니다.",
+    "outfit": {
+      "title": "스포츠웨어",
+      "sleeveless": "민소매 + 쇼츠",
+      "sport_top": "기능성 상의 + 쇼츠",
+      "compression": "컴프레션 세트"
+    },
+    "photo": {
+      "pick": "내 사진 선택",
+      "change": "사진 다시 선택",
+      "ready": "사진이 이 기기에 준비됨 · 아직 전송되지 않음"
+    },
+    "consent": {
+      "title": "생성 전 확인",
+      "provider": "생성을 누르면 선택한 사진이 Reploom Worker를 거쳐 Google Gemini로 전송되며 Google의 처리 정책이 적용된다.",
+      "adultConfirmed": "나는 만 18세 이상이다",
+      "ownershipConfirmed": "본인 사진이며 사용 권한이 있다",
+      "aiConsent": "Google AI 전송과 캐릭터 생성에 동의한다"
+    },
+    "generate": "스포츠웨어 캐릭터 생성",
+    "generating": "캐릭터 생성 중…",
+    "cancelGeneration": "생성 취소",
+    "cancel": "취소",
+    "preview": {
+      "title": "앞·뒤 미리보기 확인",
+      "instructions": "왼쪽은 온전한 정면, 오른쪽은 온전한 후면이고 두 머리와 발끝이 같은 높이일 때만 사용해줘.",
+      "confirm": "정면·후면 전신이 모두 있고 위치가 맞다",
+      "use": "이 트레이닝 캐릭터 사용",
+      "activating": "캐릭터 적용 중…",
+      "retry": "버리고 다시 생성"
+    },
+    "delete": {
+      "title": "내 캐릭터 데이터 삭제",
+      "body": "이 기기의 원본 사진과 생성 캐릭터를 모두 삭제한다.",
+      "action": "원본과 캐릭터 삭제"
+    },
+    "error": {
+      "pick": "사진을 준비하지 못했다. 다른 사진으로 다시 시도해줘.",
+      "timeout": "생성 시간이 초과됐다. 사진은 이 기기에 남아 있다.",
+      "generate": "캐릭터를 생성하지 못했다. 기본 캐릭터로 계속 사용할 수 있다.",
+      "activate": "미리보기를 적용하지 못했다. 기존 캐릭터는 바뀌지 않았다.",
+      "delete": "캐릭터 데이터를 삭제하지 못했다. 다시 시도해줘."
+    }
   },
   "common": {
     "back": "뒤로",
