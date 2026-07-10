@@ -487,5 +487,14 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Cause**: 이미지, 터치 계약, 추천 데이터가 하나의 정적 목록에 결합돼 있었다. 비트맵 위치와 히트 영역을 별도로 보정하지 않았고, 부위 선택 시점에 세션을 미리 만들어 추천만 보고 닫아도 빈 운동이 남는 경로도 있었다.
 - **Fix**: 불투명 스포츠웨어 정면·후면 아바타와 자산 기준 10부위 polygon을 추가하고, 22pt nearest-edge 보정과 방향 무관 10부위 접근성 action을 적용했다. 추천은 DB 근육군을 기준으로 `오늘 프로그램 → 최근 기록 → 전체 부위 카탈로그` 순으로 만들고, 부위→운동→로거를 2동작으로 연결했다. 세션은 실제 저장 때만 생성한다. 사진형 아바타는 3중 동의, 실제 이미지·4:5 검사, 정면/후면 미리보기 확인 후에만 활성화하며 닫기·재시도는 pending 결과만 폐기한다.
 - **Commit**: b646643
-- **Verification**: Jest 29 suites / 245 tests, strict TypeScript, lint, diff check 통과. iPhone 17 Pro Release 빌드 0 errors / 기존 경고 3건. 시드 DB에서 등→Lat Pulldown→로거 2동작과 앞/뒤 10개 접근성 action을 확인했고, workout/session/food 행 수는 5/14/0으로 전후 동일했다.
+- **Verification**: Jest 29 suites / 246 tests, strict TypeScript, lint, diff check 통과. iPhone 17 Pro Release 빌드 0 errors / 기존 경고 3건. 시드 DB에서 등→Lat Pulldown→로거 2동작과 앞/뒤 10개 접근성 action을 확인했고, workout/session/food 행 수는 5/14/0으로 전후 동일했다.
 - **Pattern**: 몸 기반 탐색에서 비트맵은 표현이고 히트맵·추천 순위·저장 시점이 기능 계약이다. 생성 이미지는 프롬프트만 믿지 말고 envelope 검사와 사용자 activation gate를 둔다.
+
+## 구형 사진 진화가 선택 즉시 전송돼 신규 동의 계약을 우회했다
+
+- **Symptom**: Power 화면의 기존 Evolution은 사진을 고른 직후 `runEvolve()`를 호출했고, `/evolve` 요청과 Worker 모두 명시적 동의 필드가 없었다. 신규 스포츠웨어 화면만 3중 동의를 받아도 접근 가능한 구형 경로가 그대로라면 개인정보 고지와 실제 동작이 달라진다.
+- **Cause**: 사진 생성 기능이 두 계약으로 분리돼 있었다. 구형 영웅 초상 경로는 선택과 업로드를 결합했고, 신규 body-avatar 경로도 초기에는 모델 프롬프트 외에 실제 이미지 signature·비율 검사가 없었다.
+- **Fix**: 구형 Power 진입점을 제거하고 Worker `/evolve`를 410 tombstone으로 퇴역했다. `/body-avatar`는 18세·사진 권리·Google AI 처리 동의가 모두 literal `true`여야 하며, outfit 화이트리스트, 입력 MIME/signature/size, 출력 base64/signature/4:5 dimensions/pixel 수를 검사한다. Gemini 요청에도 공식 `responseFormat.image.aspectRatio: 4:5`를 명시했고 개인정보 문서에 전송 시점·제공자·로컬 삭제를 반영했다.
+- **Commit**: d0ce5be
+- **Verification**: Wrangler dry-run 번들 통과. 로컬 Worker handler에서 `/evolve` 410, 동의 없는 `/body-avatar` 400을 확인했다. 실제 Gemini 호출과 Worker 배포는 실행하지 않았다.
+- **Pattern**: 새 개인정보 게이트는 새 화면만 보호해서는 안 된다. 같은 데이터에 닿는 구형 진입점·서버 라우트·로컬 파일 삭제까지 하나의 계약으로 닫는다.
