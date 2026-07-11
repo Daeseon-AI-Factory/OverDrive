@@ -36,8 +36,15 @@ export async function addCardio(
   return row;
 }
 
-export async function deleteCardio(db: SQLiteDatabase, cardioId: string): Promise<void> {
-  await db.runAsync('DELETE FROM cardio_log WHERE id = ?', [cardioId]);
+export async function deleteCardio(db: SQLiteDatabase, cardioId: string): Promise<CardioLogRow | null> {
+  let deleted: CardioLogRow | null = null;
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    const row = await tx.getFirstAsync<CardioLogRow>('SELECT * FROM cardio_log WHERE id = ?', [cardioId]);
+    if (!row) return;
+    const result = await tx.runAsync('DELETE FROM cardio_log WHERE id = ?', [cardioId]);
+    if (result.changes > 0) deleted = row;
+  });
+  return deleted;
 }
 
 export async function getLastCardioForModality(

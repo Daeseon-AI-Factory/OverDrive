@@ -25,7 +25,7 @@ import { useQuickLog, type RecentChip, type SavedQuickSet } from './useQuickLog'
  *     ("어느 운동?") — one tap resolves it through the same instant save path. Unambiguous parses
  *     save instantly, exactly as before.
  *   - EVERY successful save raises the confirm-as-undo card above the bar (pose + name + stat +
- *     [수정]/[취소]), auto-dismissing in ~4.5s. It never blocks the next log — it just gets replaced.
+ *     [수정]/[취소]), auto-dismissing in ~15s. It never blocks the next log — it just gets replaced.
  *
  * MONOLITH chrome: neutral machined blocks (mic IconSquare, recess Input, accent-tinted submit).
  * The ONLY colored surface is the recording-state mic (danger = live status); status feedback is
@@ -46,6 +46,7 @@ export function QuickLogBar() {
   const [pending, setPending] = useState<{ text: string; options: ParseCandidate[] } | null>(null);
   // Confirm-as-undo card for the JUST-saved set. A new save replaces it (nonce restarts its clock).
   const [card, setCard] = useState<{ nonce: number; saved: SavedQuickSet } | null>(null);
+  const [undoingNonce, setUndoingNonce] = useState<number | null>(null);
   const cardNonce = useRef(0);
 
   const recording = micState === 'recording';
@@ -146,20 +147,23 @@ export function QuickLogBar() {
   const onCardEdit = useCallback((saved: SavedQuickSet) => {
     setCard(null);
     if (saved.exercise && saved.exercise.type === 'strength') {
-      useEditIntentStore.getState().open(saved.exercise);
+      useEditIntentStore.getState().openEdit(saved);
     }
   }, []);
 
   /** Confirm card [취소] → delete the just-saved set + recompute CP; brief '취소됨' echo. */
   const onCardUndo = useCallback(
-    async (saved: SavedQuickSet) => {
-      setCard(null);
+    async (saved: SavedQuickSet, nonce: number) => {
+      setUndoingNonce(nonce);
       try {
         await undoSave(saved);
+        setCard((current) => (current?.nonce === nonce ? null : current));
         setHint(null);
         setConfirm(t('quicklog.cancelled', { defaultValue: dv('취소됨', 'Cancelled') }));
       } catch {
         setHint(t('quicklog.fail.log'));
+      } finally {
+        setUndoingNonce((current) => (current === nonce ? null : current));
       }
     },
     [undoSave, t, dv],
@@ -221,8 +225,9 @@ export function QuickLogBar() {
           nonce={card.nonce}
           saved={card.saved}
           editable={card.saved.exercise?.type === 'strength'}
+          busy={undoingNonce === card.nonce}
           onEdit={() => onCardEdit(card.saved)}
-          onUndo={() => void onCardUndo(card.saved)}
+          onUndo={() => void onCardUndo(card.saved, card.nonce)}
           onDismiss={() => setCard(null)}
         />
       ) : null}

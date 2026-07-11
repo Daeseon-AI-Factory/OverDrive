@@ -114,7 +114,7 @@ describe('computeNextAction — resting', () => {
     expect(action.restRemainSec).toBe(0);
   });
 
-  it('PR-chance arithmetic mid-session: 102.5×12 (top of 8–12) → 105×8', () => {
+  it('does not auto-increase inside the same session when fatigue/RIR is unknown', () => {
     const action = computeNextAction(
       input({
         session: activeSession(20, 'bench'),
@@ -123,7 +123,19 @@ describe('computeNextAction — resting', () => {
       }),
     );
     if (action.kind !== 'resting') throw new Error(action.kind);
-    expect(action.suggestion).toMatchObject({ weightKg: 105, reps: 8, prChance: true, setNumber: 3 });
+    expect(action.suggestion).toMatchObject({ weightKg: 102.5, reps: 12, prChance: false, setNumber: 3 });
+  });
+
+  it('keeps the same-session load after app restoration as well', () => {
+    const action = computeNextAction(
+      input({
+        session: activeSession(20, 'bench'),
+        setsToday: { bench: 1 },
+        lastSetByExercise: { bench: { weightKg: 100, reps: 12 } },
+      }),
+    );
+    if (action.kind !== 'resting') throw new Error(action.kind);
+    expect(action.suggestion).toMatchObject({ weightKg: 100, reps: 12, prChance: false, setNumber: 2 });
   });
 
   it('bodyweight never gets a +2.5kg PR chance (progresses by reps, kept as-is)', () => {

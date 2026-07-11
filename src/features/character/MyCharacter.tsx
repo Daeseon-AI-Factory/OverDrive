@@ -93,7 +93,14 @@ export function MyCharacter({
 }
 
 const styles = StyleSheet.create({
-  toggleRow: { flexDirection: 'row', justifyContent: 'center', gap: space.sm, marginTop: space.md },
+  toggleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    columnGap: space.sm,
+    rowGap: space.sm,
+    marginTop: space.md,
+  },
   stageWrap: { alignItems: 'center', marginTop: space.sm },
   stage: { aspectRatio: 0.48 },
   stageCompact: { width: '52%', maxWidth: 205 },

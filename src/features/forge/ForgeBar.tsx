@@ -34,6 +34,8 @@ export function ForgeBar({ onEnter, onFinish }: { onEnter: () => void; onFinish:
   const startedAt = useSessionStore((s) => s.startedAt);
   const setCount = useSessionStore((s) => s.setCount);
   const volumeKg = useSessionStore((s) => s.volumeKg);
+  const pendingLogWrites = useSessionStore((s) => s.pendingLogWrites);
+  const finishing = useSessionStore((s) => s.finishing);
   const elapsed = useElapsed(startedAt);
 
   if (!activeSessionId) {
@@ -55,7 +57,13 @@ export function ForgeBar({ onEnter, onFinish }: { onEnter: () => void; onFinish:
             {t('forge.summary.sets', { count: setCount })} · {formatWeight(volumeKg, unitSystem, 0) || '—'}
           </Text>
         </View>
-        <Button label={t('forge.finish')} onPress={onFinish} variant="secondary" compact />
+        <Button
+          label={t('forge.finish')}
+          onPress={onFinish}
+          variant="secondary"
+          compact
+          disabled={pendingLogWrites > 0 || finishing}
+        />
       </View>
     </Card>
   );

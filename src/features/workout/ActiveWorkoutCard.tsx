@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { deleteCardio, getCardioCountsForModalitiesOnDate, getLastCardioForModality } from '@/db/repos/cardioRepo';
 import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
+import { getSessionActivitySummary } from '@/db/repos/sessionRepo';
 import { deleteSet, getLastSetForExercise, getSetCountsForExercisesOnDate } from '@/db/repos/setLogRepo';
 import type { ExerciseRow } from '@/db/types';
 import { useLogCardio } from '@/features/logging/useLogCardio';
@@ -40,6 +41,7 @@ type LastLoggedEntry =
   | {
       kind: 'set';
       setId: string;
+      sessionId: string;
       exerciseId: string;
       exerciseIndex: number;
       weightKg: number;
@@ -49,6 +51,7 @@ type LastLoggedEntry =
   | {
       kind: 'cardio';
       cardioId: string;
+      sessionId: string;
       exerciseId: string;
       exerciseIndex: number;
       durationSec: number;
@@ -128,6 +131,7 @@ export function ActiveWorkoutCard({
   const logCardio = useLogCardio();
   const unitSystem = useSettingsStore((s) => s.unitSystem);
   const weightStepKg = useSettingsStore((s) => s.weightStep);
+  const sessionMutationBlocked = useSessionStore((s) => s.finishing || s.pendingLogWrites > 0);
   const today = useTodayProgram();
   // `today.slots` is a fresh array each render (the default path builds a new one), so derive a
   // content-stable string key and drive effects/memos off THAT — not array identity, which under
@@ -323,6 +327,7 @@ export function ActiveWorkoutCard({
       setLastLogged({
         kind: 'set',
         setId: result.setId,
+        sessionId,
         exerciseId: current.id,
         exerciseIndex: activeIndex,
         weightKg,
@@ -368,6 +373,7 @@ export function ActiveWorkoutCard({
       setLastLogged({
         kind: 'cardio',
         cardioId: result.cardioId,
+        sessionId,
         exerciseId: current.id,
         exerciseIndex: activeIndex,
         durationSec: input.durationSec,
@@ -390,19 +396,23 @@ export function ActiveWorkoutCard({
     if (!lastLogged || busy) return;
     setBusy(true);
     setSaveFailed(false);
+    if (!useSessionStore.getState().tryBeginLogWrite()) {
+      setSaveFailed(true);
+      setBusy(false);
+      return;
+    }
     try {
-      if (lastLogged.kind === 'set') {
-        await deleteSet(db, lastLogged.setId);
-      } else {
-        await deleteCardio(db, lastLogged.cardioId);
-      }
+      if (lastLogged.kind === 'set') await deleteSet(db, lastLogged.setId);
+      else await deleteCardio(db, lastLogged.cardioId);
+      const summary = await getSessionActivitySummary(db, lastLogged.sessionId);
+      useSessionStore.getState().reconcileActivity(lastLogged.sessionId, summary.itemCount, summary.volumeKg);
       const result = await recomputeAndStore(db);
       useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
-      useSessionStore.getState().undoSet(lastLogged.kind === 'set' ? lastLogged.weightKg * lastLogged.reps : 0);
-      setLoggedCounts((counts) => ({
-        ...counts,
-        [lastLogged.exerciseId]: Math.max(0, (counts[lastLogged.exerciseId] ?? 1) - 1),
-      }));
+      const refreshedCounts =
+        lastLogged.kind === 'set'
+          ? await getSetCountsForExercisesOnDate(db, [lastLogged.exerciseId], todayLocal())
+          : await getCardioCountsForModalitiesOnDate(db, [lastLogged.exerciseId], todayLocal());
+      setLoggedCounts((counts) => ({ ...counts, [lastLogged.exerciseId]: refreshedCounts[lastLogged.exerciseId] ?? 0 }));
       const previousSet = lastLogged.kind === 'set' ? await getLastSetForExercise(db, lastLogged.exerciseId) : null;
       const previousCardio = lastLogged.kind === 'cardio' ? await getLastCardioForModality(db, lastLogged.exerciseId) : null;
       setActiveIndex(lastLogged.exerciseIndex);
@@ -430,6 +440,7 @@ export function ActiveWorkoutCard({
     } catch {
       setSaveFailed(true);
     } finally {
+      useSessionStore.getState().endLogWrite();
       setBusy(false);
     }
   };
@@ -664,6 +675,7 @@ export function ActiveWorkoutCard({
               label={t('activeWorkout.finishWorkout')}
               onPress={onFinishWorkout}
               variant="secondary"
+              disabled={sessionMutationBlocked}
               style={styles.finish}
             />
           ) : null}

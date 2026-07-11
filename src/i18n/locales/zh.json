@@ -261,6 +261,7 @@
     "rirMaxPill": "4+",
     "repeatLast": "重复上一组 ⚡",
     "logSet": "记录 ⚡",
+    "saveChanges": "保存修改",
     "close": "关闭",
     "exerciseMeta": {
       "bodyweightPrefix": "自重 · ",
@@ -485,6 +486,9 @@
     "photo": "通过照片估算饮食",
     "log": "记录",
     "repeatLast": "重复上一餐",
+    "undo": "撤销",
+    "cancelled": "已移除这餐记录",
+    "undoFailed": "无法撤销这餐记录 — 请重试。",
     "kcal": "{n} 千卡",
     "fail": "无法估算 — 试试更简单的描述。",
     "saveFailed": "这餐未能保存，也没有新增记录 — 请重试。",

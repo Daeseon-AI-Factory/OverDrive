@@ -261,6 +261,7 @@
     "rirMaxPill": "4+",
     "repeatLast": "지난 세트 반복 ⚡",
     "logSet": "기록 ⚡",
+    "saveChanges": "수정 저장",
     "close": "닫기",
     "exerciseMeta": {
       "bodyweightPrefix": "맨몸 · ",
@@ -485,6 +486,9 @@
     "photo": "사진으로 식단 추정",
     "log": "기록",
     "repeatLast": "지난 식사 다시 기록",
+    "undo": "되돌리기",
+    "cancelled": "식사 기록 취소됨",
+    "undoFailed": "식사 기록을 되돌리지 못했어 — 다시 해봐.",
     "kcal": "{n} kcal",
     "fail": "추정 실패 — 더 간단히 써봐.",
     "saveFailed": "식사를 저장하지 못했어. 기록은 추가되지 않았어 — 다시 해봐.",

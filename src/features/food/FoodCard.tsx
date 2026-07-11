@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
 import { getDisciplineToday, setDisciplineToday } from '@/db/repos/disciplineRepo';
-import { addFoodItems, getFoodToday, getLatestFoodBatch } from '@/db/repos/foodRepo';
+import { addFoodItems, getFoodToday, getLatestFoodBatch, undoFoodBatch } from '@/db/repos/foodRepo';
 import type { FoodItemInput, FoodMealBatch, FoodSource } from '@/db/repos/foodRepo';
 import { classifyEvent } from '@/features/juice/classifyEvent';
 import { useJuice } from '@/features/juice/JuiceProvider';
@@ -41,6 +41,7 @@ export function FoodCard() {
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string | null>(null); // failure hints (warning text)
   const [confirm, setConfirm] = useState<string | null>(null); // "what the AI logged" echo (positive text)
+  const [undoMeal, setUndoMeal] = useState<{ batch: FoodMealBatch; autoCompletedProtein: boolean } | null>(null);
 
   // New copy not yet in the locale catalogs (owned elsewhere) — per-locale defaults until translated.
   const ko = i18n.language.startsWith('ko');
@@ -81,13 +82,15 @@ export function FoodCard() {
       return;
     }
     const before = today.proteinG;
-    await addFoodItems(db, items, source);
+    const batch = await addFoodItems(db, items, source);
+    if (!batch) return;
     setText('');
     // Echo WHAT the AI logged — a wild estimate should be visible, not silent.
     const kcal = Math.round(items.reduce((a, i) => a + i.kcal, 0));
     const prot = Math.round(items.reduce((a, i) => a + i.proteinG, 0));
     setConfirm(`✓ ${items.map((i) => i.name).join(' + ')} · ${kcal}kcal · ${prot}g`);
     const after = await reload();
+    let autoCompletedProtein = false;
 
     // Crossing the protein target auto-completes the discipline check → real CP + a pop.
     if (proteinTargetG && before < proteinTargetG && after.proteinG >= proteinTargetG) {
@@ -98,6 +101,7 @@ export function FoodCard() {
         if (!disc.protein) {
           const prev = useCombatPowerStore.getState().score;
           await setDisciplineToday(db, { ...disc, protein: true });
+          autoCompletedProtein = true;
           const result = await recomputeAndStore(db);
           useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
           juice.fire(
@@ -108,6 +112,7 @@ export function FoodCard() {
         // Non-blocking derived metric: the meal itself remains saved and truthfully confirmed.
       }
     }
+    setUndoMeal({ batch, autoCompletedProtein });
   };
 
   const submit = async () => {
@@ -120,6 +125,7 @@ export function FoodCard() {
     setBusy(true);
     setHint(null);
     setConfirm(null);
+    setUndoMeal(null);
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 9000);
@@ -153,6 +159,7 @@ export function FoodCard() {
     setBusy(true);
     setHint(null);
     setConfirm(null);
+    setUndoMeal(null);
     try {
       const uri = await downscaleForUpload(res.assets[0].uri);
       const items = await parseFoodPhoto(uri, QUICKLOG_ENDPOINT);
@@ -174,10 +181,37 @@ export function FoodCard() {
     setBusy(true);
     setHint(null);
     setConfirm(null);
+    setUndoMeal(null);
     try {
       await logItems(latestMeal.items, latestMeal.source);
     } catch {
       setHint(saveFailed());
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Undo only the batch written by the latest successful action; derived protein state follows. */
+  const undoLatestSave = async () => {
+    if (!undoMeal || busy) return;
+    const target = undoMeal;
+    setBusy(true);
+    setHint(null);
+    try {
+      await undoFoodBatch(db, target.batch, {
+        resetProteinIfBelowG: target.autoCompletedProtein ? (proteinTargetG ?? null) : null,
+      });
+      await reload();
+      if (target.autoCompletedProtein) {
+        // Source-of-truth food + discipline rows are already atomic. Recompute is idempotent, so a
+        // transient failure can be retried without deleting any additional data.
+        const power = await recomputeAndStore(db);
+        useCombatPowerStore.getState().setSnapshot(power.score, power.grade.key);
+      }
+      setUndoMeal(null);
+      setConfirm(t('food.cancelled'));
+    } catch {
+      setHint(t('food.undoFailed'));
     } finally {
       setBusy(false);
     }
@@ -270,10 +304,19 @@ export function FoodCard() {
             disabled={!text.trim() || busy}
           />
         </View>
-        {hint ? (
-          <Muted style={styles.hintText}>{hint}</Muted>
-        ) : confirm ? (
-          <Muted style={styles.confirmText}>{confirm}</Muted>
+        {hint || confirm ? (
+          <View style={styles.confirmRow}>
+            <Muted style={hint ? styles.hintText : styles.confirmText}>{hint ?? confirm}</Muted>
+            {undoMeal ? (
+              <Button
+                label={t('food.undo')}
+                onPress={() => void undoLatestSave()}
+                variant="ghost"
+                compact
+                disabled={busy}
+              />
+            ) : null}
+          </View>
         ) : null}
       </Card>
     </View>
@@ -294,6 +337,7 @@ const styles = StyleSheet.create({
   repeatButton: { marginTop: space.md },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.md },
   input: { flex: 1 },
-  hintText: { color: colors.warning, marginTop: space.xs },
-  confirmText: { color: colors.positive, marginTop: space.xs },
+  hintText: { flex: 1, color: colors.warning },
+  confirmRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.xs },
+  confirmText: { flex: 1, color: colors.positive },
 });

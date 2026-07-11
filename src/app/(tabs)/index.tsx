@@ -51,7 +51,7 @@ export default function TodayScreen() {
   // The ONE accent of this view — persona ramp, resolved once at screen level (MONOLITH).
   const accent = useAccent();
   const score = useCombatPowerStore((s) => s.score);
-  const { enter, finish } = useForge();
+  const { enter, enterSilently, finish } = useForge();
   const activeSessionId = useSessionStore((s) => s.activeSessionId);
   const todayProgram = useTodayProgram();
 
@@ -60,24 +60,10 @@ export default function TodayScreen() {
   const [activeExercise, setActiveExercise] = useState<ExerciseRow | null>(null);
   const [showDetail, setShowDetail] = useState(false); // ActiveWorkoutCard behind CoachCard's '자세히'
 
-  // Implicit session start on the first actual save: skip the 1.6s enter ritual so JUICE never
-  // blocks logging (spec §6). Merely browsing a body region must not create an empty session.
-  const enterSilently = useCallback(async () => {
-    useSessionStore.getState().setSilentStart(true);
-    try {
-      await enter();
-    } finally {
-      useSessionStore.getState().setSilentStart(false);
-    }
-  }, [enter]);
-
   const ensureSession = useCallback(async (): Promise<string> => {
     const active = useSessionStore.getState().activeSessionId;
     if (active) return active;
-    await enterSilently();
-    const started = useSessionStore.getState().activeSessionId;
-    if (!started) throw new Error('session_start_failed');
-    return started;
+    return enterSilently();
   }, [enterSilently]);
 
   const onRegionPress = useCallback(

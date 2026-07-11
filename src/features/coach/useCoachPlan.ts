@@ -54,6 +54,7 @@ export function useCoachPlan(): CoachPlan {
   const activeSessionId = useSessionStore((s) => s.activeSessionId);
   const startedAt = useSessionStore((s) => s.startedAt);
   const setCount = useSessionStore((s) => s.setCount);
+  const logRevision = useSessionStore((s) => s.logRevision);
   const storeLastSetAt = useSessionStore((s) => s.lastSetAt);
   const [state, setState] = useState<CoachDb>(EMPTY);
 
@@ -132,7 +133,7 @@ export function useCoachPlan(): CoachPlan {
     return () => {
       alive = false;
     };
-  }, [buildSnapshot, setCount, activeSessionId]);
+  }, [buildSnapshot, setCount, logRevision, activeSessionId]);
   useFocusEffect(
     useCallback(() => {
       let alive = true;

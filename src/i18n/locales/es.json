@@ -261,6 +261,7 @@
     "rirMaxPill": "4+",
     "repeatLast": "Repetir última serie ⚡",
     "logSet": "Registrar ⚡",
+    "saveChanges": "Guardar cambios",
     "close": "Cerrar",
     "exerciseMeta": {
       "bodyweightPrefix": "Peso corporal · ",
@@ -485,6 +486,9 @@
     "photo": "Estimar comida desde una foto",
     "log": "REGISTRAR",
     "repeatLast": "Repetir la última comida",
+    "undo": "Deshacer",
+    "cancelled": "Comida eliminada",
+    "undoFailed": "No se pudo deshacer esta comida — inténtalo de nuevo.",
     "kcal": "{n} kcal",
     "fail": "No se pudo estimar — simplifica.",
     "saveFailed": "No se pudo guardar esta comida. No se añadió nada — inténtalo de nuevo.",

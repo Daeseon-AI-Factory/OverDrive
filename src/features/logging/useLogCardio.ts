@@ -25,27 +25,50 @@ export function useLogCardio() {
 
   return useCallback(
     async (input: LogCardioInput): Promise<{ cardioId: string; deltaCp: number; verdict: JuiceVerdict }> => {
-      const prevScore = useCombatPowerStore.getState().score;
+      if (!useSessionStore.getState().tryBeginLogWrite()) throw new Error('session_finishing');
+      try {
+        const prevScore = useCombatPowerStore.getState().score;
 
-      const row = await addCardio(db, {
-        sessionId: input.sessionId,
-        modality: input.modality,
-        durationSec: input.durationSec,
-        rounds: input.rounds,
-        distanceM: input.distanceM,
-        rpe: input.rpe,
-      });
-      useSessionStore.getState().recordSet(0); // counts toward session item count (no strength volume)
+        const row = await addCardio(db, {
+          sessionId: input.sessionId,
+          modality: input.modality,
+          durationSec: input.durationSec,
+          rounds: input.rounds,
+          distanceM: input.distanceM,
+          rpe: input.rpe,
+        });
+        useSessionStore.getState().recordSet(0); // counts toward session item count (no strength volume)
 
-      const result = await recomputeAndStore(db);
-      useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
-      const deltaCp = result.score - prevScore;
+        let deltaCp = 0;
+        let powerUpdated = false;
+        try {
+          const result = await recomputeAndStore(db);
+          useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+          deltaCp = result.score - prevScore;
+          powerUpdated = true;
+        } catch {
+          // The cardio row is already durable; derived CP failure must not invite a duplicate log.
+        }
 
-      const verdict = classifyEvent({ kind: 'cardio', durationSec: input.durationSec, rpe: input.rpe, deltaCp });
-      juice.fire(verdict);
-      void appendPowerEvent(db, { tier: verdict.tier, delta: deltaCp, reason: verdict.reason, sessionId: input.sessionId });
+        const verdict = classifyEvent({ kind: 'cardio', durationSec: input.durationSec, rpe: input.rpe, deltaCp });
+        try {
+          juice.fire(verdict);
+        } catch {
+          // Celebration cannot change the durable logging result.
+        }
+        if (powerUpdated) {
+          void appendPowerEvent(db, {
+            tier: verdict.tier,
+            delta: deltaCp,
+            reason: verdict.reason,
+            sessionId: input.sessionId,
+          }).catch(() => {});
+        }
 
-      return { cardioId: row.id, deltaCp, verdict };
+        return { cardioId: row.id, deltaCp, verdict };
+      } finally {
+        useSessionStore.getState().endLogWrite();
+      }
     },
     [db, juice],
   );

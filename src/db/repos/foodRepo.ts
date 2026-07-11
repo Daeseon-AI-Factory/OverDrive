@@ -15,9 +15,13 @@ export interface FoodItemInput {
 export type FoodSource = 'text' | 'voice' | 'photo';
 
 export interface FoodMealBatch {
+  /** Exact rows in this save; immediate undo never relies on a timestamp collision boundary. */
+  ids: string[];
   items: FoodItemInput[];
   source: FoodSource;
   loggedAt: string;
+  date: string;
+  userId: string;
 }
 
 export async function addFoodItems(
@@ -26,16 +30,17 @@ export async function addFoodItems(
   source: FoodSource,
   date: string = todayLocal(),
   userId: string = LOCAL_USER_ID,
-): Promise<void> {
-  if (items.length === 0) return;
+): Promise<FoodMealBatch | null> {
+  if (items.length === 0) return null;
 
   // One multi-row SQLite statement is atomic by itself. This avoids the shared-connection hazard of
   // withTransactionAsync (unrelated quick-log writes can otherwise join its BEGIN/ROLLBACK window)
   // and uses one native bridge round-trip for the whole meal.
   const at = nowIso();
+  const ids = items.map(() => newUuid());
   const placeholders = items.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
-  const params = items.flatMap((item) => [
-    newUuid(),
+  const params = items.flatMap((item, index) => [
+    ids[index],
     userId,
     date,
     item.name.trim() || 'food',
@@ -49,6 +54,40 @@ export async function addFoodItems(
      VALUES ${placeholders}`,
     params,
   );
+  return { ids, items: items.map((item) => ({ ...item })), source, loggedAt: at, date, userId };
+}
+
+/**
+ * Undo one meal and its auto-completed protein credit in one exclusive transaction. Exact row ids
+ * and the original date/user scope make this safe across midnight and idempotent on retry.
+ */
+export async function undoFoodBatch(
+  db: SQLiteDatabase,
+  batch: Pick<FoodMealBatch, 'ids' | 'date' | 'userId'>,
+  options: { resetProteinIfBelowG: number | null },
+): Promise<{ proteinReset: boolean }> {
+  if (batch.ids.length === 0) return { proteinReset: false };
+  let proteinReset = false;
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    await tx.runAsync(
+      `DELETE FROM food_log WHERE user_id = ? AND id IN (${batch.ids.map(() => '?').join(',')})`,
+      [batch.userId, ...batch.ids],
+    );
+    if (options.resetProteinIfBelowG == null) return;
+    const total = await tx.getFirstAsync<{ protein_g: number | null }>(
+      `SELECT COALESCE(SUM(protein_g), 0) AS protein_g
+       FROM food_log WHERE user_id = ? AND date = ?`,
+      [batch.userId, batch.date],
+    );
+    if ((total?.protein_g ?? 0) >= options.resetProteinIfBelowG) return;
+    const result = await tx.runAsync(
+      `UPDATE discipline SET protein = 0, updated_at = ?
+       WHERE user_id = ? AND date = ? AND protein = 1`,
+      [nowIso(), batch.userId, batch.date],
+    );
+    proteinReset = result.changes > 0;
+  });
+  return { proteinReset };
 }
 
 /**
@@ -61,13 +100,15 @@ export async function getLatestFoodBatch(
 ): Promise<FoodMealBatch | null> {
   try {
     const rows = await db.getAllAsync<{
+      id: string;
+      date: string;
       name: string;
       kcal: number;
       protein_g: number;
       source: FoodSource;
       logged_at: string;
     }>(
-      `SELECT name, kcal, protein_g, source, logged_at
+      `SELECT id, date, name, kcal, protein_g, source, logged_at
        FROM food_log
        WHERE user_id = ?
          AND logged_at = (SELECT MAX(logged_at) FROM food_log WHERE user_id = ?)
@@ -76,9 +117,12 @@ export async function getLatestFoodBatch(
     );
     if (rows.length === 0) return null;
     return {
+      ids: rows.map((row) => row.id),
       items: rows.map((row) => ({ name: row.name, kcal: row.kcal, proteinG: row.protein_g })),
       source: rows[0].source,
       loggedAt: rows[0].logged_at,
+      date: rows[0].date,
+      userId,
     };
   } catch {
     // Read-only compatibility for a pre-v5 development database. A full reload runs the migration.

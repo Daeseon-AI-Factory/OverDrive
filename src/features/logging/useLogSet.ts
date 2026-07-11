@@ -35,40 +35,59 @@ export function useLogSet() {
 
   return useCallback(
     async (input: LogSetInput): Promise<{ setId: string; isPr: boolean; deltaCp: number; verdict: JuiceVerdict }> => {
-      const prevScore = useCombatPowerStore.getState().score;
+      if (!useSessionStore.getState().tryBeginLogWrite()) throw new Error('session_finishing');
+      try {
+        const prevScore = useCombatPowerStore.getState().score;
 
-      const { row, isPr } = await addSet(db, {
-        sessionId: input.sessionId,
-        exerciseId: input.exerciseId,
-        weight: input.weight,
-        reps: input.reps,
-        rir: input.rir,
-        loggedVia: input.loggedVia ?? 'manual',
-      });
-      useSessionStore.getState().recordSet(input.weight * input.reps); // feeds the Forge session summary
-      useRestTimerStore.getState().start(); // auto rest countdown (non-blocking; restarts per set)
+        const { row, isPr } = await addSet(db, {
+          sessionId: input.sessionId,
+          exerciseId: input.exerciseId,
+          weight: input.weight,
+          reps: input.reps,
+          rir: input.rir,
+          loggedVia: input.loggedVia ?? 'manual',
+        });
+        useSessionStore.getState().recordSet(input.weight * input.reps); // feeds the Forge session summary
+        useRestTimerStore.getState().start(); // auto rest countdown (non-blocking; restarts per set)
 
-      const result = await recomputeAndStore(db);
-      useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
-      const deltaCp = result.score - prevScore;
+        let deltaCp = 0;
+        let powerUpdated = false;
+        try {
+          const result = await recomputeAndStore(db);
+          useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+          deltaCp = result.score - prevScore;
+          powerUpdated = true;
+        } catch {
+          // The set row is already durable. A later screen refresh recomputes CP; never invite a
+          // duplicate INSERT by reporting the saved set as failed.
+        }
 
-      const verdict = classifyEvent({
-        kind: 'set',
-        isPr,
-        rir: input.rir,
-        hitTargetReps: input.hitTargetReps,
-        deltaCp,
-      });
-      juice.fire(verdict); // non-blocking
+        const verdict = classifyEvent({
+          kind: 'set',
+          isPr,
+          rir: input.rir,
+          hitTargetReps: input.hitTargetReps,
+          deltaCp,
+        });
+        try {
+          juice.fire(verdict); // non-blocking
+        } catch {
+          // Celebration cannot change the durable logging result.
+        }
 
-      void appendPowerEvent(db, {
-        tier: verdict.tier,
-        delta: deltaCp,
-        reason: verdict.reason,
-        sessionId: input.sessionId,
-      });
+        if (powerUpdated) {
+          void appendPowerEvent(db, {
+            tier: verdict.tier,
+            delta: deltaCp,
+            reason: verdict.reason,
+            sessionId: input.sessionId,
+          }).catch(() => {});
+        }
 
-      return { setId: row.id, isPr, deltaCp, verdict };
+        return { setId: row.id, isPr, deltaCp, verdict };
+      } finally {
+        useSessionStore.getState().endLogWrite();
+      }
     },
     [db, juice],
   );

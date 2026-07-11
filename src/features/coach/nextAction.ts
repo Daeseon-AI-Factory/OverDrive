@@ -58,7 +58,7 @@ export interface SetSuggestion {
   /** 1-based: the set the user is about to do (setsToday + 1). */
   setNumber: number;
   targetSets: number;
-  /** Last set hit the TOP of the programmed rep range → +2.5kg suggested (never mandatory). */
+  /** Historical set hit the rep-range top before today's first set → +2.5kg suggested. */
   prChance: boolean;
 }
 
@@ -81,7 +81,11 @@ export type NextAction =
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** Next-set arithmetic for ONE strength exercise: repeat last set, or (top of rep range hit) +2.5kg back at repLow — classic double progression, conservative by construction. */
+/**
+ * Next-set arithmetic for ONE strength exercise. Double progression may raise the load only for
+ * today's first set, when `last` is historical. Once any set exists today, RIR/fatigue is unknown,
+ * so the coach repeats the performed load instead of escalating inside the same session.
+ */
 function suggestNextSet(
   exerciseId: string,
   input: NextActionInput,
@@ -103,7 +107,7 @@ function suggestNextSet(
     };
   }
   // PR chance only with a programmed rep range AND real load (bodyweight progresses by reps, not +2.5kg).
-  if (slot != null && last.weightKg > 0 && last.reps >= slot.repHigh) {
+  if (setsDone === 0 && slot != null && last.weightKg > 0 && last.reps >= slot.repHigh) {
     return {
       exerciseId,
       isCardio: false,

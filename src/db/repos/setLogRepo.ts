@@ -164,9 +164,71 @@ export async function addSet(
   return { row, isPr };
 }
 
-/** Delete one logged set (mistake fix). Caller recomputes Combat Power afterwards. */
-export async function deleteSet(db: SQLiteDatabase, setId: string): Promise<void> {
-  await db.runAsync('DELETE FROM set_log WHERE id = ?', [setId]);
+/**
+ * Correct one existing set in place. The exercise/session/order/timestamp stay immutable, so an
+ * edit cannot create a duplicate set or rewrite workout chronology. PR status is recalculated
+ * against performances that existed before this row was first logged.
+ */
+export async function updateSet(
+  db: SQLiteDatabase,
+  input: {
+    setId: string;
+    weight: number;
+    reps: number;
+    rir: number | null;
+    userId?: string;
+  },
+): Promise<{ previous: SetLogRow; row: SetLogRow; isPr: boolean }> {
+  const userId = input.userId ?? LOCAL_USER_ID;
+  let output: { previous: SetLogRow; row: SetLogRow; isPr: boolean } | null = null;
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    const previous = await tx.getFirstAsync<SetLogRow>(
+      `SELECT sl.* FROM set_log sl
+       JOIN workout_session ws ON ws.id = sl.session_id
+       WHERE sl.id = ? AND ws.user_id = ?`,
+      [input.setId, userId],
+    );
+    if (!previous) throw new Error('set_not_found');
+
+    const prior = await tx.getFirstAsync<{ best: number | null }>(
+      `SELECT MAX(prior.score) AS best FROM set_log prior
+       JOIN workout_session ws ON ws.id = prior.session_id
+       WHERE prior.exercise_id = ? AND ws.user_id = ?
+         AND prior.rowid < (SELECT rowid FROM set_log WHERE id = ?)`,
+      [previous.exercise_id, userId, previous.id],
+    );
+    const { isPr, score } = detectPr({ weight: input.weight, reps: input.reps }, prior?.best ?? null);
+    const row: SetLogRow = {
+      ...previous,
+      weight: input.weight,
+      reps: input.reps,
+      rir: input.rir,
+      score,
+      is_pr: isPr ? 1 : 0,
+    };
+
+    await tx.runAsync(
+      `UPDATE set_log
+       SET weight = ?, reps = ?, rir = ?, score = ?, is_pr = ?
+       WHERE id = ?`,
+      [row.weight, row.reps, row.rir, row.score, row.is_pr, row.id],
+    );
+    output = { previous, row, isPr };
+  });
+  if (!output) throw new Error('set_not_found');
+  return output;
+}
+
+/** Delete one logged set once. Returning null makes retries safe for session counters. */
+export async function deleteSet(db: SQLiteDatabase, setId: string): Promise<SetLogRow | null> {
+  let deleted: SetLogRow | null = null;
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    const row = await tx.getFirstAsync<SetLogRow>('SELECT * FROM set_log WHERE id = ?', [setId]);
+    if (!row) return;
+    const result = await tx.runAsync('DELETE FROM set_log WHERE id = ?', [setId]);
+    if (result.changes > 0) deleted = row;
+  });
+  return deleted;
 }
 
 /** Set row tagged with its session's local calendar date — feeds the history daily timeline. */

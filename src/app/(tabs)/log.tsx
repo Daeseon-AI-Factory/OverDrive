@@ -1,10 +1,8 @@
-import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { ExerciseRow } from '@/db/types';
 import { FoodCard } from '@/features/food/FoodCard';
-import { useSessionStore } from '@/features/forge/sessionStore';
 import { useForge } from '@/features/forge/useForge';
 import { AmbientAura } from '@/features/juice/AmbientAura';
 import { CardioLoggerSheet } from '@/features/logging/CardioLoggerSheet';
@@ -63,34 +61,13 @@ export default function LogScreen() {
     [t],
   );
   const skin = useSkinOrNull();
-  const { enter } = useForge();
-  const sessionActive = useSessionStore((s) => s.activeSessionId != null);
-
+  const { enterSilently } = useForge();
   const [picker, setPicker] = useState<RegionPicker | null>(null);
   const [activeExercise, setActiveExercise] = useState<ExerciseRow | null>(null);
 
-  // QuickLog owns its own useForge() call. Arm the same silent-start flag while this action-first
-  // tab is focused so a first log stays immediate and never leaves a pending entry ritual behind.
-  useFocusEffect(
-    useCallback(() => {
-      if (!sessionActive) useSessionStore.getState().setSilentStart(true);
-      return () => useSessionStore.getState().setSilentStart(false);
-    }, [sessionActive]),
-  );
-
   const ensureSession = useCallback(async (): Promise<string> => {
-    const active = useSessionStore.getState().activeSessionId;
-    if (active) return active;
-    useSessionStore.getState().setSilentStart(true);
-    try {
-      await enter();
-    } finally {
-      useSessionStore.getState().setSilentStart(false);
-    }
-    const started = useSessionStore.getState().activeSessionId;
-    if (!started) throw new Error('session_start_failed');
-    return started;
-  }, [enter]);
+    return enterSilently();
+  }, [enterSilently]);
 
   // ExerciseRegionSheet delivers only after its picker Modal is fully dismissed. Session creation
   // stays inside the logger's actual save action, so browsing and closing cannot leave an empty

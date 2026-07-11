@@ -50,12 +50,14 @@ export function CoachCard({
   const { loaded, dayTitle, exerciseById, compute } = useCoachPlan();
   const { repeat, undoSave } = useQuickLog(); // THE quicklog save/undo paths — JUICE + recents refresh
   const sessionActive = useSessionStore((s) => s.activeSessionId != null);
+  const sessionMutationBlocked = useSessionStore((s) => s.finishing || s.pendingLogWrites > 0);
 
   const [now, setNow] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
   // Confirm-as-undo card for the JUST-saved coach set — same contract as the quicklog bar host.
   const [card, setCard] = useState<{ nonce: number; saved: SavedQuickSet } | null>(null);
+  const [undoingNonce, setUndoingNonce] = useState<number | null>(null);
   const cardNonce = useRef(0);
 
   const ko = i18n.language.startsWith('ko');
@@ -105,7 +107,7 @@ export function CoachCard({
   /** Open the prefilled logger for an exercise ('다르게' / cardio / no-history first set). */
   const openLogger = useCallback(
     (row: ExerciseRow) => {
-      if (row.type === 'strength') useEditIntentStore.getState().open(row);
+      if (row.type === 'strength') useEditIntentStore.getState().openExercise(row);
       else onOpenExercise(row);
     },
     [onOpenExercise],
@@ -169,18 +171,21 @@ export function CoachCard({
   const onCardEdit = useCallback((saved: SavedQuickSet) => {
     setCard(null);
     if (saved.exercise && saved.exercise.type === 'strength') {
-      useEditIntentStore.getState().open(saved.exercise);
+      useEditIntentStore.getState().openEdit(saved);
     }
   }, []);
 
   const onCardUndo = useCallback(
-    async (saved: SavedQuickSet) => {
-      setCard(null);
+    async (saved: SavedQuickSet, nonce: number) => {
+      setUndoingNonce(nonce);
       try {
         await undoSave(saved);
+        setCard((current) => (current?.nonce === nonce ? null : current));
         setHint(null);
       } catch {
         setHint(t('quicklog.fail.log'));
+      } finally {
+        setUndoingNonce((current) => (current === nonce ? null : current));
       }
     },
     [undoSave, t],
@@ -250,8 +255,9 @@ export function CoachCard({
           nonce={card.nonce}
           saved={card.saved}
           editable={card.saved.exercise?.type === 'strength'}
+          busy={undoingNonce === card.nonce}
           onEdit={() => onCardEdit(card.saved)}
-          onUndo={() => void onCardUndo(card.saved)}
+          onUndo={() => void onCardUndo(card.saved, card.nonce)}
           onDismiss={() => setCard(null)}
         />
       ) : null}
@@ -352,12 +358,18 @@ export function CoachCard({
               <Button
                 label={busy ? t('activeWorkout.saving') : primaryLabel}
                 onPress={onPrimary}
-                disabled={busy}
+                disabled={busy || sessionMutationBlocked}
                 style={styles.ctaMain}
               />
             ) : null}
             {showAlt ? (
-              <Button label={dv('다르게', 'Change')} onPress={onAlt} variant="ghost" compact disabled={busy} />
+              <Button
+                label={dv('다르게', 'Change')}
+                onPress={onAlt}
+                variant="ghost"
+                compact
+                disabled={busy || sessionMutationBlocked}
+              />
             ) : null}
           </View>
         ) : null}
@@ -368,6 +380,7 @@ export function CoachCard({
             onPress={onFinishWorkout}
             variant="secondary"
             compact
+            disabled={sessionMutationBlocked}
             style={styles.wrapUpBtn}
           />
         ) : null}

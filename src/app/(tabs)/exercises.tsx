@@ -5,7 +5,6 @@ import type { ExerciseRow } from '@/db/types';
 import { MyCharacter } from '@/features/character/MyCharacter';
 import { CARDIO_EXERCISE_IDS } from '@/features/character/regions';
 import type { BodyHitRegionId } from '@/features/character/bodyHitMap';
-import { useSessionStore } from '@/features/forge/sessionStore';
 import { useForge } from '@/features/forge/useForge';
 import { CardioLoggerSheet } from '@/features/logging/CardioLoggerSheet';
 import { BodyAvatarSetupSheet } from '@/features/evolution/BodyAvatarSetupSheet';
@@ -32,7 +31,7 @@ export default function ExercisesScreen() {
     [t],
   );
   const skin = useSkinOrNull();
-  const { enter } = useForge();
+  const { enterSilently } = useForge();
   const today = useTodayProgram();
   const programExerciseIds = useMemo(() => today.slots.map((slot) => slot.exerciseId), [today.slots]);
 
@@ -43,18 +42,8 @@ export default function ExercisesScreen() {
   const [avatarRefreshKey, setAvatarRefreshKey] = useState(0);
 
   const ensureSession = useCallback(async (): Promise<string> => {
-    const active = useSessionStore.getState().activeSessionId;
-    if (active) return active;
-    useSessionStore.getState().setSilentStart(true);
-    try {
-      await enter();
-    } finally {
-      useSessionStore.getState().setSilentStart(false);
-    }
-    const started = useSessionStore.getState().activeSessionId;
-    if (!started) throw new Error('session_start_failed');
-    return started;
-  }, [enter]);
+    return enterSilently();
+  }, [enterSilently]);
 
   const openRegion = useCallback(
     (region: BodyHitRegionId) => {

@@ -3,10 +3,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getLastSetForExercise } from '@/db/repos/setLogRepo';
+import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
+import { getSessionActivitySummary } from '@/db/repos/sessionRepo';
+import { getLastSetForExercise, updateSet } from '@/db/repos/setLogRepo';
 import type { ExerciseRow } from '@/db/types';
+import { useSessionStore } from '@/features/forge/sessionStore';
 import { useEditIntentStore } from '@/features/quicklog/editIntentStore';
 import { displayToKg, formatWeight, kgToDisplay, weightStepDisplay, weightUnit } from '@/lib/units';
+import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { Button, Muted, Pill } from '@/ui/primitives';
 import { colors, hangulSafeLetterSpacing, radius, space, tracking, typeScale } from '@/ui/theme/tokens';
@@ -19,8 +23,8 @@ import { useLogSet } from './useLogSet';
  * canonical kg. Stays open after logging. Calls the unchanged useLogSet hot path (→ JUICE fires).
  *
  * Opens from TWO sources: the screen-level `exercise` prop (body-map picker) or the quicklog
- * confirm-card's [수정] intent (editIntentStore) — the prop wins when both are set. The intent path
- * prefills from the last set, which IS the just-logged set.
+ * intent store. A new-set intent prefills from history; an edit intent carries the exact saved row
+ * and updates it in place. The screen-level prop wins when both are set.
  *
  * MONOLITH sheet chrome: opaque surface1 panel (no bleed-through under stepper digits), edge
  * highlight, lineStrong grabber. The log CTA is THE one solid-accent primary; repeat-last is the
@@ -42,9 +46,10 @@ export function SetLoggerSheet({
   const unitSystem = useSettingsStore((s) => s.unitSystem);
   const weightStepKg = useSettingsStore((s) => s.weightStep);
 
-  const intent = useEditIntentStore((s) => s.exercise);
+  const intent = useEditIntentStore((s) => s.intent);
   // Strength only — cardio has its own sheet; the quicklog card hides [수정] for cardio anyway.
-  const exercise = exerciseProp ?? (intent?.type === 'strength' ? intent : null);
+  const exercise = exerciseProp ?? (intent?.exercise.type === 'strength' ? intent.exercise : null);
+  const edit = exerciseProp == null && intent?.kind === 'edit' ? intent.saved : null;
   const close = useCallback(() => {
     useEditIntentStore.getState().close();
     onClose();
@@ -59,14 +64,25 @@ export function SetLoggerSheet({
   const [lastSet, setLastSet] = useState<{ weightKg: number; reps: number; rir: number | null } | null>(null);
   const [count, setCount] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [weightDirty, setWeightDirty] = useState(false);
 
   useEffect(() => {
     if (!exercise) return;
     let alive = true;
     (async () => {
+      if (edit) {
+        setCount(0);
+        setWeightDirty(false);
+        setLastSet({ weightKg: edit.weightKg, reps: edit.reps, rir: edit.rir });
+        setWeight(Math.round(kgToDisplay(edit.weightKg, unitSystem) * 10) / 10);
+        setReps(edit.reps);
+        setRir(edit.rir);
+        return;
+      }
       const last = await getLastSetForExercise(db, exercise.id);
       if (!alive) return;
       setCount(0); // fresh per-open counter — the intent path reopens without a key remount
+      setWeightDirty(false);
       if (last) {
         setLastSet({ weightKg: last.weight, reps: last.reps, rir: last.rir });
         setWeight(Math.round(kgToDisplay(last.weight, unitSystem) * 10) / 10);
@@ -82,15 +98,33 @@ export function SetLoggerSheet({
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db, exercise?.id, unitSystem]);
+  }, [db, edit, exercise, unitSystem]);
 
   const commitKg = async (weightKg: number, r: number, rv: number | null) => {
     if (!exercise || r <= 0 || busy) return;
     setBusy(true);
     try {
-      const sid = await ensureSession();
       const finalKg = exercise.is_bodyweight ? 0 : weightKg;
+      if (edit) {
+        if (!useSessionStore.getState().tryBeginLogWrite()) throw new Error('session_finishing');
+        try {
+          const result = await updateSet(db, {
+            setId: edit.setId,
+            weight: finalKg,
+            reps: r,
+            rir: rv,
+          });
+          const summary = await getSessionActivitySummary(db, result.row.session_id);
+          useSessionStore.getState().reconcileActivity(result.row.session_id, summary.itemCount, summary.volumeKg);
+          const power = await recomputeAndStore(db);
+          useCombatPowerStore.getState().setSnapshot(power.score, power.grade.key);
+          close();
+        } finally {
+          useSessionStore.getState().endLogWrite();
+        }
+        return;
+      }
+      const sid = await ensureSession();
       await logSet({
         sessionId: sid,
         exerciseId: exercise.id,
@@ -137,7 +171,10 @@ export function SetLoggerSheet({
                 max={2000}
                 precision={1}
                 unit={weightUnit(unitSystem)}
-                onChange={setWeight}
+                onChange={(value) => {
+                  setWeight(value);
+                  setWeightDirty(true);
+                }}
               />
             ) : null}
             <Stepper
@@ -169,19 +206,23 @@ export function SetLoggerSheet({
               ))}
             </View>
 
+            {!edit ? (
+              <Button
+                label={t('logger.repeatLast')}
+                variant="secondary"
+                disabled={!lastSet || busy}
+                onPress={() => lastSet && commitKg(lastSet.weightKg, lastSet.reps, lastSet.rir)}
+                style={{ marginTop: space.xl }}
+              />
+            ) : null}
             <Button
-              label={t('logger.repeatLast')}
-              variant="secondary"
-              disabled={!lastSet || busy}
-              onPress={() => lastSet && commitKg(lastSet.weightKg, lastSet.reps, lastSet.rir)}
-              style={{ marginTop: space.xl }}
-            />
-            <Button
-              label={t('logger.logSet')}
+              label={edit ? t('logger.saveChanges') : t('logger.logSet')}
               variant="primary"
               disabled={!reps || busy}
-              onPress={() => commitKg(displayToKg(weight, unitSystem), reps, rir)}
-              style={{ marginTop: space.sm }}
+              onPress={() =>
+                commitKg(edit && !weightDirty ? edit.weightKg : displayToKg(weight, unitSystem), reps, rir)
+              }
+              style={{ marginTop: edit ? space.xl : space.sm }}
             />
             <Pressable onPress={close} style={styles.closeBtn} hitSlop={8}>
               <Muted>{t('logger.close')}</Muted>

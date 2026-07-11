@@ -32,6 +32,7 @@ export function MicDock() {
   const [busy, setBusy] = useState(false); // disambiguation pick in flight
   const [pending, setPending] = useState<MicPending | null>(null);
   const [card, setCard] = useState<{ nonce: number; saved: SavedQuickSet } | null>(null);
+  const [undoingNonce, setUndoingNonce] = useState<number | null>(null);
   const cardNonce = useRef(0);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -106,17 +107,20 @@ export function MicDock() {
   const onCardEdit = useCallback((saved: SavedQuickSet) => {
     setCard(null);
     if (saved.exercise && saved.exercise.type === 'strength') {
-      useEditIntentStore.getState().open(saved.exercise);
+      useEditIntentStore.getState().openEdit(saved);
     }
   }, []);
 
   const onCardUndo = useCallback(
-    async (saved: SavedQuickSet) => {
-      setCard(null);
+    async (saved: SavedQuickSet, nonce: number) => {
+      setUndoingNonce(nonce);
       try {
         await undoSave(saved);
+        setCard((current) => (current?.nonce === nonce ? null : current));
       } catch {
         flashHint(t('quicklog.fail.log'));
+      } finally {
+        setUndoingNonce((current) => (current === nonce ? null : current));
       }
     },
     [undoSave, flashHint, t],
@@ -146,8 +150,9 @@ export function MicDock() {
             nonce={card.nonce}
             saved={card.saved}
             editable={card.saved.exercise?.type === 'strength'}
+            busy={undoingNonce === card.nonce}
             onEdit={() => onCardEdit(card.saved)}
-            onUndo={() => void onCardUndo(card.saved)}
+            onUndo={() => void onCardUndo(card.saved, card.nonce)}
             onDismiss={() => setCard(null)}
           />
         </View>

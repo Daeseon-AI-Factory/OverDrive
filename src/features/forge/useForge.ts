@@ -14,6 +14,7 @@ import { localDateDaysAgo, todayLocal } from '@/lib/date';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useSessionStore } from './sessionStore';
+import { coordinateSessionStart, type SessionStartMode } from './sessionCoordinator';
 
 /**
  * Forge lifecycle. enter() opens a session (+ entry ritual). finish() completes it → recomputes
@@ -24,53 +25,101 @@ export function useForge() {
   const db = useSQLiteContext();
   const juice = useJuice();
 
-  const enter = useCallback(async () => {
-    if (useSessionStore.getState().activeSessionId) return;
-    const cpAtStart = useCombatPowerStore.getState().score;
-    const open = await getOpenSessionForDate(db, todayLocal());
-    if (open) {
-      const summary = await getSessionActivitySummary(db, open.id);
-      useSessionStore.getState().resume(open.id, cpAtStart, summary.itemCount, summary.volumeKg);
-      return;
-    }
-    const dayType = resolveProgramDay(useSettingsStore.getState().customProgram, new Date().getDay()).dayType;
-    const s = await startSession(db, { dayType });
-    useSessionStore.getState().start(s.id, cpAtStart);
-    void fireHaptic(3); // entry thump
-    playNamed('forge_enter'); // chamber drone — "entering the training chamber"
-  }, [db]);
+  const enterWithMode = useCallback(
+    (mode: SessionStartMode): Promise<string> =>
+      coordinateSessionStart(
+        mode,
+        () => useSessionStore.getState().activeSessionId,
+        async (shouldStartSilently) => {
+          const active = useSessionStore.getState().activeSessionId;
+          if (active) return active;
+          const cpAtStart = useCombatPowerStore.getState().score;
+          const open = await getOpenSessionForDate(db, todayLocal());
+          const activeAfterLookup = useSessionStore.getState().activeSessionId;
+          if (activeAfterLookup) return activeAfterLookup;
+          if (open) {
+            const summary = await getSessionActivitySummary(db, open.id);
+            const activeAfterSummary = useSessionStore.getState().activeSessionId;
+            if (activeAfterSummary) return activeAfterSummary;
+            useSessionStore.getState().resume(open.id, cpAtStart, summary.itemCount, summary.volumeKg);
+            return open.id;
+          }
+          const dayType = resolveProgramDay(useSettingsStore.getState().customProgram, new Date().getDay()).dayType;
+          const s = await startSession(db, { dayType });
+          const silent = shouldStartSilently();
+          useSessionStore.getState().start(s.id, cpAtStart, silent);
+          if (!silent) {
+            void fireHaptic(3); // explicit entry thump
+            playNamed('forge_enter');
+          }
+          return s.id;
+        },
+      ),
+    [db],
+  );
+  const enter = useCallback(() => enterWithMode('explicit'), [enterWithMode]);
+  const enterSilently = useCallback(() => enterWithMode('silent'), [enterWithMode]);
 
   const finish = useCallback(async () => {
-    let st = useSessionStore.getState();
-    let sid = st.activeSessionId;
-    if (!sid) {
-      const open = await getOpenSessionForDate(db, todayLocal());
-      if (!open) return;
-      const summary = await getSessionActivitySummary(db, open.id);
-      useSessionStore.getState().resume(open.id, useCombatPowerStore.getState().score, summary.itemCount, summary.volumeKg);
-      st = useSessionStore.getState();
-      sid = open.id;
+    if (!useSessionStore.getState().tryBeginFinish()) return false;
+    let completed = false;
+    try {
+      let st = useSessionStore.getState();
+      let sid = st.activeSessionId;
+      if (!sid) {
+        const open = await getOpenSessionForDate(db, todayLocal());
+        if (!open) return false;
+        const summary = await getSessionActivitySummary(db, open.id);
+        useSessionStore.getState().resume(open.id, useCombatPowerStore.getState().score, summary.itemCount, summary.volumeKg);
+        st = useSessionStore.getState();
+        sid = open.id;
+      }
+
+      await completeSession(db, sid);
+
+      // `completed_at` is the durable success boundary. CP/streak/Health/JUICE are derived or
+      // best-effort side effects and must never leave the same completed DB row active in memory.
+      let deltaCp = 0;
+      let streakDays = 0;
+      let powerUpdated = false;
+      try {
+        const result = await recomputeAndStore(db); // streak now counts this session (completed_at set)
+        useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+        deltaCp = result.score - st.cpAtStart;
+        powerUpdated = true;
+      } catch {
+        // A later screen refresh recomputes CP. Session completion itself already succeeded.
+      }
+
+      try {
+        const dates = await getCompletedSessionDates(db, localDateDaysAgo(90));
+        streakDays = computeStreak(dates, todayLocal());
+      } catch {
+        // Completion remains valid; the next summary refresh restores the streak.
+      }
+
+      // Write the real, just-finished session to Apple Health (HKWorkout) — only if connected. Never
+      // writes game numbers (§4). startedAt is epoch ms from the session store.
+      if (st.startedAt && useSettingsStore.getState().health?.connected) {
+        void writeWorkout(new Date(st.startedAt), new Date());
+      }
+
+      try {
+        juice.fire(classifyEvent({ kind: 'session', deltaCp })); // T4 supernova
+      } catch {
+        // Visual celebration is never part of the completion transaction.
+      }
+      if (powerUpdated) {
+        void appendPowerEvent(db, { tier: 4, delta: deltaCp, reason: 'session', sessionId: sid }).catch(() => {});
+      }
+
+      useSessionStore.getState().end({ sets: st.setCount, volumeKg: st.volumeKg, deltaCp, streakDays });
+      completed = true;
+      return true;
+    } finally {
+      if (!completed) useSessionStore.getState().cancelFinish();
     }
-
-    await completeSession(db, sid);
-    const result = await recomputeAndStore(db); // streak now counts this session (completed_at set)
-    useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
-
-    // Write the real, just-finished session to Apple Health (HKWorkout) — only if connected. Never
-    // writes game numbers (§4). startedAt is epoch ms from the session store.
-    if (st.startedAt && useSettingsStore.getState().health?.connected) {
-      void writeWorkout(new Date(st.startedAt), new Date());
-    }
-
-    const deltaCp = result.score - st.cpAtStart;
-    const dates = await getCompletedSessionDates(db, localDateDaysAgo(90));
-    const streakDays = computeStreak(dates, todayLocal());
-
-    juice.fire(classifyEvent({ kind: 'session', deltaCp })); // T4 supernova
-    void appendPowerEvent(db, { tier: 4, delta: deltaCp, reason: 'session', sessionId: sid });
-
-    useSessionStore.getState().end({ sets: st.setCount, volumeKg: st.volumeKg, deltaCp, streakDays });
   }, [db, juice]);
 
-  return { enter, finish };
+  return { enter, enterSilently, finish };
 }

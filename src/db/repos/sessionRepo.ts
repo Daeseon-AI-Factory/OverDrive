@@ -28,8 +28,12 @@ export async function startSession(
   return row;
 }
 
-export async function completeSession(db: SQLiteDatabase, sessionId: string): Promise<void> {
-  await db.runAsync('UPDATE workout_session SET completed_at = ? WHERE id = ?', [nowIso(), sessionId]);
+export async function completeSession(db: SQLiteDatabase, sessionId: string): Promise<boolean> {
+  const result = await db.runAsync(
+    'UPDATE workout_session SET completed_at = ? WHERE id = ? AND completed_at IS NULL',
+    [nowIso(), sessionId],
+  );
+  return result.changes > 0;
 }
 
 export async function getSession(db: SQLiteDatabase, id: string): Promise<WorkoutSessionRow | null> {

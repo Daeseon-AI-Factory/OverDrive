@@ -9,9 +9,11 @@ import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
 import { getCardioWithDateSince } from '@/db/repos/cardioRepo';
+import { getSessionActivitySummary } from '@/db/repos/sessionRepo';
 import { deleteSet, getSetsWithDateSince } from '@/db/repos/setLogRepo';
 import { EXERCISE_TO_REGION } from '@/features/character/regions';
 import { DayTimeline } from '@/features/history/DayTimeline';
+import { useSessionStore } from '@/features/forge/sessionStore';
 import { buildDaySections, type DaySection } from '@/features/history/timeline';
 import { emptyWeekly, WeeklyCard, type Weekly } from '@/features/history/WeeklyCard';
 import { localDateDaysAgo } from '@/lib/date';
@@ -95,10 +97,21 @@ export default function HistoryScreen() {
           style: 'destructive',
           onPress: () => {
             void (async () => {
-              await deleteSet(db, setId);
-              setData(await load());
-              const result = await recomputeAndStore(db);
-              useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+              if (!useSessionStore.getState().tryBeginLogWrite()) return;
+              try {
+                const deleted = await deleteSet(db, setId);
+                if (deleted) {
+                  const summary = await getSessionActivitySummary(db, deleted.session_id);
+                  useSessionStore
+                    .getState()
+                    .reconcileActivity(deleted.session_id, summary.itemCount, summary.volumeKg);
+                }
+                setData(await load());
+                const result = await recomputeAndStore(db);
+                useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+              } finally {
+                useSessionStore.getState().endLogWrite();
+              }
             })();
           },
         },

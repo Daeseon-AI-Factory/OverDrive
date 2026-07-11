@@ -142,6 +142,9 @@
     "photo": "Estimate food from a photo",
     "log": "LOG",
     "repeatLast": "Repeat last meal",
+    "undo": "Undo",
+    "cancelled": "Meal removed",
+    "undoFailed": "Couldn't undo that meal — try again.",
     "kcal": "{n} kcal",
     "fail": "Couldn't estimate — try simpler wording.",
     "saveFailed": "Couldn't save that meal. Nothing was added — try again.",
@@ -296,6 +299,7 @@
     "rirMaxPill": "4+",
     "repeatLast": "Repeat last set ⚡",
     "logSet": "Log ⚡",
+    "saveChanges": "Save changes",
     "close": "Close",
     "exerciseMeta": {
       "bodyweightPrefix": "Bodyweight · ",

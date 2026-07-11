@@ -173,7 +173,7 @@ export function Pill({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ selected: active, disabled: !onPress }}
-      // Compact pill visuals + expanded touch target (30pt tall → ≥44pt per Apple HIG).
+      // Compact pill visuals + expanded touch target (minimum 30pt → ≥44pt per Apple HIG).
       hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
       style={({ pressed }) => [
         styles.pill,
@@ -617,8 +617,9 @@ const styles = StyleSheet.create({
   buttonUnskew: { transform: [{ skewX: '8deg' }] },
   // Spacing is owned by the container row (gap: space.sm) — no marginRight here, or gap rows double-space.
   pill: {
-    height: 30,
+    minHeight: 30,
     paddingHorizontal: space.md,
+    paddingVertical: space.xxs,
     borderRadius: radius.chip,
     borderWidth: border.thin,
     borderColor: colors.line,

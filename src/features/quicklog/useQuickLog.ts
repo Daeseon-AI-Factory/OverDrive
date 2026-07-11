@@ -3,6 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
+import { getSessionActivitySummary } from '@/db/repos/sessionRepo';
 import { deleteSet, ensureExercise, getRecentExercises, getSetCountsForExercisesOnDate } from '@/db/repos/setLogRepo';
 import type { ExerciseRow } from '@/db/types';
 import { useForge } from '@/features/forge/useForge';
@@ -28,6 +29,7 @@ export interface RecentChip {
 /** Everything the confirm-as-undo card needs to display and to act on the JUST-saved set. */
 export interface SavedQuickSet {
   setId: string;
+  sessionId: string;
   exerciseId: string;
   /** Resolved catalog row (null only if a just-created ad-hoc exercise failed to load back). */
   exercise: ExerciseRow | null;
@@ -58,8 +60,9 @@ export function useQuickLog() {
   const db = useSQLiteContext();
   const { t } = useTranslation();
   const logSet = useLogSet();
-  const { enter } = useForge();
+  const { enterSilently } = useForge();
   const unitSystem = useSettingsStore((s) => s.unitSystem);
+  const logRevision = useSessionStore((s) => s.logRevision);
   const [candidates, setCandidates] = useState<ParseCandidate[]>([]);
   const [recents, setRecents] = useState<RecentChip[]>([]);
   const exMap = useRef<Map<string, ExerciseRow>>(new Map());
@@ -93,16 +96,16 @@ export function useQuickLog() {
 
   useFocusEffect(
     useCallback(() => {
+      // Revision is the cross-instance invalidation signal; reading it makes this focus callback
+      // re-run after add/edit/undo even though the loader itself needs no revision argument.
+      void logRevision;
       void load().catch(() => {});
-    }, [load]),
+    }, [load, logRevision]),
   );
 
   const ensureSession = useCallback(async (): Promise<string> => {
-    const active = useSessionStore.getState().activeSessionId;
-    if (active) return active;
-    await enter();
-    return useSessionStore.getState().activeSessionId ?? '';
-  }, [enter]);
+    return enterSilently();
+  }, [enterSilently]);
 
   /** "벤치프레스  100 kg×5" / "풀업  12" — echoes exactly what got saved (same shape as the chips). */
   const setSummary = useCallback(
@@ -144,7 +147,6 @@ export function useQuickLog() {
         hitTargetReps: ex ? set.reps >= ex.rep_low : true,
         loggedVia: 'quick',
       });
-      void load();
       // Post-save decoration for the confirm card — the set is already durable above.
       let setCountToday = 1;
       try {
@@ -158,6 +160,7 @@ export function useQuickLog() {
         summary: setSummary(set.exerciseName, set.weightKg, set.reps),
         saved: {
           setId,
+          sessionId: sid,
           exerciseId: set.exerciseId,
           exercise: ex,
           name: set.exerciseName,
@@ -169,7 +172,7 @@ export function useQuickLog() {
         },
       };
     },
-    [db, ensureSession, logSet, load, setSummary],
+    [db, ensureSession, logSet, setSummary],
   );
 
   /**
@@ -272,13 +275,18 @@ export function useQuickLog() {
    */
   const undoSave = useCallback(
     async (saved: SavedQuickSet): Promise<void> => {
-      await deleteSet(db, saved.setId);
-      useSessionStore.getState().undoSet(saved.volumeKg);
-      const result = await recomputeAndStore(db);
-      useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
-      void load();
+      if (!useSessionStore.getState().tryBeginLogWrite()) throw new Error('session_finishing');
+      try {
+        await deleteSet(db, saved.setId);
+        const summary = await getSessionActivitySummary(db, saved.sessionId);
+        useSessionStore.getState().reconcileActivity(saved.sessionId, summary.itemCount, summary.volumeKg);
+        const result = await recomputeAndStore(db);
+        useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+      } finally {
+        useSessionStore.getState().endLogWrite();
+      }
     },
-    [db, load],
+    [db],
   );
 
   return { candidates, recents, submitText, submitWith, repeat, undoSave };

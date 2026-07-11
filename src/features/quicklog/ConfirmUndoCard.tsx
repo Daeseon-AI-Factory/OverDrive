@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { ExercisePose } from '@/features/exercise-art/ExercisePose';
 import { exerciseFamily } from '@/features/exercise-art/families';
@@ -11,8 +11,7 @@ import { useSkinOrNull } from '@/ui/skins/SkinContext';
 import { colors, space, typeScale } from '@/ui/theme/tokens';
 import type { SavedQuickSet } from './useQuickLog';
 
-const AUTO_DISMISS_MS = 4500;
-const SWIPE_DISMISS_DX = 56;
+const AUTO_DISMISS_MS = 15_000;
 const POSE_SIZE = 44;
 
 /**
@@ -20,13 +19,15 @@ const POSE_SIZE = 44;
  * above the quicklog bar after every successful save: animated exercise pose + name + weight×reps
  * in Metric digits + today's set count for that exercise, with [수정] (open the set logger
  * prefilled) and [취소] (delete the just-saved set) as the only actions. Auto-dismisses after
- * ~4.5s (linear progress hairline); tap the card or swipe it sideways to dismiss early. It NEVER
- * blocks further logging — a new save just replaces it (fresh `nonce` restarts the clock).
+ * ~15s (linear progress hairline); tap the summary to dismiss early. With a
+ * screen reader active it stays until an explicit action or the next save. It NEVER blocks further
+ * logging — a new save just replaces it (fresh `nonce` restarts the clock).
  */
 export function ConfirmUndoCard({
   nonce,
   saved,
   editable,
+  busy = false,
   onEdit,
   onUndo,
   onDismiss,
@@ -36,6 +37,8 @@ export function ConfirmUndoCard({
   saved: SavedQuickSet;
   /** [수정] shows only for strength catalog exercises (the SetLoggerSheet's domain). */
   editable: boolean;
+  /** Pauses dismissal and disables actions while an async correction is being committed. */
+  busy?: boolean;
   onEdit: () => void;
   onUndo: () => void;
   onDismiss: () => void;
@@ -43,6 +46,7 @@ export function ConfirmUndoCard({
   const { t, i18n } = useTranslation();
   const skin = useSkinOrNull();
   const unitSystem = useSettingsStore((s) => s.unitSystem);
+  const [screenReaderEnabled, setScreenReaderEnabled] = useState<boolean | null>(null);
 
   const ko = i18n.language.startsWith('ko');
   const dv = useCallback((koStr: string, enStr: string) => (ko ? koStr : enStr), [ko]);
@@ -56,41 +60,32 @@ export function ConfirmUndoCard({
   const dismissNow = useCallback(() => onDismissRef.current(), []);
 
   const progress = useSharedValue(1); // 1 → 0 over AUTO_DISMISS_MS (the hairline width)
-  const dragX = useSharedValue(0); // swipe-away translation
 
   useEffect(() => {
-    dragX.value = 0;
+    let alive = true;
+    void AccessibilityInfo.isScreenReaderEnabled()
+      .then((enabled) => {
+        if (alive) setScreenReaderEnabled(enabled);
+      })
+      .catch(() => {
+        if (alive) setScreenReaderEnabled(false);
+      });
+    const subscription = AccessibilityInfo.addEventListener('screenReaderChanged', setScreenReaderEnabled);
+    return () => {
+      alive = false;
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     progress.value = 1;
+    // Time-limited correction controls are unusable while VoiceOver/TalkBack is traversing them.
+    if (screenReaderEnabled !== false || busy) return;
     progress.value = withTiming(0, { duration: AUTO_DISMISS_MS, easing: Easing.linear });
     const id = setTimeout(dismissNow, AUTO_DISMISS_MS);
     return () => clearTimeout(id);
-  }, [nonce, progress, dragX, dismissNow]);
+  }, [nonce, progress, dismissNow, screenReaderEnabled, busy]);
 
-  // Horizontal swipe dismisses (taps pass through to the Pressable/buttons — move-based only).
-  // The captured shared value is only touched inside touch callbacks, never during render.
-  const panHandlers = useMemo(
-    () =>
-      // eslint-disable-next-line react-hooks/refs
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 12 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
-        onPanResponderMove: (_e, g) => {
-          // eslint-disable-next-line react-hooks/immutability -- reanimated shared values ARE mutable
-          dragX.value = g.dx;
-        },
-        onPanResponderRelease: (_e, g) => {
-          if (Math.abs(g.dx) > SWIPE_DISMISS_DX) dismissNow();
-          // eslint-disable-next-line react-hooks/immutability
-          else dragX.value = withTiming(0, { duration: 120 });
-        },
-        onPanResponderTerminate: () => {
-          // eslint-disable-next-line react-hooks/immutability
-          dragX.value = withTiming(0, { duration: 120 });
-        },
-      }).panHandlers,
-    [dragX, dismissNow],
-  );
-
-  const slideStyle = useAnimatedStyle(() => ({ transform: [{ translateX: dragX.value }] }));
   const hairlineStyle = useAnimatedStyle(() => ({ width: `${progress.value * 100}%` }));
 
   const w = formatWeight(saved.weightKg, unitSystem); // '' for bodyweight
@@ -98,16 +93,18 @@ export function ConfirmUndoCard({
   const hairlineColor = skin?.palette.accent ?? colors.positive;
 
   return (
-    <Animated.View style={slideStyle} {...panHandlers}>
-      <Pressable
-        onPress={dismissNow}
-        accessibilityRole="button"
-        accessibilityLabel={t('quicklog.confirmCard.dismiss', {
-          defaultValue: dv('기록 확인 닫기', 'Dismiss log confirmation'),
-        })}
-      >
-        <Card style={styles.card}>
-          <View style={styles.row}>
+    <View>
+      <Card style={styles.card}>
+        <View style={styles.row}>
+          <Pressable
+            onPress={dismissNow}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel={t('quicklog.confirmCard.dismiss', {
+              defaultValue: dv('기록 확인 닫기', 'Dismiss log confirmation'),
+            })}
+            style={styles.summaryAction}
+          >
             <ExercisePose family={exerciseFamily(saved.exerciseId)} size={POSE_SIZE} animated />
             <View style={styles.info}>
               <Text style={styles.name} numberOfLines={1}>
@@ -124,34 +121,37 @@ export function ConfirmUndoCard({
                 </Text>
               </View>
             </View>
-            {editable ? (
-              <Button
-                label={t('quicklog.confirmCard.edit', { defaultValue: dv('수정', 'Edit') })}
-                variant="secondary"
-                compact
-                onPress={onEdit}
-              />
-            ) : null}
+          </Pressable>
+          {editable ? (
             <Button
-              label={t('quicklog.confirmCard.undo', { defaultValue: dv('취소', 'Undo') })}
-              variant="ghost"
+              label={t('quicklog.confirmCard.edit', { defaultValue: dv('수정', 'Edit') })}
+              variant="secondary"
               compact
-              onPress={onUndo}
+              disabled={busy}
+              onPress={onEdit}
             />
-          </View>
-          {/* Auto-dismiss progress hairline — drains left→right over the card's lifetime. */}
-          <View style={styles.track}>
-            <Animated.View style={[styles.hairline, { backgroundColor: hairlineColor }, hairlineStyle]} />
-          </View>
-        </Card>
-      </Pressable>
-    </Animated.View>
+          ) : null}
+          <Button
+            label={t('quicklog.confirmCard.undo', { defaultValue: dv('취소', 'Undo') })}
+            variant="ghost"
+            compact
+            disabled={busy}
+            onPress={onUndo}
+          />
+        </View>
+        {/* Auto-dismiss progress hairline — drains left→right over the card's lifetime. */}
+        <View style={styles.track}>
+          <Animated.View style={[styles.hairline, { backgroundColor: hairlineColor }, hairlineStyle]} />
+        </View>
+      </Card>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: { paddingVertical: space.sm, paddingHorizontal: space.md, marginBottom: space.sm },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  summaryAction: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: space.sm },
   info: { flex: 1, minWidth: 0 },
   name: { ...typeScale.label, color: colors.text },
   statRow: { flexDirection: 'row', alignItems: 'flex-end', gap: space.sm, marginTop: space.xxs },
