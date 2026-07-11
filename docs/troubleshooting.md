@@ -498,3 +498,12 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: d0ce5be
 - **Verification**: Wrangler dry-run 번들 통과. 로컬 Worker handler에서 `/evolve` 410, 동의 없는 `/body-avatar` 400을 확인했다. 실제 Gemini 호출과 Worker 배포는 실행하지 않았다.
 - **Pattern**: 새 개인정보 게이트는 새 화면만 보호해서는 안 된다. 같은 데이터에 닿는 구형 진입점·서버 라우트·로컬 파일 삭제까지 하나의 계약으로 닫는다.
+
+## 빠른 기록이 중복 세션·중복 세트·엉뚱한 Undo를 만들 수 있었다
+
+- **Symptom**: 사용성 재검토에서 한 번의 빠른 입력이 여러 데이터 무결성 경로와 충돌했다. Today·Log·Explore가 각각 세션을 시작할 수 있었고, 세트 저장 뒤 CP/JUICE 계산 실패를 전체 실패로 취급해 재시도하면 같은 세트가 중복 저장될 수 있었다. 세트 수정은 정확한 원본 행이 아니라 새 기록 경로로 흘렀고, 완료와 수정·삭제·Undo가 겹치면 세션 요약이 실제 DB와 달라질 수 있었다. 같은 세션의 코치는 방금 든 중량에도 다시 증량을 적용했다.
+- **Cause**: 영속 행과 파생 효과가 하나의 성공 경계였고, session start·finish·mutation에 공통 단일 실행/상호배제 계약이 없었다. correction/undo도 exact row ID와 원래 session/date/user 범위를 끝까지 보존하지 않았다. 저장 확인 카드는 중첩 Pressable과 짧은 자동 소멸로 실제 헬스장 수정 동선을 불안정하게 했다.
+- **Fix**: 중앙 session coordinator와 mutation/finish lease를 추가했다. 세트·유산소 INSERT를 durable success boundary로 삼아 CP/JUICE 실패가 중복 재시도를 만들지 않게 했고, 수정·삭제·Undo는 exclusive transaction과 exact ID를 사용한 뒤 DB 요약으로 store를 재조정한다. 완료는 `completed_at` 조건부 갱신을 성공 경계로 삼고 파생 Health/CP/streak 실패와 분리했다. 코치는 같은 세션에서 실제 직전 중량·횟수를 유지한다. 확인 카드는 Edit/Undo를 형제 버튼으로 분리하고 15초·screen-reader 무제한·busy 중 고정으로 바꿨다. 식사 Undo는 원래 batch ID/date/user 범위를 보존한다.
+- **Commit**: ba8aeaf
+- **Verification**: Jest 36 suites / 271 tests, strict TypeScript, lint, diff check 통과. iPhone 17 Pro / iOS 26.5 Release 빌드 0 errors / 기존 경고 3건. 시드 DB에서 14세트→QuickLog 1회 후 15세트, 같은 행을 105 kg×5로 수정해 15세트 유지, 코치가 같은 세션에 105×5를 유지하는 것을 확인했다. 스페인어·extra-extra-large에서 `Frente / Espalda / Cardio`와 스포츠웨어 아바타가 잘리지 않았다. 식사 Repeat→Undo의 실제 터치 완주는 Maestro가 ScrollView 밖 1pt를 탭한 자동화 오류로 미검증이며 repo 테스트만 통과했다. 검증 뒤 DB는 5 sessions / 14 sets / 0 foods, locale `en`, integrity `ok`로 복원했다.
+- **Pattern**: 기록 앱에서 영속 행이 저장되면 그 행이 성공의 기준이다. 파생 점수·효과는 재시도 가능한 후처리로 두고, 수정·삭제·완료는 exact identity와 하나의 동기적 lease 계약 아래에서만 움직여야 한다.
