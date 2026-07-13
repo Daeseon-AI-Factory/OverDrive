@@ -507,3 +507,12 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: ba8aeaf
 - **Verification**: Jest 36 suites / 271 tests, strict TypeScript, lint, diff check 통과. iPhone 17 Pro / iOS 26.5 Release 빌드 0 errors / 기존 경고 3건. 시드 DB에서 14세트→QuickLog 1회 후 15세트, 같은 행을 105 kg×5로 수정해 15세트 유지, 코치가 같은 세션에 105×5를 유지하는 것을 확인했다. 스페인어·extra-extra-large에서 `Frente / Espalda / Cardio`와 스포츠웨어 아바타가 잘리지 않았다. 식사 Repeat→Undo의 실제 터치 완주는 Maestro가 ScrollView 밖 1pt를 탭한 자동화 오류로 미검증이며 repo 테스트만 통과했다. 검증 뒤 DB는 5 sessions / 14 sets / 0 foods, locale `en`, integrity `ok`로 복원했다.
 - **Pattern**: 기록 앱에서 영속 행이 저장되면 그 행이 성공의 기준이다. 파생 점수·효과는 재시도 가능한 후처리로 두고, 수정·삭제·완료는 exact identity와 하나의 동기적 lease 계약 아래에서만 움직여야 한다.
+
+## 릴리스 후보의 개인정보 고지와 실제 저장·전송 경계가 어긋날 수 있었다
+
+- **Symptom**: 빌드 12는 유효했지만 현재 v1 코드보다 오래됐고, 공개 랭킹·사진 아바타·광범위 Health 권한·기본 활성 AI 동의가 남은 설명과 실제 후보 동작이 일치하지 않았다. 체성분 Health 저장은 native `false`를 성공으로 오판할 수 있었고, AI가 여러 세트를 만든 뒤 Undo는 마지막 행만 지웠다. 음성 취소·타임아웃 경쟁은 늦은 결과 승인이나 다음 요청 controller 제거로 이어질 수 있었다.
+- **Cause**: 앱, Worker, App Store 메타데이터, 공개 정책을 하나의 출시 계약으로 검증하지 않았고, 네트워크/Health의 비동기 반환값과 한 명령에서 생성된 여러 행을 단일 성공·취소 경계로 다루지 않았다. 즉시 `wrangler deploy` 절차도 버전 고정과 0% smoke 단계를 우회했다.
+- **Fix**: 공개 랭킹과 사진 아바타 UI·원격 경로를 퇴역하고, Remote AI를 버전 동의·기본 OFF·native client marker로 fail-closed 처리했다. Health 권한과 저장 결과를 최소화·검증하고, 체성분 v6 로컬 원장과 DB 보호/백업 제외를 추가했다. 여러 세트 INSERT/Undo를 각각 단일 SQLite 문장으로 묶고, 음성/사진 임시파일 정리와 취소·타임아웃 경쟁을 닫았다. Worker는 Groq-only 후보와 cost-zero safe-degraded 버전을 분리하고 immutable upload → 0% smoke → 명시적 ID 승격 절차로 바꿨다. Privacy/Support/Terms/Data 페이지와 출시 체크리스트는 미확인 운영자·연락처·자산 권리를 숨기지 않고 publication gate로 남겼다.
+- **Commit**: 59c05ec
+- **Verification**: Jest 45 suites / 294 tests, strict TypeScript, lint, Expo Doctor 21/21, Worker 14 tests, 정상·safe dry-run, diff check 통과. iPhone 17 Pro Max / iOS 26.5 Release 빌드 0 errors / 1 warning. 시드 DB는 v6, 6 sessions / 15 sets / 3 foods / 3 body-composition rows, integrity `ok`; DB/WAL/SHM backup exclusion과 ATS fail-closed를 확인했다. 1320×2868 원본 스크린샷에서 진행 중 운동·QuickLog·식사 상태를 육안 확인했다. 다중 세트 Undo 실제 터치, 물리 iPhone 잠금 후 FileProtection, 라이브 Worker/Pages, 새 TestFlight 빌드와 App Review 제출은 미검증이다.
+- **Pattern**: 출시 가능 여부는 테스트 통과가 아니라 앱 동작·정책 문구·서버 배포·스토어 답변이 같은 버전을 설명하는지로 판정한다. 미확인 법적 정보나 live 상태는 placeholder와 gate로 표시하고, 배포와 rollback은 반드시 immutable version ID로 실행한다.

@@ -1,0 +1,60 @@
+---
+title: "v1 출시 후보의 저장·전송·롤백 경계를 하나로 맞췄다"
+date: "2026-07-12"
+project: "OverDrive"
+kind: "release-retro"
+visibility: "public"
+language: "ko"
+summary: "로컬 기록의 속도는 유지하면서 Remote AI, Health, 체성분, 임시파일, Worker 롤백, 공개 정책을 실제 v1 동작과 일치시켰다."
+tags: ["release", "privacy", "local-first", "healthkit", "cloudflare", "app-store"]
+---
+
+## 유효한 빌드와 제출 가능한 빌드는 달랐다
+
+TestFlight 빌드 12는 `VALID`였지만 이번 v1 후보보다 오래됐다. 유효 상태만 보고 심사에 연결하면, 공개 랭킹과 사진 기반 아바타를 제거하고 AI·Health·로컬 저장 경계를 다시 정리한 현재 코드가 아니라 이전 동작을 제출하게 된다.
+
+이번 작업은 앱 화면만 고치지 않았다. 앱, SQLite, Apple Health, Cloudflare Worker, 공개 개인정보 문서, App Store 답변 후보가 같은 데이터 흐름을 설명하도록 범위를 묶었다.
+
+## 로컬 우선 기록을 더 엄격하게 만들었다
+
+일반적인 `운동 + 중량 + 횟수` 입력은 계속 기기 안에서 바로 처리된다. 유연한 문장, 음성, 식사 텍스트와 사용자가 고른 식사 사진만 사용자가 Remote AI를 켠 뒤 전송된다. 동의는 기본 OFF이고 현재 공개 버전과 맞지 않는 과거 동의는 철회된 것으로 본다.
+
+AI가 한 문장에서 여러 세트를 해석하면 모든 행을 단일 SQLite INSERT로 저장한다. 확인 카드의 Undo도 그 명령이 만든 모든 ID를 단일 DELETE로 지운 뒤 세션 요약과 Combat Power를 한 번만 다시 계산한다. 여러 행 중 하나만 남는 반쪽 취소를 막았다.
+
+음성 업로드는 8초 제한과 사용자 취소가 늦은 성공 응답보다 우선한다. 이전 요청의 `finally`가 다음 요청의 취소 controller를 지우지 못하며, 녹음 URI는 오디오 모드 복원보다 먼저 잡아 실패 경로에서도 삭제한다. 음성과 선택 사진의 전용 캐시는 요청 후 삭제하고, 앱이 중간 종료되면 다음 실행에서 다시 청소한다.
+
+## Health와 체성분은 로컬 저장이 성공 기준이다
+
+HealthKit은 화면과 쓰기 기능이 실제로 사용하는 워크아웃, VO₂ max, 체중, 체지방만 요청한다. 체성분 입력은 v6 로컬 원장과 설정을 한 트랜잭션으로 저장한 뒤 Apple Health 쓰기를 best-effort로 실행한다. native API가 예외 없이 `undefined`를 반환하는 실패도 성공으로 표시하지 않는다.
+
+SQLite 디렉터리는 native 시작 시 complete file protection과 iCloud backup exclusion을 적용한다. DB뿐 아니라 WAL과 SHM까지 같은 정책을 적용해 journal 파일을 통한 누락을 막았다.
+
+## 서버는 즉시 배포 대신 버전으로 롤백한다
+
+v1 Worker 후보는 Groq만 사용하고, 앱의 native client marker가 없는 브라우저형 요청을 거부한다. 공개 랭킹 제출·조회와 사진 아바타 경로는 `410 Gone`으로 퇴역했다. 요청 크기와 비용 기반 edge rate limit도 fail-closed로 둔다.
+
+별도의 safe-degraded Worker는 AI 경로를 모두 `503`으로 닫으면서 legacy ranking 삭제만 유지한다. 릴리스 절차는 즉시 `wrangler deploy`가 아니라 정상·safe 버전을 immutable upload하고, 0% version override로 각각 smoke한 뒤, 새 앱 빌드가 준비됐을 때 기록된 ID를 100% 승격하는 순서다. 비상 전환도 safe ID를 명시한다.
+
+## 공개 문서는 모르는 것을 확정하지 않았다
+
+Privacy, Support, Terms, Data Deletion 페이지를 실제 후보 동작에 맞춰 작성했다. 운영자 법적 이름·주소, 작동하는 지원 메일, DSA 상태, 정확한 저작권자, 배포 전 Worker observability 같은 미확인 항목은 완료로 꾸미지 않고 publication gate로 남겼다. 스포츠웨어 PNG의 정확한 출처 증빙도 별도 provenance ledger에서 제출 차단 항목으로 기록했다.
+
+## 검증
+
+- `npm test -- --runInBand`: 45 suites, 294 tests 통과.
+- `npm run typecheck`, `npm run lint`, `git diff --check`: 통과.
+- Expo Doctor: 21/21 통과.
+- Worker: 14 tests, 정상·safe-degraded dry-run 통과; Worker dependency audit 0.
+- 앱 dependency audit: high/critical 0, Expo 빌드 도구 경로의 moderate 11건은 잔존.
+- iPhone 17 Pro Max / iOS 26.5 Release: 빌드 성공, 0 errors / 1 warning.
+- 시드 DB: schema v6, 6 sessions, 15 sets, 3 foods, 3 body-composition rows, integrity `ok`.
+- 설치 앱: ATS arbitrary/local loads OFF, iPhone-only, DB/WAL/SHM backup exclusion, 퇴역 API route와 dev-client marker 부재.
+- 1320×2868 원본 화면에서 진행 중 운동, QuickLog 최근 기록, 식사 상태를 육안 확인.
+
+## 남은 출시 게이트
+
+다중 세트 Undo의 실제 시뮬레이터 탭 완주와 물리 iPhone 잠금 상태의 file protection은 아직 검증하지 못했다. Pages와 Worker는 아직 후보 소스이며 live 배포 상태가 아니다. 새 TestFlight 빌드, App Store 메타데이터, App Privacy, age rating, DSA, 리뷰 연락처와 심사 요청도 남아 있다.
+
+따라서 이번 결과는 소스 릴리스 후보와 rollback 지점을 만든 것이다. App Store 제출 완료를 뜻하지 않는다.
+
+구현 커밋: `59c05ec`.
