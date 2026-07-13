@@ -28,6 +28,8 @@ Updated: 2026-07-13. App Store Connect app `6786831176`, bundle `ai.daeseon.repl
   venue. This is a storefront-scope decision, not a legal conclusion about every enabled market;
   reassess public trader/contact requirements before expanding distribution.
 - [ ] Render and inspect Privacy, Support, Terms, and Data pages at mobile and desktop widths.
+  Production Privacy and preview home/privacy passed visual inspection in iPhone 17 Pro Max Safari;
+  desktop visual QA remains open after the fresh iPad Safari launch timed out.
 - [x] Run full Jest, strict TypeScript, lint, Expo config/doctor, Worker dry-run, plist validation.
 - [x] Build Release for a 6.9-inch simulator with realistic seeded data.
 - [ ] App verification: AI OFF → zero HTTP calls, AI ON → disclosed calls only, withdrawal → zero future calls.
@@ -43,17 +45,28 @@ Updated: 2026-07-13. App Store Connect app `6786831176`, bundle `ai.daeseon.repl
 
 ## Public services
 
-- [ ] Deploy `website/` to `https://reploom.pages.dev`.
-- [ ] Verify `/`, `/privacy`, `/support`, `/terms`, `/data` return HTTPS 200 without redirect loops.
-- [ ] Deploy the Worker with observability disabled.
+- [x] Deploy `website/` to `https://reploom.pages.dev`; production deployment
+  `1798ec5a-4134-4b02-b553-b00f6ea7e720` is branch `main`, source `b9ddda1`.
+- [x] Verify `/`, `/privacy`, `/support`, `/terms`, `/data` return HTTPS 200 without redirects,
+  contain the intended title/contact, and are byte-identical to the tracked HTML.
+- [x] Deploy the Worker with `logpush=false`; the Cloudflare script-settings readback returned
+  `observability=null` and no tail consumer, so Worker observability is not enabled.
 - [ ] Independently verify `/parse`, `/transcribe`, and `/food` success/error/size contracts; consent remains a client-side gate.
-- [ ] Verify `/rank/delete`; verify `/rank/submit`, `/rank/board`, `/evolve`, `/body-avatar` return 410.
-- [ ] Confirm Cloudflare edge rate limiting and Groq spend limits; record the chosen thresholds.
+  Live Groq text parsing returned a structured set and local Worker tests cover error/size behavior;
+  live audio and meal-photo success paths remain open.
+- [x] Verify `/rank/delete` invalid-input validation; verify `/rank/submit`, `/rank/board`, `/evolve`,
+  `/body-avatar` return 410 on both the normal live version and immutable safe version.
+- [ ] Confirm Cloudflare edge rate limiting and Groq spend limits; Worker version readback confirms
+  30 cost tokens per 60 seconds, while the account-level Groq spend cap remains unverified.
 - [ ] Verify the live production text and preview vision model IDs, latency, JSON behavior, and model permissions.
 - [x] Track and dry-run a cost-zero safe-degraded Worker that keeps AI fail-closed and legacy deletion available.
-- [ ] Upload and smoke-test that safe-degraded Worker as the explicit rollback version.
-- [ ] Record the deployed Worker and Pages version identifiers for rollback.
-- [ ] Ensure the rollback target also keeps rank/evolve/body-avatar retired; never roll back to a
+- [x] Upload and smoke-test safe-degraded Worker `33abed25-1f2e-497f-8580-72b29e267840`
+  as the explicit rollback version; its marked `/parse` is 503 and legacy deletion validation remains available.
+- [x] Record normal Worker `dee65f64-88ee-491f-962f-f9b686bfd561`, safe Worker
+  `33abed25-1f2e-497f-8580-72b29e267840`, Pages production
+  `1798ec5a-4134-4b02-b553-b00f6ea7e720`, and preview
+  `21bfe398-a8f2-4461-90c0-24fd1eeec7f7`. The first Pages production has no earlier rollback target.
+- [x] Ensure the rollback target also keeps rank/evolve/body-avatar retired; never roll back to a
   version that reactivates the removed Gemini or leaderboard paths.
 
 ## Production build and store record
@@ -68,7 +81,8 @@ Updated: 2026-07-13. App Store Connect app `6786831176`, bundle `ai.daeseon.repl
   file as `COMPLETE` in the intended order on 2026-07-13.
 - [x] Set and read back Health & Fitness category, content-rights declaration, description,
   subtitle, keywords, copyright `2026 Daeseon Yoo`, and reviewer notes.
-- [ ] Set Support/Privacy/Privacy Choices URLs only after the exact Pages routes return HTTPS 200.
+- [x] After exact Pages route HTTPS verification, set and read back Marketing, Support, Privacy,
+  and Privacy Choices URLs from `store.config.json`.
 - [x] Confirm `usesIdfa = false`, price = Free in all 175 territories, and Version Release Setting = Manual.
 - [ ] Select and read back Tax Category (`Fitness and health`, subject to Account Holder confirmation).
 - [x] Record the approved territory plan: `Specific Countries or Regions`, excluding the exact 42
@@ -97,7 +111,9 @@ Updated: 2026-07-13. App Store Connect app `6786831176`, bundle `ai.daeseon.repl
 - [x] Associate only validated Build 13 with version 1.0.
 - [x] Re-read every public-API-accessible server-side field and all five screenshots after upload;
   the private App Privacy/DSA/Medical/Mac/Vision gates remain explicitly open above.
-- [ ] Add the version to App Review and submit only after every item above is verified.
+- [ ] Add the version to App Review and submit only after every item above is verified. URL completion
+  did not close the gate: the version-item POST still returned `409 STATE_ERROR.ENTITY_STATE_INVALID`,
+  the draft still has zero items, and no submission has occurred.
 
 ## Verification ledger required at handoff
 
