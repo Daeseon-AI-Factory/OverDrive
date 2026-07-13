@@ -557,3 +557,12 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: ca82eb4
 - **Verification**: strict TypeScript, lint, Jest 45 suites / 294 tests, Worker 14 tests, `git diff --check`, EAS metadata lint 통과. SQLite `foreign_key_check`는 빈 결과, `integrity_check`는 `ok`. Maestro에서 Chest 추천과 `bench` 검색을 실제 입력해 확인했고 Apple은 스크린샷 5장을 모두 `COMPLETE`로 반환했다. Browser 런타임 부재로 공개 페이지 모바일/데스크톱 시각 렌더는 미검증이다. App Privacy·DSA·Regulated Medical Device·Mac/Vision 토글, Worker/Pages 배포, App Review 제출은 아직 완료되지 않았다.
 - **Pattern**: 출시 체크리스트는 계획·공개 API readback·private UI·실배포를 한 완료 표시로 합치지 않는다. 스크린샷과 정책 문구도 실제 제출 빌드와 운영 버전의 증거가 있을 때만 완료로 기록한다.
+
+## 세션 핸드오프가 Build 12를 현재 출시 후보로 가리켰다
+
+- **Symptom**: `docs/HANDOFF-codex.md`가 2026-07-09의 Build 12와 `6c30d3b`를 최신 상태로 기록해, 새 세션이 이미 검증된 Build 13과 App Store Review draft를 무시하고 오래된 파이프라인을 재실행할 수 있었다.
+- **Cause**: 앱 코드 커밋의 dual-write는 유지했지만, Apple/Cloudflare 외부 상태와 출시 자산이 바뀔 때 세션 진입 문서를 함께 갱신하지 않았다.
+- **Fix**: Build 13 ID·IPA hash·ASC version/review draft·가격·132/43 storefront·5개 screenshot 상태, private Apple gate, Cloudflare 승인 gate, 실사용 seed UI 검증, 다음 제출 순서를 하나의 현재 핸드오프로 다시 작성했다.
+- **Commit**: 29fe123
+- **Verification**: GitHub `codex/usability-cockpit` push 상태, App Store Connect public API readback, Apple screenshot list, 로컬 commit log와 각 ID를 교차 확인했다. Review Submission은 `READY_FOR_REVIEW` draft이지만 item 0·submitted date null이며 심사 제출 완료로 표시하지 않았다.
+- **Pattern**: 핸드오프는 코드 요약이 아니라 코드·빌드·외부 서비스·검증 수준의 동시 스냅샷이다. 출시 단계가 바뀔 때 오래된 성공 빌드를 “현재”로 남겨두지 않는다.

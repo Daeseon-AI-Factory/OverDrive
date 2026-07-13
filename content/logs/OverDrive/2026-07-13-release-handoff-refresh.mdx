@@ -1,0 +1,18 @@
+---
+title: "Reploom 출시 핸드오프를 Build 13 상태로 갱신했다"
+date: "2026-07-13"
+project: "OverDrive"
+kind: "troubleshoot"
+visibility: "public"
+language: "ko"
+summary: "Build 12를 현재로 가리키던 세션 문서를 Build 13, App Store 자산, 외부 서비스 gate와 실제 검증 수준 기준으로 교체했다."
+tags: ["handoff", "release", "app-store", "operations"]
+---
+
+세션 진입 문서는 아직 2026-07-09의 Build 12를 최신 출시 후보로 기록하고 있었다. 그 뒤 Build 13은 Apple에서 유효·제출 적격 상태가 됐고, 가격·배포 지역·메타데이터·스크린샷도 실제 App Store Connect 값으로 바뀌었다. 오래된 핸드오프를 그대로 두면 새 세션이 잘못된 빌드를 선택하거나 완료된 단계를 반복할 수 있다.
+
+핸드오프를 Build 13 기준으로 다시 작성했다. Git 커밋, IPA hash, App Store version/build/review draft, 무료 가격, 132개 판매·43개 제외 storefront, 5개 스크린샷 상태와 Release simulator seed 검증을 기록했다. App Privacy, DSA, Regulated Medical Device, Mac/Vision, Tax Category는 private web session gate로, Worker/Pages는 별도 배포 승인 gate로 구분했다.
+
+Review Submission은 초안만 존재한다. 상태는 `READY_FOR_REVIEW`지만 version item이 없고 submitted date도 null이다. 따라서 “심사 요청 완료”가 아니라, private 설문과 공개 URL이 닫힌 뒤 item을 추가하고 제출해야 하는 상태로 명시했다.
+
+구현 커밋: `29fe123`.
