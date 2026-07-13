@@ -13,6 +13,15 @@ Last reconciled with the v1 code and App Store Connect record: 2026-07-12.
 - Primary category: Health & Fitness
 - Secondary category: none
 - Price: free
+- Planned availability: `Specific Countries or Regions`; include every storefront except the 43
+  listed below, and turn off automatic inclusion of newly added storefronts. Read back the final
+  selected list before submission.
+  - EU 27: Austria, Belgium, Bulgaria, Croatia, Cyprus, Czech Republic, Denmark, Estonia, Finland,
+    France, Germany, Greece, Hungary, Ireland, Italy, Latvia, Lithuania, Luxembourg, Malta,
+    Netherlands, Poland, Portugal, Romania, Slovakia, Slovenia, Spain, Sweden.
+  - Other European storefronts: Albania, Belarus, Bosnia and Herzegovina, Iceland, Kosovo, Moldova,
+    Montenegro, North Macedonia, Norway, Russia, Serbia, Switzerland, Türkiye, Ukraine, United Kingdom.
+  - China: China mainland. Hong Kong, Macau, and Taiwan remain included as separate storefronts.
 - Tax category: likely `Fitness and health`; select and read back the live App Store Connect value
 - Accounts / demo login: none
 - Advertising identifier: not used
@@ -27,6 +36,10 @@ is one user versus a local deterministic NPC, with no real users, ranking, netwo
 `Contests = No` is the defensible current answer; record that rationale and the live-form readback.
 Public UGC, chat, gambling, unrestricted web access, medical treatment, and remote photo-avatar
 generation are absent. Never substitute a marketing age guess for the completed form.
+
+Regulated Medical Device declaration: `No`. Reploom is a general wellness logger and makes no
+diagnosis, treatment, or medical-device claim. This live App Store Connect value still requires
+readback before submission.
 
 ## Localized metadata — en-US
 

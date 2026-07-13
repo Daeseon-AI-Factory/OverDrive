@@ -62,16 +62,25 @@ Updated: 2026-07-12. App Store Connect app `6786831176`, bundle `ai.daeseon.repl
   copyright `2026 Daeseon Yoo`, Support/Privacy/Privacy Choices URLs, and reviewer notes.
 - [ ] Confirm `usesIdfa = false`, price = Free, Tax Category (`Fitness and health`, subject to account
   owner confirmation), distribution territories, and Version Release Setting = Manual.
+- [x] Record the approved territory plan: `Specific Countries or Regions`, excluding the exact 42
+  European storefronts listed in `docs/launch/app-store-listing.md` plus `China mainland`.
+- [ ] Apply that plan in App Store Connect and read back the final selected storefront list; do not
+  treat a region summary or the plan in this file as proof of the live setting. Turn off automatic
+  inclusion of newly added storefronts.
 - [ ] Keep v1 iPhone-only; read back and disable unverified Apple-silicon Mac and Apple Vision
   compatibility distribution unless those platforms are separately tested.
-- [ ] For chosen storefronts, resolve conditional China ICP/service availability and organization-
-  account Korea requirements before enabling those territories.
+- [x] Exclude Mainland China until ICP/service availability is separately verified.
+- [x] Record Korea e-Commerce Act compliance as `Active` (App Store Connect readback supplied by the
+  Account Holder, last updated 2026-06-16).
 - [ ] Complete App Privacy using the inventory in `docs/launch/app-store-listing.md`.
 - [ ] Complete the current age-rating questionnaire (`Health/Wellness = Yes`, likely
   `Age Assurance = Yes`, `Contests = No` because Arena has no user-to-user competition); record the
   live answers and Apple's generated global and regional results.
-- [ ] Declare `Regulated Medical Device = No` in App Information and read it back.
-- [ ] Complete DSA trader self-assessment; if trader, verify the public address, phone, and email.
+- [ ] Declare `Regulated Medical Device = No` in App Information and read it back; Reploom makes no
+  diagnosis, treatment, or medical-device claim.
+- [ ] Complete the required DSA trader/non-trader self-declaration even while every Europe storefront
+  is disabled. Do not enable Europe until any required public address, phone, and email verification
+  is complete.
 - [ ] Verify export-compliance readback, copyright `2026 Daeseon Yoo`, Account Holder agreements,
   and tax/banking gates.
 - [ ] Add required review contact name, phone, and email; set demo account required to false.
