@@ -548,3 +548,12 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 122e4da
 - **Verification**: `expo config`가 version `1.0`, buildNumber `13`, bundle ID `ai.daeseon.reploom`을 반환했고 Xcode Release build settings의 `CURRENT_PROJECT_VERSION`도 `13`이었다. 두 번째 로컬 아카이브는 성공했으며 아카이브와 앱의 최종 `CFBundleVersion`이 모두 `13`이었다. PrivacyInfo 파싱과 은퇴 라우트 무검출, 기대 client marker 검출은 통과했다. App Store 배포용 export는 배포 인증서·Cloud Signing 권한 부재로 실패했으므로 Apple 업로드와 심사 요청은 하지 않았다.
 - **Pattern**: Expo 네이티브 프로젝트의 출시 번호는 일회성 Xcode 명령이 아니라 추적되는 Expo 설정에 고정하고, 아카이브 안의 최종 앱 `Info.plist`를 다시 읽어 확인한다.
+
+## App Store 출시 문서의 계획 상태가 실제 서버 상태보다 뒤처졌다
+
+- **Symptom**: Build 13은 App Store Connect에서 `VALID`였지만 출시 체크리스트는 가격·지역·연령 등급·리뷰 연락처·스크린샷을 한 체크박스에 섞어 미완료로 표시했다. 공개 Privacy 페이지도 배포 전 Worker observability 설정을 이미 운영 중인 사실처럼 읽힐 수 있었다.
+- **Cause**: 로컬 정책 문구, App Store Connect 공개 API readback, private 웹 설문, Cloudflare 배포를 서로 다른 검증 경계로 기록하지 않았다. 스크린샷도 이전 빌드 산출물과 이번 Release/seed 원본이 분리돼 있지 않았다.
+- **Fix**: 1320×2868 Release 앱에 5 sessions / 20 sets / 1 cardio / 3 foods를 시드해 Today, 스포츠웨어 body map, Chest 추천, History, Power를 원본 해상도로 검수했다. 다섯 PNG를 en-US `APP_IPHONE_67`에 올려 모두 `COMPLETE`로 읽고 저장소 정본에도 보존했다. 무료 가격 175개, 판매 132·제외 43, 신규 storefront 자동 포함 off, Build 13 연결, Health & Fitness·연령·리뷰 메타데이터의 live readback을 체크리스트에 분리 반영했다. Worker 로깅 문구는 정확한 후보 버전이 배포·검증되기 전에는 운영 사실이 아니라고 명시했다.
+- **Commit**: ca82eb4
+- **Verification**: strict TypeScript, lint, Jest 45 suites / 294 tests, Worker 14 tests, `git diff --check`, EAS metadata lint 통과. SQLite `foreign_key_check`는 빈 결과, `integrity_check`는 `ok`. Maestro에서 Chest 추천과 `bench` 검색을 실제 입력해 확인했고 Apple은 스크린샷 5장을 모두 `COMPLETE`로 반환했다. Browser 런타임 부재로 공개 페이지 모바일/데스크톱 시각 렌더는 미검증이다. App Privacy·DSA·Regulated Medical Device·Mac/Vision 토글, Worker/Pages 배포, App Review 제출은 아직 완료되지 않았다.
+- **Pattern**: 출시 체크리스트는 계획·공개 API readback·private UI·실배포를 한 완료 표시로 합치지 않는다. 스크린샷과 정책 문구도 실제 제출 빌드와 운영 버전의 증거가 있을 때만 완료로 기록한다.

@@ -1,0 +1,20 @@
+---
+title: "Build 13의 App Store 제출 자산과 live 설정을 맞췄다"
+date: "2026-07-13"
+project: "OverDrive"
+kind: "release-note"
+visibility: "public"
+language: "ko"
+summary: "실사용 데이터가 든 Release 앱에서 6.9인치 스크린샷을 다시 만들고, Apple 서버의 가격·지역·메타데이터 readback과 출시 문서를 같은 상태로 맞췄다."
+tags: ["app-store", "screenshots", "release", "compliance"]
+---
+
+Build 13은 App Store Connect에서 `VALID`와 App Store 제출 적격 상태를 반환했다. 이번 출시는 테스트 통과만으로 완료 처리하지 않고, 같은 Release 앱에 현실적인 로컬 기록을 시드한 뒤 실제 화면과 서버 설정을 별도로 확인했다.
+
+iPhone 17 Pro Max 시뮬레이터의 Release 앱에 운동 세션 5개, 세트 20개, 유산소 1개, 식사 3개를 넣었다. Today 진행 중 운동, 스포츠웨어 body map, Chest 추천 시트, 여러 날의 History, Combat Power 화면을 1320×2868로 캡처해 원본 해상도로 검수했다. Chest 탭은 오늘 프로그램과 최근 세트를 먼저 보여줬고, 전체 검색에 `bench`를 입력하면 Barbell Bench Press와 마지막 세트 문맥이 나타났다.
+
+다섯 이미지를 en-US iPhone 스크린샷 세트에 순서대로 업로드했고 Apple 서버에서 모두 `COMPLETE`로 읽었다. 무료 가격은 175개 storefront 전체에서 확인했고, 판매 132개·제외 43개, 프리오더 없음, 신규 storefront 자동 포함 off도 독립적으로 다시 읽었다. Hong Kong, Macau, Taiwan은 포함된 상태다.
+
+출시 체크리스트는 완료된 공개 API 항목과 아직 웹 UI 또는 실배포가 필요한 항목을 분리했다. App Privacy publish, DSA self-declaration, Regulated Medical Device `No`, Mac/Vision 배포 토글은 새 App Store Connect 세션이 필요한 private gate다. Worker와 Pages 역시 정확한 후보 버전을 배포하고 HTTPS·로깅 상태를 읽기 전에는 완료가 아니다. 공개 Privacy 문구도 그 구분을 반영했다.
+
+구현 커밋: `ca82eb4`.
