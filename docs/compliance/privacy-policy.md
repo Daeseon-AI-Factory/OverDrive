@@ -1,12 +1,12 @@
 # Reploom — Privacy Policy Source
 
-Last reconciled with the v1 code: 2026-07-12. The publishable HTML is
+Last reconciled with the v1 code and verified support mailbox: 2026-07-13. The publishable HTML is
 `website/privacy.html`; this Markdown file is the repository source-of-truth inventory used to
 check App Store Connect answers.
 
-> Operator: Daeseon Yoo. Publication gate: `support@reploom.app` has not been verified and a postal
-> address has not been supplied. Do not publish or submit the current placeholders as final contact
-> details.
+> Operator: Daeseon Yoo. Public privacy/support contact: `showep12@gmail.com`. The connected Gmail
+> profile and inbound delivery were read back on 2026-07-13. The initial storefront plan excludes
+> Europe and does not invent a postal address or governing-law venue.
 
 ## Plain-language summary
 
@@ -124,6 +124,7 @@ Reploom is not directed to children under 13. Remote AI is gated by a user confi
 are 18 or older. Transport uses HTTPS and provider API keys stay server-side, but no system is
 perfectly secure; users should avoid unnecessary names, diagnoses, or other sensitive text.
 
-The verified operator is Daeseon Yoo. The final policy must also identify a working privacy/support
-contact and a postal address where legally required. Until the gate above is resolved,
-`support@reploom.app` is a placeholder rather than an operational promise.
+The verified operator is Daeseon Yoo. Privacy, deletion, and support requests use
+`showep12@gmail.com`. Messages are processed in Gmail and kept only as long as needed to resolve the
+request, protect the service, or satisfy a legal obligation. They are manually deleted when no
+longer needed and may be deleted earlier on request unless security or law requires retention.

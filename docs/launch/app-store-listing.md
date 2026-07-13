@@ -1,6 +1,6 @@
 # Reploom — App Store Listing & Review Pack
 
-Last reconciled with the v1 code and App Store Connect record: 2026-07-12.
+Last reconciled with the v1 code and App Store Connect record: 2026-07-13.
 
 ## App identity
 
@@ -8,14 +8,16 @@ Last reconciled with the v1 code and App Store Connect record: 2026-07-12.
 - Bundle ID: `ai.daeseon.reploom`
 - App Store Connect app ID: `6786831176`
 - Seller / legal operator: `Daeseon Yoo`
-- Expected App Store copyright field: `2026 Daeseon Yoo` (read it back after entry)
+- App Store copyright field: `2026 Daeseon Yoo` (live value read back on 2026-07-13)
+- Public support / privacy contact: `showep12@gmail.com` (connected Gmail profile and inbound
+  delivery read back on 2026-07-13)
 - Version: `1.0`
 - Primary category: Health & Fitness
 - Secondary category: none
 - Price: free
-- Planned availability: `Specific Countries or Regions`; include every storefront except the 43
-  listed below, and turn off automatic inclusion of newly added storefronts. Read back the final
-  selected list before submission.
+- Live availability: `Specific Countries or Regions`; 132 of 175 storefronts enabled, the exact 43
+  below disabled, no pre-orders, and automatic inclusion of newly added storefronts off. The full
+  territory rows were read back independently on 2026-07-13.
   - EU 27: Austria, Belgium, Bulgaria, Croatia, Cyprus, Czech Republic, Denmark, Estonia, Finland,
     France, Germany, Greece, Hungary, Ireland, Italy, Latvia, Lithuania, Luxembourg, Malta,
     Netherlands, Poland, Portugal, Romania, Slovakia, Slovenia, Spain, Sweden.
@@ -108,9 +110,8 @@ not diagnoses, treatment recommendations, or validated medical measurements.
 - App Store license agreement: Apple Standard EULA unless a separately reviewed custom license is
   explicitly configured in App Store Connect
 
-Do not enter these URLs in App Store Connect until the Pages deployment returns HTTPS 200, the
-support contact has been tested, the verified operator information is present, and all publication
-warnings have been removed.
+Enter these URLs only after the Pages deployment returns HTTPS 200 at every route and the deployed
+content matches the verified operator and support contact above.
 
 ## App Review notes
 
@@ -142,6 +143,8 @@ is never written to Apple Health.
 Combat Power is visibly labeled as a for-fun score, not a scientific or medical metric. Arena uses
 a local deterministic rival and weekly target; it contains no real users or network interaction.
 V1 has no public leaderboard, chat, account creation, or remote photo-avatar generation.
+
+Support and privacy contact: showep12@gmail.com
 ```
 
 ## App Privacy answers — conservative v1 inventory
@@ -165,18 +168,17 @@ when that user explicitly removes the old row, and does not retain a new copy of
 
 ## Screenshot set
 
-Use 6.9-inch iPhone portrait screenshots from the Release configuration with seeded, realistic
-local data. Keep status bar and app UI truthful; no device frame or feature that is absent in v1.
+Five 6.9-inch iPhone portrait screenshots were captured from the Release configuration at
+1320×2868 with seeded, realistic local data. Each original was inspected without a device frame or
+feature absent from v1, then uploaded to en-US `APP_IPHONE_67` and read back as `COMPLETE`.
 
-Recommended sequence:
+Uploaded sequence:
 
 1. Today cockpit with a realistic active session and quick actions.
-2. Log screen with recent sets and the one-line logger.
-3. Sportswear body map with a selected body region and recommendations.
-4. Combat Power breakdown with the “for-fun” disclaimer visible.
-5. History showing a realistic multi-day log.
-6. Settings showing Remote AI off by default and its full disclosure.
-7. Settings showing the Privacy/Support/Terms/Data links.
+2. Sportswear body map in the default front view.
+3. Chest selected with today's-program, recent-set, and regional exercise recommendations.
+4. History showing a realistic multi-day log.
+5. Combat Power breakdown with the “for-fun” disclaimer visible.
 
-Required visual QA: inspect every final PNG at original resolution, confirm 6.9-inch accepted pixel
-dimensions, and repeat the core workflow on the same Release build used for the screenshots.
+Separate product QA also inspected the Log screen, `bench` search result, and Remote AI disclosure
+with the setting visibly `OFF`. Originals are tracked in `docs/artifacts/app-store-v1/`.

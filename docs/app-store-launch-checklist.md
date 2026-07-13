@@ -1,6 +1,6 @@
 # Reploom App Store Launch Checklist
 
-Updated: 2026-07-12. App Store Connect app `6786831176`, bundle `ai.daeseon.reploom`.
+Updated: 2026-07-13. App Store Connect app `6786831176`, bundle `ai.daeseon.reploom`.
 
 ## Verified before this release candidate
 
@@ -21,16 +21,20 @@ Updated: 2026-07-12. App Store Connect app `6786831176`, bundle `ai.daeseon.repl
 
 ## Gates before creating a production build
 
-- [ ] Replace the unverified `support@reploom.app` placeholder with a working public contact.
+- [x] Replace the placeholder with `showep12@gmail.com`; read back the connected Gmail profile and
+  a new inbound Build 13 TestFlight notification on 2026-07-13.
 - [x] Record the verified operator and copyright owner as `Daeseon Yoo` in the release sources.
-- [ ] Add the operator postal address where required for the published privacy/terms pages.
+- [x] Keep the initial release outside Europe and do not invent a postal address or governing-law
+  venue. This is a storefront-scope decision, not a legal conclusion about every enabled market;
+  reassess public trader/contact requirements before expanding distribution.
 - [ ] Render and inspect Privacy, Support, Terms, and Data pages at mobile and desktop widths.
 - [x] Run full Jest, strict TypeScript, lint, Expo config/doctor, Worker dry-run, plist validation.
 - [x] Build Release for a 6.9-inch simulator with realistic seeded data.
 - [ ] App verification: AI OFF → zero HTTP calls, AI ON → disclosed calls only, withdrawal → zero future calls.
 - [ ] Verify local QuickLog save/edit/undo while AI is off and while endpoint access fails.
 - [x] Verify body-region recommendations on the final Release build.
-- [ ] Verify full exercise search on the final Release build (unit tests pass; final UI automation did not complete).
+- [x] Verify full exercise search on the final Release build: Maestro entered `bench`, the live
+  catalog returned Barbell Bench Press with the seeded last-set context, and the result was visually inspected.
 - [x] Verify SQLite directory, DB, WAL, and SHM backup exclusion in Simulator.
 - [ ] Verify `FileProtection.complete` after locking a physical iPhone.
 - [x] Inspect the built app for no dev-client dependency and no retired avatar/rank API or UI.
@@ -54,28 +58,32 @@ Updated: 2026-07-12. App Store Connect app `6786831176`, bundle `ai.daeseon.repl
 
 ## Production build and store record
 
-- [ ] Create the new EAS production build (expected build number 13; verify, do not assume).
-- [ ] Download and inspect the IPA before upload.
-- [ ] Upload with App Store Connect API credentials and wait for `VALID` / App Store eligibility.
-- [ ] Upload 1–10 truthful 6.9-inch screenshots from the same release candidate.
-- [ ] Set Health & Fitness category, content-rights declaration, description, subtitle, keywords,
-  copyright `2026 Daeseon Yoo`, Support/Privacy/Privacy Choices URLs, and reviewer notes.
-- [ ] Confirm `usesIdfa = false`, price = Free, Tax Category (`Fitness and health`, subject to account
-  owner confirmation), distribution territories, and Version Release Setting = Manual.
+- [x] Create signed production build 13 from release commit `35c980d` using local Xcode account
+  signing after EAS and API-key cloud-signing paths were unavailable.
+- [x] Export and inspect `/tmp/Reploom-13-export-local-account/Reploom.ipa`; SHA-256
+  `72e97bcc23796f2cf637214b9d8c68bc908501d0ea3bf29e1edc0a65e7c3a24c`.
+- [x] Upload and wait for App Store Connect `VALID` / `APP_STORE_ELIGIBLE`; delivery UUID
+  `60e4f17c-e5a9-4cba-93f9-0554a50b543c` and TestFlight build 13 notification received.
+- [x] Upload five truthful 1320×2868 Release screenshots to en-US `APP_IPHONE_67`; read back every
+  file as `COMPLETE` in the intended order on 2026-07-13.
+- [x] Set and read back Health & Fitness category, content-rights declaration, description,
+  subtitle, keywords, copyright `2026 Daeseon Yoo`, and reviewer notes.
+- [ ] Set Support/Privacy/Privacy Choices URLs only after the exact Pages routes return HTTPS 200.
+- [x] Confirm `usesIdfa = false`, price = Free in all 175 territories, and Version Release Setting = Manual.
+- [ ] Select and read back Tax Category (`Fitness and health`, subject to Account Holder confirmation).
 - [x] Record the approved territory plan: `Specific Countries or Regions`, excluding the exact 42
   European storefronts listed in `docs/launch/app-store-listing.md` plus `China mainland`.
-- [ ] Apply that plan in App Store Connect and read back the final selected storefront list; do not
-  treat a region summary or the plan in this file as proof of the live setting. Turn off automatic
-  inclusion of newly added storefronts.
+- [x] Apply that plan in App Store Connect and independently read back all 175 rows: 132 enabled,
+  the exact 43 planned exclusions, no pre-orders, and automatic inclusion of new storefronts off.
+  Hong Kong, Macau, and Taiwan are enabled.
 - [ ] Keep v1 iPhone-only; read back and disable unverified Apple-silicon Mac and Apple Vision
   compatibility distribution unless those platforms are separately tested.
 - [x] Exclude Mainland China until ICP/service availability is separately verified.
 - [x] Record Korea e-Commerce Act compliance as `Active` (App Store Connect readback supplied by the
   Account Holder, last updated 2026-06-16).
 - [ ] Complete App Privacy using the inventory in `docs/launch/app-store-listing.md`.
-- [ ] Complete the current age-rating questionnaire (`Health/Wellness = Yes`, likely
-  `Age Assurance = Yes`, `Contests = No` because Arena has no user-to-user competition); record the
-  live answers and Apple's generated global and regional results.
+- [x] Complete and read back the current age-rating questionnaire: `Health/Wellness = Yes`,
+  `Age Assurance = Yes`, `Contests = No`, and every other disclosed content category is none/no.
 - [ ] Declare `Regulated Medical Device = No` in App Information and read it back; Reploom makes no
   diagnosis, treatment, or medical-device claim.
 - [ ] Complete the required DSA trader/non-trader self-declaration even while every Europe storefront
@@ -83,11 +91,12 @@ Updated: 2026-07-12. App Store Connect app `6786831176`, bundle `ai.daeseon.repl
   is complete.
 - [ ] Verify export-compliance readback, copyright `2026 Daeseon Yoo`, Account Holder agreements,
   and tax/banking gates.
-- [ ] Add required review contact name, phone, and email; set demo account required to false.
-- [ ] If support uses email, document the mailbox provider, support-message fields, retention, and
-  deletion handling in the published Privacy Policy.
-- [ ] Associate only the new validated build.
-- [ ] Re-read every server-side field and screenshot after upload.
+- [x] Add and read back the required review contact name, phone, and email; demo account is not required.
+- [x] Document Gmail as the support mailbox plus support-message retention and deletion handling in
+  the publishable Privacy Policy.
+- [x] Associate only validated Build 13 with version 1.0.
+- [x] Re-read every public-API-accessible server-side field and all five screenshots after upload;
+  the private App Privacy/DSA/Medical/Mac/Vision gates remain explicitly open above.
 - [ ] Add the version to App Review and submit only after every item above is verified.
 
 ## Verification ledger required at handoff
