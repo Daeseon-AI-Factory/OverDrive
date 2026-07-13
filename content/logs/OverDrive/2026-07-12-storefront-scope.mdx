@@ -1,0 +1,20 @@
+---
+title: "유럽과 중국 본토를 정확한 storefront 집합으로 제외했다"
+date: "2026-07-12"
+project: "OverDrive"
+kind: "release-note"
+visibility: "public"
+language: "ko"
+summary: "Reploom v1 배포 범위를 유럽 42개 storefront와 China mainland 제외, 나머지 포함으로 고정하고 신규 storefront 자동 포함을 끄기로 했다."
+tags: ["app-store", "distribution", "compliance", "release"]
+---
+
+Reploom v1은 유럽 전체와 중국 본토를 제외한 나머지 App Store storefront에 공개할 계획이다. Apple의 배포 설정은 `Europe` 단일 토글 계약이 아니라 국가·지역 선택이므로, 출시 문서에 EU 27개, 기타 유럽 15개, `China mainland`를 합친 정확한 43개 제외 목록을 기록했다.
+
+Hong Kong, Macau, Taiwan은 `China mainland`와 별도 storefront이므로 포함한다. Apple이 나중에 새 storefront를 추가했을 때 승인 범위가 자동으로 넓어지지 않도록 신규 국가·지역 자동 포함도 끈다.
+
+유럽을 제외해도 DSA trader/non-trader self-declaration 자체는 별도 App Store Connect gate다. 미국을 포함하는 Health & Fitness 앱이므로 Regulated Medical Device 상태도 `No`로 선언하고 읽어봐야 한다. Reploom은 일반 wellness logger이며 진단·치료·의료기기 주장을 하지 않는다.
+
+이 기록은 승인된 계획이다. App Store Connect에서 43개 storefront가 실제로 제외됐는지 읽어본 증거는 아직 아니다.
+
+구현 커밋: `66ab422`.

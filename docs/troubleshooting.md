@@ -525,3 +525,12 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: a66cf44
 - **Verification**: 5개 공개 HTML을 `xmllint --html --noout`으로 파싱해 exit 0을 확인했고, operator/copyright 문구 전수 검색과 `git diff --check`를 통과했다. HTML5 semantic tag에 대한 xmllint 경고는 있었으며, 브라우저 연결 실패로 모바일/데스크톱 시각 렌더는 미검증이다.
 - **Pattern**: 법적 메타데이터는 확인된 필드만 독립적으로 완료 처리한다. 이름 확인이 주소·연락처·DSA 확인을 대신하지 않으며, 남은 gate를 뭉뚱그려 완료하거나 전체를 계속 미확인으로 둘 이유도 없다.
+
+## `유럽 제외`를 단일 region 토글로 가정하면 storefront가 새어 들어간다
+
+- **Symptom**: 빌더는 v1을 유럽과 중국 본토를 제외한 나머지 storefront에 출시하기로 결정했다. App Store Connect 배포 UI에 단일 `Europe` 제외 계약이 있다고 가정하면 EU 밖 유럽 국가나 향후 신규 storefront가 포함될 수 있다.
+- **Cause**: Apple의 분석/문서 리전과 `Pricing and Availability`의 실제 국가·지역 선택 단위를 혼동했다. DSA 회피 범위(EU)와 빌더가 말한 유럽 전체 범위도 다르다.
+- **Fix**: `Specific Countries or Regions`를 사용해 EU 27, 기타 유럽 15, China mainland의 정확한 43개 storefront를 제외하고 신규 storefront 자동 포함을 끄는 계획을 출시 listing과 checklist에 기록했다. Hong Kong, Macau, Taiwan은 별도 storefront로 포함한다. DSA self-declaration과 Regulated Medical Device=`No` readback은 별도 gate로 유지했다.
+- **Commit**: 66ab422
+- **Verification**: Apple 공식 availability/localization 목록에 맞춰 제외 43개를 열거하고, 27+15+1 산술과 `git diff --check`를 확인했다. App Store Connect 실제 설정 변경과 최종 selected storefront readback은 아직 미검증이다.
+- **Pattern**: 스토어 배포 범위는 대륙 이름이 아니라 App Store Connect의 정확한 storefront 집합으로 기록한다. 신규 국가 자동 포함 설정까지 고정하지 않으면 시간이 지나며 승인 범위가 조용히 넓어진다.
