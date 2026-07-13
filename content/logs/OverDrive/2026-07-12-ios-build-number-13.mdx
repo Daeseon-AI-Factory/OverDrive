@@ -1,0 +1,20 @@
+---
+title: "Reploom 출시 후보의 iOS Build 13을 정본에 고정했다"
+date: "2026-07-12"
+project: "OverDrive"
+kind: "troubleshoot"
+visibility: "public"
+language: "ko"
+summary: "명령행 덮어쓰기 뒤에도 최종 번들이 Build 1로 남던 문제를 Expo 설정의 iOS buildNumber로 고정했고, 배포 서명은 별도 credential gate로 분리했다."
+tags: ["ios", "app-store", "release", "signing"]
+---
+
+첫 로컬 Xcode 아카이브 명령에는 `CURRENT_PROJECT_VERSION=13`이 있었지만, 아카이브와 앱의 최종 `Info.plist`는 모두 `CFBundleVersion=1`이었다. 생성된 iOS `Info.plist`가 값을 직접 `1`로 가지고 있었고, 추적되는 Expo 정본 `app.json`에는 iOS build number가 없었다.
+
+`app.json`에 `ios.buildNumber: "13"`을 추가했다. 로컬 생성 프로젝트도 같은 설정을 참조하도록 맞춘 뒤 명령행 버전 덮어쓰기 없이 다시 아카이브했다. 두 번째 아카이브는 성공했고 아카이브 메타데이터와 앱 번들 모두 `CFBundleVersion=13`을 반환했다. 번들 ID는 `ai.daeseon.reploom`, 마케팅 버전은 `1.0`, 대상 device family는 iPhone `1`로 유지됐다.
+
+PrivacyInfo는 파싱됐고 `/body-avatar`, `/evolve`, `/rank/submit`, `/rank/board`, `expo-dev-client`의 정확한 문자열은 번들에서 검출되지 않았다. `x-reploom-client`, `ios-v1`, `/rank/delete`는 존재했다.
+
+App Store용 IPA export는 성공하지 않았다. Xcode는 `Cloud signing permission error`, `No signing certificate "iOS Distribution" found`, 프로비저닝 프로필 부재를 반환했다. 따라서 이 기록 시점에는 Apple 업로드와 App Review 요청이 없다. 다음 조치는 배포 인증서·프로비저닝 credential 상태를 명시적으로 승인받아 복구한 뒤 IPA export를 다시 검증하는 것이다.
+
+구현 커밋: `122e4da`.

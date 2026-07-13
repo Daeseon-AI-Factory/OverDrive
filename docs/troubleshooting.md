@@ -534,3 +534,17 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 66ab422
 - **Verification**: Apple 공식 availability/localization 목록에 맞춰 제외 43개를 열거하고, 27+15+1 산술과 `git diff --check`를 확인했다. App Store Connect 실제 설정 변경과 최종 selected storefront readback은 아직 미검증이다.
 - **Pattern**: 스토어 배포 범위는 대륙 이름이 아니라 App Store Connect의 정확한 storefront 집합으로 기록한다. 신규 국가 자동 포함 설정까지 고정하지 않으면 시간이 지나며 승인 범위가 조용히 넓어진다.
+
+## Xcode 아카이브 명령의 Build 13 덮어쓰기가 최종 번들에 남지 않았다
+
+- **Symptom**:
+  ```text
+  "CFBundleVersion" => "1"
+  error: exportArchive Cloud signing permission error
+  error: exportArchive No signing certificate "iOS Distribution" found
+  ```
+- **Cause**: 추적되는 Expo 설정 `app.json`에 iOS `buildNumber`가 없었고, 생성된 iOS `Info.plist`는 `CFBundleVersion`을 `1`로 직접 가지고 있었다. 명령행의 `CURRENT_PROJECT_VERSION=13`은 빌드 설정에는 보였지만 최종 번들의 하드코딩 값을 바꾸지 못했다. 로컬 키체인은 유효한 배포 서명 identity를 제공하지 않았고, App Store Connect API 키를 사용한 export는 Cloud Signing 권한 오류를 반환했다.
+- **Fix**: `app.json`에 `ios.buildNumber: "13"`을 추가해 Expo 정본에 출시 빌드 번호를 고정했다. 배포 인증서·프로비저닝 변경은 외부 credential 조치이므로 이 커밋 범위에 포함하지 않았다.
+- **Commit**: 122e4da
+- **Verification**: `expo config`가 version `1.0`, buildNumber `13`, bundle ID `ai.daeseon.reploom`을 반환했고 Xcode Release build settings의 `CURRENT_PROJECT_VERSION`도 `13`이었다. 두 번째 로컬 아카이브는 성공했으며 아카이브와 앱의 최종 `CFBundleVersion`이 모두 `13`이었다. PrivacyInfo 파싱과 은퇴 라우트 무검출, 기대 client marker 검출은 통과했다. App Store 배포용 export는 배포 인증서·Cloud Signing 권한 부재로 실패했으므로 Apple 업로드와 심사 요청은 하지 않았다.
+- **Pattern**: Expo 네이티브 프로젝트의 출시 번호는 일회성 Xcode 명령이 아니라 추적되는 Expo 설정에 고정하고, 아카이브 안의 최종 앱 `Info.plist`를 다시 읽어 확인한다.
