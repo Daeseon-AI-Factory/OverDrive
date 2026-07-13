@@ -1,0 +1,20 @@
+---
+title: "Cloudflare 출시 서비스를 배포하고 App Store 공개 URL을 연결했다"
+date: "2026-07-13"
+project: "OverDrive"
+kind: "release-note"
+visibility: "public"
+language: "ko"
+summary: "Worker normal/safe 불변 버전과 Pages 정책 사이트를 검증해 공개하고 ASC URL 네 개를 연결했으며, 남은 private 심사 gate를 분리해 기록했다."
+tags: ["cloudflare", "app-store", "release", "privacy"]
+---
+
+Build 13은 Apple에서 유효했지만 출시 서비스는 아직 후보 상태였다. 기존 Worker는 퇴역 전 기능이 남은 pre-v1 버전이었고, `reploom.pages.dev`가 없어서 App Store의 Marketing, Support, Privacy, Privacy Choices URL도 비어 있었다.
+
+source `b9ddda1`에서 safe-degraded와 normal Worker를 별도 불변 버전으로 업로드했다. safe는 `33abed25-1f2e-497f-8580-72b29e267840`, normal은 `dee65f64-88ee-491f-962f-f9b686bfd561`이다. 각 후보를 사용자 트래픽 0%에서 version override로 확인했고 normal만 100%로 승격했다. live workout parse는 구조화된 set을 반환했고, client marker·legacy delete validation·퇴역 route 경계도 예상 상태와 일치했다. safe ID만 명시적 롤백 대상으로 남겼고 pre-v1 버전으로의 롤백은 금지했다.
+
+Cloudflare Pages project `reploom`을 생성해 preview 후 production을 배포했다. production deployment는 `1798ec5a-4134-4b02-b553-b00f6ea7e720`이다. `/`, `/privacy`, `/support`, `/terms`, `/data`는 모두 HTTPS 200이었고 redirect 없이 추적된 HTML과 byte hash가 같았다. iPhone Safari에서 production Privacy 레이아웃과 운영자·연락처 가독성을 직접 확인했다.
+
+검증된 URL 네 개를 App Store Connect에 입력하고 다시 읽었다. 그러나 Review Submission item 추가는 여전히 `409 STATE_ERROR.ENTITY_STATE_INVALID`다. App Privacy publish, DSA, Regulated Medical Device, Mac/Vision, Tax Category처럼 공개 API로 쓸 수 없는 private gate가 남아 있으므로 심사 요청 완료로 기록하지 않았다. 현재 draft는 item 0이고 submitted date도 null이다.
+
+운영 상태 기록 커밋: `2929f54`.

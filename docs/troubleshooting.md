@@ -566,3 +566,12 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 29fe123
 - **Verification**: GitHub `codex/usability-cockpit` push 상태, App Store Connect public API readback, Apple screenshot list, 로컬 commit log와 각 ID를 교차 확인했다. Review Submission은 `READY_FOR_REVIEW` draft이지만 item 0·submitted date null이며 심사 제출 완료로 표시하지 않았다.
 - **Pattern**: 핸드오프는 코드 요약이 아니라 코드·빌드·외부 서비스·검증 수준의 동시 스냅샷이다. 출시 단계가 바뀔 때 오래된 성공 빌드를 “현재”로 남겨두지 않는다.
+
+## Worker와 정책 사이트가 배포되지 않아 App Store URL과 심사 item이 닫히지 않았다
+
+- **Symptom**: Build 13과 스크린샷은 Apple에서 유효했지만 live Worker는 퇴역 전 pre-v1 버전이었고 `reploom.pages.dev`는 존재하지 않았다. Marketing, Support, Privacy, Privacy Choices URL은 모두 null이었으며 Review Submission은 item 0에서 `409 STATE_ERROR.ENTITY_STATE_INVALID`를 반환했다.
+- **Cause**: 앱 바이너리 검증과 외부 서비스 배포, 공개 ASC 메타데이터, private ASC 설문이 서로 다른 출시 경계인데 앞의 두 단계가 실행되지 않았다. Worker도 즉시 배포가 아니라 immutable safe/normal ID와 0% version override smoke가 필요한 상태였다.
+- **Fix**: source `b9ddda1`에서 safe `33abed25-1f2e-497f-8580-72b29e267840`와 normal `dee65f64-88ee-491f-962f-f9b686bfd561`을 불변 업로드했다. safe와 normal을 각각 0%에서 smoke한 뒤 normal을 100%로 승격했다. Pages project `reploom`을 만들고 preview를 확인한 뒤 production `1798ec5a-4134-4b02-b553-b00f6ea7e720`을 배포했으며, HTTPS 검증 뒤 ASC URL 네 개를 입력했다. private 설문은 완료로 가장하지 않고 별도 gate로 남겼다.
+- **Commit**: 2929f54
+- **Verification**: Worker 테스트 14/14와 두 dry-run 통과. normal deployment `9c686a48-0b0f-4c52-b7cc-a3fac00c9c8f` 100% readback, live `/parse` 200, markerless 요청 403, legacy delete invalid input 400, normal/safe의 네 퇴역 경로 410을 확인했다. Cloudflare settings는 `logpush=false`, `observability=null`, tail consumer 없음이었다. Pages 5개 extensionless 경로는 HTTPS 200·redirect 없음·로컬 HTML과 SHA-256 일치했고 iPhone Safari에서 production Privacy를 육안 확인했다. ASC URL 네 개도 readback됐지만 Review item POST는 계속 409, item 0, submitted date null이므로 App Review는 제출되지 않았다.
+- **Pattern**: 출시 서비스는 “배포했다”가 아니라 source hash, immutable normal/safe ID, traffic 비율, live 응답, rollback 명령, 스토어 readback을 함께 기록해야 한다. 공개 URL 완료가 private 법적 설문 완료를 대신하지 않는다.
