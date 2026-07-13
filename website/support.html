@@ -4,71 +4,181 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Reploom — Support</title>
-  <meta name="description" content="Reploom support and FAQ. How Combat Power, Apple Health sync, and voice logging work." />
+  <meta name="description" content="Reploom support, troubleshooting, privacy controls, and data deletion guidance." />
   <meta name="theme-color" content="#07070B" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <nav>
+  <nav aria-label="Primary navigation">
     <div class="wrap">
       <a class="wordmark" href="index.html" style="text-decoration:none">REPLOOM</a>
       <span class="links">
         <a href="index.html">Home</a>
         <a href="privacy.html">Privacy</a>
+        <a href="support.html" aria-current="page">Support</a>
+        <a href="terms.html">Terms</a>
       </span>
     </div>
   </nav>
 
-  <article class="doc">
-    <a class="back" href="index.html">← Back</a>
-    <h1>Support</h1>
-    <p class="updated">We read every message.</p>
+  <main>
+    <article class="doc">
+      <a class="back" href="index.html">← Back to Reploom</a>
+      <h1>Support</h1>
+      <p class="updated">Support information last updated: July 12, 2026</p>
 
-    <div class="lead">
-      Need help, found a bug, or have a feature idea? Email
-      <a href="mailto:support@reploom.app">support@reploom.app</a> and we’ll get back to you.
-    </div>
+      <div class="lead">
+        Reploom is accountless: saved workouts, meals, goals, and app settings live in the app's
+        private storage on your iPhone. Start with the steps below; they do not require a login.
+      </div>
 
-    <h2>FAQ</h2>
+      <div class="notice warning">
+        <strong>Email activation pending.</strong> <code>support@reploom.app</code> is the designated
+        support address, but delivery has not yet been verified. It must be activated and tested
+        before this page is supplied as the App Store Support URL.
+      </div>
 
-    <h3>Is Combat Power a real fitness metric?</h3>
-    <p>No. Combat Power is an original, for-fun score that turns consistent, progressive training
-      into a number you can chase. It is not a medical or scientific metric.</p>
+      <nav class="toc" aria-label="Support page contents">
+        <a href="#quick-help">Quick help</a>
+        <a href="#health">Apple Health</a>
+        <a href="#ai-tools">AI-assisted tools</a>
+        <a href="#data">Data and deletion</a>
+        <a href="#faq">Product FAQ</a>
+        <a href="#contact">Contact</a>
+      </nav>
 
-    <h3>Does my Apple Health data leave my phone?</h3>
-    <p>No. Apple Health data is read and used entirely on your device to compute Combat Power. It is
-      never sent to our servers, never stored in iCloud by Reploom, and never used for ads or sold.
-      See the <a href="privacy.html">privacy policy</a>.</p>
+      <h2 id="quick-help">Quick help</h2>
 
-    <h3>How does voice logging work?</h3>
-    <p>Tap the mic and say something like “squat 80 kilos, 5 reps.” The audio is sent to a
-      speech-to-text service to transcribe, then parsed into structured sets. You confirm before it
-      saves.</p>
+      <h3>A set or meal did not save</h3>
+      <ol class="steps">
+        <li>Keep Reploom open and check the Log or History view before entering the item again.</li>
+        <li>If an AI-assisted entry appeared, review its saved confirmation card and use Edit or Undo immediately if it is wrong.</li>
+        <li>If a workout AI tool is offline, use the manual workout logger. For meals, you can repeat a previously saved meal locally.</li>
+        <li>Force-quit and reopen only after checking History, so you do not create an accidental duplicate.</li>
+      </ol>
 
-    <h3>Do I need an account?</h3>
-    <p>No. Reploom works fully on-device with no login. Leaderboards are optional — nothing about you
-      leaves your phone until you choose a handle.</p>
+      <h3>Voice or meal AI is unavailable</h3>
+      <p>
+        Remote AI is off by default. It may be enabled only by a user confirming they are 18 or
+        older after reading the disclosure in Reploom Settings.
+        These optional tools also need an internet connection and the Reploom processing service.
+        Voice transcription, workout parsing, and meal analysis use Groq. A timeout or provider
+        outage does not remove your existing local logs. You can keep training with manual workout
+        logging. The v1 sportswear character is built in and does not upload a personal photo.
+      </p>
 
-    <h3>How do I connect or disconnect Apple Health?</h3>
-    <p>Open <strong>Settings → Apple Health</strong> in the app to connect, sync, or disconnect. You
-      can also revoke access any time in iOS <strong>Settings → Privacy &amp; Security → Health</strong>.</p>
+      <h3>Undo or edit a recent entry</h3>
+      <p>
+        Use the visible <strong>Edit</strong> or <strong>Undo</strong> action on the recent confirmation
+        card. For older workout entries, open History and select the relevant day. Review the final
+        value after editing; Combat Power is recalculated from the saved activity.
+      </p>
 
-    <h3>How do I delete my data?</h3>
-    <p>All your Reploom data lives on your device. Deleting the app removes it.</p>
+      <h2 id="health">Apple Health</h2>
 
-    <h2>Contact</h2>
-    <p>Email: <a href="mailto:support@reploom.app">support@reploom.app</a></p>
-  </article>
+      <h3>Connect or refresh Apple Health</h3>
+      <p>
+        Open Reploom's <strong>Settings</strong> tab, find Apple Health, and choose Connect or Sync.
+        Apple controls each requested read/write permission. Reploom cannot see whether Apple has
+        granted individual read permissions; an empty result can mean there is no matching data or
+        that access was not granted.
+      </p>
+
+      <h3>Change or revoke access</h3>
+      <p>
+        Use the Health app or iOS <strong>Settings → Privacy &amp; Security → Health</strong>, select
+        Reploom, and change the data types you allow. Revoking access stops new reads and writes but
+        does not delete records already written to Apple Health, local Reploom history, or the last
+        Health-derived snapshot. Use Reploom's <strong>Disconnect Apple Health</strong> action to
+        clear that snapshot and recompute Combat Power.
+      </p>
+
+      <h3>Remove a workout or body value from Apple Health</h3>
+      <p>
+        Manage that record in the Apple Health app. Deleting Reploom removes its local container but
+        does not automatically remove records that were already saved to Apple Health.
+      </p>
+
+      <h2 id="ai-tools">AI-assisted tools</h2>
+      <p>
+        AI parsing and nutrition values are estimates. Check exercise, load, repetitions, calories,
+        and protein before relying on them. Reploom v1 does not offer remote photo-avatar generation;
+        its sportswear character is built into the app. See the
+        <a href="privacy.html#ai">privacy policy's processing table</a> for exactly what is sent.
+      </p>
+
+      <h2 id="data">Data and deletion</h2>
+      <ul>
+        <li><strong>No account:</strong> there is no Reploom login or password to delete.</li>
+        <li><strong>Local data:</strong> deleting Reploom from iOS removes its local app container.</li>
+        <li><strong>Apple Health:</strong> disconnect in Reploom to clear its snapshot; separately revoke access or delete Health records in Apple's Health app.</li>
+        <li><strong>Legacy leaderboard:</strong> v1 has no public leaderboard; prior TestFlight participants can remove the old row keyed by their random ID from Settings before deleting the app. A user-chosen handle in that row may itself be identifying.</li>
+      </ul>
+      <div class="button-row">
+        <a class="btn" href="data.html">Open the Data Deletion Guide</a>
+        <a class="btn" href="privacy.html">Read the Privacy Policy</a>
+      </div>
+
+      <h2 id="faq">Product FAQ</h2>
+
+      <h3>Is Combat Power a medical or scientific metric?</h3>
+      <p>
+        No. Combat Power is an original, for-fun training score. It is not a diagnosis, medical
+        advice, a measure of personal worth, or a substitute for professional care.
+      </p>
+
+      <h3>Does Reploom require an account?</h3>
+      <p>
+        No. The current app uses one local profile. V1 has no public leaderboard. An earlier
+        TestFlight leaderboard used a public handle and random app-generated device ID, not an
+        account credential; its legacy row is removable from Settings.
+      </p>
+
+      <h3>Does Apple Health data go to the AI service?</h3>
+      <p>
+        No. AI requests contain the selected workout text, voice clip, meal text, or meal photo. A
+        workout parse also includes the display unit and exercise catalog names/IDs needed to match
+        the movement. Reploom does not attach HealthKit records to those requests.
+      </p>
+
+      <h3>Can I use Reploom offline?</h3>
+      <p>
+        Local history and manual workout logging are designed to work on device. Voice transcription,
+        AI parsing, and meal analysis need Remote AI consent and a network
+        connection and may be unavailable during a provider outage.
+      </p>
+
+      <h2 id="contact">Contact and a useful bug report</h2>
+      <p>
+        The designated address is <code>support@reploom.app</code>. Do not treat it as operational
+        until the activation notice above is removed after a delivery test.
+      </p>
+      <p>When support is active, a useful report should include:</p>
+      <ul>
+        <li>Reploom version and build number;</li>
+        <li>iPhone model and iOS version;</li>
+        <li>the screen and action that failed;</li>
+        <li>the exact message shown; and</li>
+        <li>whether the issue happens again after reopening the app.</li>
+      </ul>
+      <p>
+        Do not email Health records, diagnoses, full meal photos, voice recordings, passwords, or
+        other sensitive data unless support specifically explains why it is necessary.
+      </p>
+    </article>
+  </main>
 
   <footer>
     <div class="wrap">
       <a class="wordmark" href="index.html" style="font-size:20px;text-decoration:none">REPLOOM</a>
-      <span><a href="index.html">Home</a><a href="privacy.html">Privacy</a></span>
+      <span>
+        <a href="privacy.html">Privacy</a>
+        <a href="support.html">Support</a>
+        <a href="terms.html">Terms</a>
+        <a href="data.html">Data deletion</a>
+      </span>
     </div>
-    <p class="disclaimer">© 2026 Reploom.</p>
+    <p class="disclaimer">Combat Power and nutrition estimates are for general wellness and entertainment, not medical advice. © 2026 Reploom.</p>
   </footer>
 </body>
 </html>

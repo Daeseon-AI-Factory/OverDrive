@@ -1,5 +1,11 @@
 # OVERDRIVE 기술 스택 — 백지부터 (용어 0개 가정)
 
+> **Historical explainer:** the sections below still mention the retired Gemini EVOLUTION and
+> public leaderboard. For the shipping v1 architecture and provider scope, use
+> [`HANDOFF-codex.md`](HANDOFF-codex.md), [`app-store-launch-checklist.md`](app-store-launch-checklist.md),
+> and [`launch/app-store-listing.md`](launch/app-store-listing.md). Do not quote the old feature list
+> as current product behavior.
+
 > 너(빌더)가 면접/포폴에서 "이거 왜 썼냐" 방어할 수 있게, **모든 용어를 풀어서** 정리. 실제 `package.json` + `worker/`에 깔린 것만 다룬다(추측 X).
 >
 > 각 항목 표기: **뭐임(비유) → 왜 썼나 → 꼭 필요?/대안 → 트레이드오프(얻은 것 vs 잃은 것)**

@@ -13,6 +13,36 @@ import type { UnitSystem } from './units';
 export type AestheticPref = ThemeId;
 export type JuiceIntensity = 'full' | 'mid' | 'minimal';
 
+/**
+ * Increment whenever the remote-processing disclosure materially changes. Stored consent for an
+ * older disclosure never carries forward silently: the remote AI paths stay off until the user
+ * accepts the current version.
+ */
+export const REMOTE_AI_CONSENT_VERSION = 2;
+
+export interface RemoteAiConsent {
+  version: number;
+  acceptedAt: string;
+}
+
+function normalizeRemoteAiConsent(value: unknown): RemoteAiConsent | null {
+  if (value == null || typeof value !== 'object') return null;
+  const candidate = value as Partial<RemoteAiConsent>;
+  if (
+    candidate.version !== REMOTE_AI_CONSENT_VERSION ||
+    typeof candidate.acceptedAt !== 'string' ||
+    Number.isNaN(Date.parse(candidate.acceptedAt))
+  ) {
+    return null;
+  }
+  return { version: candidate.version, acceptedAt: candidate.acceptedAt };
+}
+
+/** The single gate used by every client-side remote AI entry point. */
+export function hasCurrentRemoteAiConsent(value: RemoteAiConsent | null | undefined): boolean {
+  return normalizeRemoteAiConsent(value) != null;
+}
+
 /** Tolerant id → SkinId for stored values. Unknown/legacy ids fall back to the default skin. */
 function normalizeSkinId(id: unknown): SkinId {
   return typeof id === 'string' && Object.prototype.hasOwnProperty.call(SKINS, id) ? (id as SkinId) : 'reactor';
@@ -34,16 +64,21 @@ export interface UserSettings {
   unitSystem: UnitSystem;
   /** ARENA rival config (deterministic growth curve seed). null until first spawn. */
   rival: { name: string; epoch: string; cp0: number; seed: number } | null;
-  /** Ranking opt-in: handle set = participate; null = nothing is ever sent (privacy default). */
+  /** Legacy TestFlight leaderboard handle. V1 never creates or submits one. */
   rankHandle: string | null;
-  /** Crew/gym code for the crew leaderboard (free-form, uppercased). */
+  /** Legacy TestFlight crew/gym code. V1 never creates or submits one. */
   rankCrew: string | null;
-  /** Stable anonymous device id for rank upserts (generated once). */
+  /** Legacy random deletion token. V1 only transmits it on an explicit delete request. */
   rankDeviceId: string | null;
   /** User-customized weekly program. null → use the built-in default (defaultProgram.ts). */
   customProgram: WeeklyProgram | null;
   /** ISO timestamp when first-run onboarding finished or was skipped. null → not onboarded yet. */
   onboardedAt: string | null;
+  /**
+   * Explicit, revocable consent for optional remote AI processing. null is the privacy-safe
+   * default; version mismatch also normalizes to null and requires fresh consent.
+   */
+  remoteAiConsent: RemoteAiConsent | null;
   /**
    * Apple Health / Health Connect sync state. null until the user connects. Sensor-verified data —
    * feeds Combat Power's verifiedRatio (trust bonus only, never a penalty §9). Game numbers are
@@ -77,6 +112,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   rankDeviceId: null,
   customProgram: null,
   onboardedAt: null,
+  remoteAiConsent: null,
   health: null,
 };
 
@@ -90,6 +126,7 @@ export function parseSettings(json: string | null | undefined): UserSettings {
       ...parsed,
       aestheticPref: normalizeThemeId(parsed.aestheticPref),
       skinId: normalizeSkinId(parsed.skinId),
+      remoteAiConsent: normalizeRemoteAiConsent(parsed.remoteAiConsent),
     };
   } catch {
     return { ...DEFAULT_SETTINGS };

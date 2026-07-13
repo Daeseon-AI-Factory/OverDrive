@@ -1,7 +1,14 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { nowIso } from '../lib/date';
 import { DEFAULT_SETTINGS } from '../lib/settings';
-import { DATABASE_VERSION, MIGRATION_003, MIGRATION_004, MIGRATION_005, SCHEMA_V1 } from './schema';
+import {
+  DATABASE_VERSION,
+  MIGRATION_003,
+  MIGRATION_004,
+  MIGRATION_005,
+  MIGRATION_006,
+  SCHEMA_V1,
+} from './schema';
 import { seedExercises } from './seed';
 import { LOCAL_USER_ID } from './types';
 
@@ -47,6 +54,7 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase): Promise<void> {
   await db.execAsync(MIGRATION_003);
   await db.execAsync(MIGRATION_004);
   await db.execAsync(MIGRATION_005);
+  await db.execAsync(MIGRATION_006);
   // Seed runs every boot (INSERT OR IGNORE, idempotent) so new catalog exercises land in
   // already-migrated databases.
   await seedExercises(db);

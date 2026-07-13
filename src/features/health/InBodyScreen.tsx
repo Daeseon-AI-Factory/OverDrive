@@ -1,11 +1,12 @@
 import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { getLatestBodyCompositionEntry, saveBodyCompositionEntry } from '@/db/repos/bodyCompositionRepo';
 import { Stepper } from '@/features/logging/Stepper';
 import { displayToKg, kgToDisplay, weightUnit } from '@/lib/units';
-import { currentSettings, persistSettings, useSettingsStore } from '@/stores/settingsStore';
+import { currentSettings, useSettingsStore } from '@/stores/settingsStore';
 import { Button, Card, Muted, Screen, SectionTitle } from '@/ui/primitives';
 import { colors, space, tracking, typeScale } from '@/ui/theme/tokens';
 import { healthAvailable, writeBodyComposition } from './health';
@@ -34,23 +35,35 @@ export function InBodyScreen() {
   const [bodyFatPct, setBodyFatPct] = useState(initialFatPct);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const edited = useRef(false);
+
+  useEffect(() => {
+    let mounted = true;
+    void getLatestBodyCompositionEntry(db)
+      .then((latest) => {
+        if (!mounted || edited.current || !latest) return;
+        setWeightDisp(kgToDisplay(latest.weight_kg, unitSystem));
+        setBodyFatPct(Math.round(latest.body_fat_fraction * 100));
+      })
+      .catch((e) => console.error('[inbody] load latest failed', e));
+    return () => {
+      mounted = false;
+    };
+  }, [db, unitSystem]);
 
   const save = async () => {
+    // A pending initial-load promise must never overwrite values the user has chosen to save.
+    edited.current = true;
     setBusy(true);
     setSaved(false);
     try {
-      const prev = currentSettings();
       const weightKg = displayToKg(weightDisp, unitSystem);
       const fraction = bodyFatPct / 100;
-      // Local save FIRST — profile weight is the local source of truth (strength-to-weight,
-      // protein target); an Apple Health auth failure must never throw the entered values away.
+      const nextSettings = { ...currentSettings(), startWeightKg: weightKg };
+      // Local save FIRST: append both measured values and update profile weight in one transaction.
+      // Only reflect it in memory after SQLite commits, so a partial save can never look successful.
+      await saveBodyCompositionEntry(db, { weightKg, bodyFatFraction: fraction }, nextSettings);
       apply({ startWeightKg: weightKg });
-      const savedLocal = await persistSettings(db);
-      if (!savedLocal) {
-        apply(prev);
-        Alert.alert(t('common.saveFailed'));
-        return;
-      }
       setSaved(true);
       // Then best-effort Apple Health upload. On failure the local save stands — say exactly that.
       const healthOk = await writeBodyComposition({ weightKg, bodyFatFraction: fraction });
@@ -58,8 +71,7 @@ export function InBodyScreen() {
         Alert.alert(t('inbody.saved'), t('inbody.saveFailed'));
       }
     } catch {
-      // Local save already stood (or common.saveFailed already alerted) — only the Health sync failed here.
-      Alert.alert(t('inbody.saved'), t('inbody.saveFailed'));
+      Alert.alert(t('common.saveFailed'));
     } finally {
       setBusy(false);
     }
@@ -95,6 +107,7 @@ export function InBodyScreen() {
             precision={unitSystem === 'imperial' ? 0 : 1}
             unit={weightUnit(unitSystem)}
             onChange={(v) => {
+              edited.current = true;
               setWeightDisp(v);
               setSaved(false);
             }}
@@ -108,6 +121,7 @@ export function InBodyScreen() {
             precision={0}
             unit="%"
             onChange={(v) => {
+              edited.current = true;
               setBodyFatPct(v);
               setSaved(false);
             }}

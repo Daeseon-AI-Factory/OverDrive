@@ -1,4 +1,5 @@
 import type { ParseCandidate, ParsedSet, UnitSystem } from './parseEntry';
+import { REPLOOM_CLIENT_HEADERS } from './config';
 
 /**
  * Validate + normalize the proxy's (LLM's) loose JSON into ParsedSet[]. Pure → unit-tested.
@@ -31,7 +32,7 @@ export function normalizeAISets(data: unknown): ParsedSet[] {
 }
 
 /**
- * AI parse via the Cloudflare Worker proxy (Gemini, key server-side). Handles messy natural language
+ * AI parse via the Cloudflare Worker proxy (provider key server-side). Handles messy natural language
  * and multiple sets per line. Throws on network/HTTP error so the caller can fall back to the
  * on-device rule parser — logging must never depend on the network.
  */
@@ -45,7 +46,7 @@ export async function parseEntryAI(
   const exercises = candidates.map((c) => ({ id: c.id, names: [c.name, ...c.aliases].filter(Boolean) }));
   const res = await fetch(`${endpoint.replace(/\/$/, '')}/parse`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...REPLOOM_CLIENT_HEADERS },
     body: JSON.stringify({ text, unitSystem, exercises }),
     signal,
   });

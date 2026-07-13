@@ -31,7 +31,7 @@ export function MicDock() {
   const [hint, setHint] = useState<string | null>(null);
   const [busy, setBusy] = useState(false); // disambiguation pick in flight
   const [pending, setPending] = useState<MicPending | null>(null);
-  const [card, setCard] = useState<{ nonce: number; saved: SavedQuickSet } | null>(null);
+  const [card, setCard] = useState<{ nonce: number; saved: SavedQuickSet; savedBatch: SavedQuickSet[] } | null>(null);
   const [undoingNonce, setUndoingNonce] = useState<number | null>(null);
   const cardNonce = useRef(0);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -59,8 +59,8 @@ export function MicDock() {
     (saved: SavedQuickSet[]) => {
       flashHint(null);
       setPending(null);
-      const last = saved[saved.length - 1]; // multi-set AI saves: the card acts on the newest
-      if (last) setCard({ nonce: ++cardNonce.current, saved: last });
+      const last = saved[saved.length - 1];
+      if (last) setCard({ nonce: ++cardNonce.current, saved: last, savedBatch: saved });
     },
     [flashHint],
   );
@@ -91,7 +91,7 @@ export function MicDock() {
         setPending(null);
         if (r.ok) {
           const last = r.saved[r.saved.length - 1];
-          if (last) setCard({ nonce: ++cardNonce.current, saved: last });
+          if (last) setCard({ nonce: ++cardNonce.current, saved: last, savedBatch: r.saved });
         } else {
           flashHint(r.reason === 'ambiguous' ? t('quicklog.fail.log') : parseFailHint(r.reason, t, ko));
         }
@@ -112,10 +112,10 @@ export function MicDock() {
   }, []);
 
   const onCardUndo = useCallback(
-    async (saved: SavedQuickSet, nonce: number) => {
+    async (savedBatch: SavedQuickSet[], nonce: number) => {
       setUndoingNonce(nonce);
       try {
-        await undoSave(saved);
+        await undoSave(savedBatch);
         setCard((current) => (current?.nonce === nonce ? null : current));
       } catch {
         flashHint(t('quicklog.fail.log'));
@@ -149,10 +149,10 @@ export function MicDock() {
           <ConfirmUndoCard
             nonce={card.nonce}
             saved={card.saved}
-            editable={card.saved.exercise?.type === 'strength'}
+            editable={card.savedBatch.length === 1 && card.saved.exercise?.type === 'strength'}
             busy={undoingNonce === card.nonce}
             onEdit={() => onCardEdit(card.saved)}
-            onUndo={() => void onCardUndo(card.saved, card.nonce)}
+            onUndo={() => void onCardUndo(card.savedBatch, card.nonce)}
             onDismiss={() => setCard(null)}
           />
         </View>

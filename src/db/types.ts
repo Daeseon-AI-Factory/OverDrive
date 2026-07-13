@@ -127,3 +127,12 @@ export interface DailyTargetLogRow {
   done: number; // 0/1
   updated_at: string;
 }
+
+export interface BodyCompositionRow {
+  id: string;
+  client_uuid: string;
+  user_id: string;
+  weight_kg: number;
+  body_fat_fraction: number;
+  measured_at: string;
+}

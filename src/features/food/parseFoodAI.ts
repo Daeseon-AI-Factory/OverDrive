@@ -1,6 +1,12 @@
-import { FileSystemUploadType, uploadAsync } from 'expo-file-system/legacy';
-import { withTimeout } from '@/lib/async';
+import {
+  FileSystemUploadType,
+  createUploadTask,
+  type FileSystemUploadResult,
+} from 'expo-file-system/legacy';
 import type { FoodItemInput } from '@/db/repos/foodRepo';
+import { REPLOOM_CLIENT_HEADERS } from '@/features/quicklog/config';
+
+const FOOD_PHOTO_UPLOAD_TIMEOUT_MS = 20_000;
 
 /** Pure: validate + normalize the proxy's loose food JSON. Drops empty/garbage rows. Unit-tested. */
 export function normalizeFoodItems(data: unknown): FoodItemInput[] {
@@ -25,17 +31,56 @@ export function normalizeFoodItems(data: unknown): FoodItemInput[] {
 }
 
 /** Meal PHOTO → estimated items, via the Worker's vision path (native multipart upload). */
-export async function parseFoodPhoto(uri: string, endpoint: string): Promise<FoodItemInput[]> {
-  const res = await withTimeout(
-    uploadAsync(`${endpoint.replace(/\/$/, '')}/food`, uri, {
-      httpMethod: 'POST',
-      uploadType: FileSystemUploadType.MULTIPART,
-      fieldName: 'file',
-      mimeType: 'image/jpeg',
-    }),
-    20000,
-    'food photo',
-  );
+export async function parseFoodPhoto(
+  uri: string,
+  endpoint: string,
+  signal?: AbortSignal,
+): Promise<FoodItemInput[]> {
+  if (signal?.aborted) throw new Error('food photo cancelled');
+  const task = createUploadTask(`${endpoint.replace(/\/$/, '')}/food`, uri, {
+    httpMethod: 'POST',
+    uploadType: FileSystemUploadType.MULTIPART,
+    fieldName: 'file',
+    mimeType: 'image/jpeg',
+    headers: REPLOOM_CLIENT_HEADERS,
+  });
+
+  let timedOut = false;
+  let cancellationRequested = false;
+  let rejectCancellation: (reason: Error) => void = () => {};
+  const cancellation = new Promise<never>((_, reject) => {
+    rejectCancellation = reject;
+  });
+  const requestCancellation = (reason: Error) => {
+    if (cancellationRequested) return;
+    cancellationRequested = true;
+    // Wait for the native cancel call to settle before the caller's finally block removes the file.
+    void task.cancelAsync()
+      .catch(() => undefined)
+      .finally(() => rejectCancellation(reason));
+  };
+  const cancelFromSignal = () => requestCancellation(new Error('food photo cancelled'));
+  signal?.addEventListener('abort', cancelFromSignal);
+  const timer = setTimeout(() => {
+    timedOut = true;
+    requestCancellation(new Error('food photo timed out'));
+  }, FOOD_PHOTO_UPLOAD_TIMEOUT_MS);
+
+  let res: FileSystemUploadResult | null | undefined;
+  try {
+    res = await Promise.race([task.uploadAsync(), cancellation]);
+  } catch (error) {
+    if (timedOut) throw new Error('food photo timed out');
+    if (signal?.aborted) throw new Error('food photo cancelled');
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', cancelFromSignal);
+  }
+  // Upload completion can race the native cancellation callback; cancellation still wins.
+  if (timedOut) throw new Error('food photo timed out');
+  if (signal?.aborted) throw new Error('food photo cancelled');
+  if (!res) throw new Error(timedOut ? 'food photo timed out' : 'food photo cancelled');
   if (res.status < 200 || res.status >= 300) throw new Error(`food photo ${res.status}`);
   return normalizeFoodItems(JSON.parse(res.body));
 }
@@ -44,7 +89,7 @@ export async function parseFoodPhoto(uri: string, endpoint: string): Promise<Foo
 export async function parseFoodText(text: string, endpoint: string, signal?: AbortSignal): Promise<FoodItemInput[]> {
   const res = await fetch(`${endpoint.replace(/\/$/, '')}/food`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...REPLOOM_CLIENT_HEADERS },
     body: JSON.stringify({ text }),
     signal,
   });

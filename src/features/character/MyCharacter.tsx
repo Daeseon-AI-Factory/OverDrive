@@ -1,10 +1,8 @@
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 import { Muted, Pill, useSkinAccent } from '@/ui/primitives';
 import { colors, space, typeScale } from '@/ui/theme/tokens';
-import { hasBodyAvatarAtlas, loadBodyAvatarManifest } from '@/features/evolution/bodyAvatarClient';
 import { BodyMap, DEFAULT_BODY_AVATAR_SOURCES, type BodyAvatarSources } from './BodyMap';
 import { type BodyHitRegionId, type BodyHitView } from './bodyHitMap';
 import { CharacterAura } from './CharacterAura';
@@ -17,47 +15,18 @@ export function MyCharacter({
   onCardioPress,
   variant = 'compact',
   avatarSources,
-  avatarRefreshKey = 0,
 }: {
   activeRegion?: BodyHitRegionId | null;
   onRegionPress: (region: BodyHitRegionId) => void;
   onCardioPress: () => void;
   variant?: 'compact' | 'hero';
   avatarSources?: BodyAvatarSources;
-  avatarRefreshKey?: number;
 }) {
   const [view, setView] = useState<BodyHitView>('front');
   const { t } = useTranslation();
   const accent = useSkinAccent();
   const glow = useWeeklyRegions();
-  const [localAvatar, setLocalAvatar] = useState<BodyAvatarSources | null>(null);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (avatarSources) return undefined;
-      let alive = true;
-      void (async () => {
-        const manifest = await loadBodyAvatarManifest();
-        const available = manifest?.atlasPath ? await hasBodyAvatarAtlas() : false;
-        if (!alive) return;
-        setLocalAvatar(
-          available && manifest?.atlasPath
-            ? {
-                kind: 'atlas',
-                atlas: { uri: `${manifest.atlasPath}?r=${manifest.generationRevision}&k=${avatarRefreshKey}` },
-              }
-            : null,
-        );
-      })().catch(() => {
-        if (alive) setLocalAvatar(null);
-      });
-      return () => {
-        alive = false;
-      };
-    }, [avatarRefreshKey, avatarSources]),
-  );
-
-  const resolvedAvatar = avatarSources ?? localAvatar ?? DEFAULT_BODY_AVATAR_SOURCES;
+  const resolvedAvatar = avatarSources ?? DEFAULT_BODY_AVATAR_SOURCES;
 
   return (
     <View>

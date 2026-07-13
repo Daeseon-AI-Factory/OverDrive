@@ -2,15 +2,27 @@ name = "overdrive-quicklog"
 main = "src/index.js"
 compatibility_date = "2024-11-01"
 
-# Optional model overrides. Provider is auto-selected by which API key secret is set.
-[vars]
-GROQ_MODEL = "llama-3.3-70b-versatile"
-GROQ_WHISPER_MODEL = "whisper-large-v3"
-GEMINI_MODEL = "gemini-2.0-flash"
+# Do not retain Worker invocation/application logs for user-submitted AI requests. Cloudflare may
+# still process ordinary network/security metadata under its own service policies.
+[observability]
+enabled = false
 
-# The API key is a SECRET, not a var. Set ONE (never commit it):
-#   cd worker && npx wrangler secret put GROQ_API_KEY      # recommended (fastest)
-#   # or:      npx wrangler secret put GEMINI_API_KEY
+# Optional Groq model overrides.
+[vars]
+GROQ_MODEL = "openai/gpt-oss-120b"
+GROQ_WHISPER_MODEL = "whisper-large-v3"
+GROQ_VISION_MODEL = "qwen/qwen3.6-27b"
+
+[[ratelimits]]
+name = "AI_RATE_LIMITER"
+namespace_id = "7801001"
+
+  [ratelimits.simple]
+  limit = 30
+  period = 60
+
+# The API key is a SECRET, not a var (never commit it):
+#   cd worker && npx wrangler secret put GROQ_API_KEY
 
 [[d1_databases]]
 binding = "DB"

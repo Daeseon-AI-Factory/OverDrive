@@ -9,7 +9,6 @@ import { gradeForScore } from '@/features/combat-power/grades';
 import { AmbientAura } from '@/features/juice/AmbientAura';
 import { useJuice } from '@/features/juice/JuiceProvider';
 import { TIER_DURATION_MS } from '@/features/juice/constants';
-import { RankSection } from '@/features/rank/RankSection';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { Button, Card, Metric, Muted, ProgressTrack, Screen, SectionTitle, useAccent } from '@/ui/primitives';
 import { colors, displayGrade, hasHangul, numType, space, tracking, typeScale } from '@/ui/theme/tokens';
@@ -86,8 +85,6 @@ export default function PowerScreen() {
           </Text>
           <Text style={styles.disclaimer}>{t('power.disclaimer')}</Text>
         </View>
-
-        <RankSection />
 
         {loaded ? (
           <>

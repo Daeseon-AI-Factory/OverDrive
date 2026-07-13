@@ -5,6 +5,7 @@ import { nowIso } from '@/lib/date';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { persistSettings, useSettingsStore } from '@/stores/settingsStore';
 import { healthAvailable, readHealthSnapshot, requestHealthAuthorization } from './health';
+import { persistHealthState } from './persistHealthState';
 
 /**
  * Apple Health (iOS) connect/sync/disconnect for Settings. Reads a snapshot → stores it in settings
@@ -25,18 +26,26 @@ export function useHealth() {
   const sync = useCallback(async (): Promise<boolean> => {
     const snap = await readHealthSnapshot();
     if (!snap.connected) return false;
-    apply({
-      health: {
-        connected: true,
-        workouts7d: snap.workouts7d,
-        vo2Max: snap.vo2Max,
-        bodyMassKg: snap.bodyMassKg,
-        bodyFatFraction: snap.bodyFatFraction,
-        syncedAt: nowIso(),
-      },
+    const next = {
+      connected: true,
+      workouts7d: snap.workouts7d,
+      vo2Max: snap.vo2Max,
+      bodyMassKg: snap.bodyMassKg,
+      bodyFatFraction: snap.bodyFatFraction,
+      syncedAt: nowIso(),
+    };
+    const saved = await persistHealthState(next, {
+      current: () => useSettingsStore.getState().health,
+      apply: (health) => apply({ health }),
+      persist: () => persistSettings(db),
     });
-    await persistSettings(db);
-    await recompute();
+    if (!saved) return false;
+    try {
+      await recompute();
+    } catch (error) {
+      // The source snapshot is durably saved; a derived-score refresh can retry on next launch.
+      console.error('[health] combat power recompute failed', error);
+    }
     return true;
   }, [db, apply, recompute]);
 
@@ -46,10 +55,20 @@ export function useHealth() {
     return sync();
   }, [sync]);
 
-  const disconnect = useCallback(async (): Promise<void> => {
-    apply({ health: null });
-    await persistSettings(db);
-    await recompute();
+  const disconnect = useCallback(async (): Promise<boolean> => {
+    const saved = await persistHealthState(null, {
+      current: () => useSettingsStore.getState().health,
+      apply: (health) => apply({ health }),
+      persist: () => persistSettings(db),
+    });
+    if (!saved) return false;
+    try {
+      await recompute();
+    } catch (error) {
+      // Privacy deletion already committed; stale derived CP is corrected on the next launch.
+      console.error('[health] combat power recompute failed', error);
+    }
+    return true;
   }, [db, apply, recompute]);
 
   return { available: healthAvailable(), connected: !!health?.connected, health, connect, sync, disconnect };

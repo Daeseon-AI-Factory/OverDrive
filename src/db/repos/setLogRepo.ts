@@ -117,6 +117,92 @@ export async function nextOrderIndex(db: SQLiteDatabase, sessionId: string): Pro
   return row?.next ?? 0;
 }
 
+export interface AddSetInput {
+  sessionId: string;
+  exerciseId: string;
+  weight: number;
+  reps: number;
+  rir: number | null;
+  loggedVia?: LoggedVia;
+  userId?: string;
+}
+
+/**
+ * Insert a parsed multi-set command with one SQLite statement. A statement is SQLite's atomic
+ * boundary, so a disk/FK failure cannot leave the user with only the first few sets while the UI
+ * reports that the command failed. The in-app write gate serializes this with other set logging.
+ */
+export async function addSets(
+  db: SQLiteDatabase,
+  inputs: AddSetInput[],
+): Promise<{ row: SetLogRow; isPr: boolean }[]> {
+  if (inputs.length === 0) return [];
+  const sessionId = inputs[0].sessionId;
+  if (inputs.some((input) => input.sessionId !== sessionId)) {
+    throw new Error('batch_session_mismatch');
+  }
+
+  const exerciseIds = [...new Set(inputs.map((input) => input.exerciseId))];
+  const userId = inputs[0].userId ?? LOCAL_USER_ID;
+  if (inputs.some((input) => (input.userId ?? LOCAL_USER_ID) !== userId)) {
+    throw new Error('batch_user_mismatch');
+  }
+  const previousBest = new Map<string, number | null>();
+  await Promise.all(
+    exerciseIds.map(async (exerciseId) => {
+      previousBest.set(exerciseId, await getBestScoreForExercise(db, exerciseId, userId));
+    }),
+  );
+  const firstOrderIndex = await nextOrderIndex(db, sessionId);
+  const at = nowIso();
+  const atMs = Date.parse(at);
+  const output = inputs.map((input, index) => {
+    const best = previousBest.get(input.exerciseId) ?? null;
+    const { isPr, score } = detectPr({ weight: input.weight, reps: input.reps }, best);
+    previousBest.set(input.exerciseId, best == null ? score : Math.max(best, score));
+    const row: SetLogRow = {
+      id: newUuid(),
+      client_uuid: newUuid(),
+      session_id: input.sessionId,
+      exercise_id: input.exerciseId,
+      weight: input.weight,
+      reps: input.reps,
+      rir: input.rir,
+      order_index: firstOrderIndex + index,
+      is_pr: isPr ? 1 : 0,
+      score,
+      logged_via: input.loggedVia ?? 'quick',
+      // Keep batch insertion atomic while preserving the user's spoken order for recents/history
+      // queries that sort by logged_at. ISO millisecond increments remain within one command.
+      logged_at: new Date(atMs + index).toISOString(),
+    };
+    return { row, isPr };
+  });
+
+  const placeholders = output.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+  const params = output.flatMap(({ row }) => [
+    row.id,
+    row.client_uuid,
+    row.session_id,
+    row.exercise_id,
+    row.weight,
+    row.reps,
+    row.rir,
+    row.order_index,
+    row.is_pr,
+    row.score,
+    row.logged_via,
+    row.logged_at,
+  ]);
+  await db.runAsync(
+    `INSERT INTO set_log
+       (id, client_uuid, session_id, exercise_id, weight, reps, rir, order_index, is_pr, score, logged_via, logged_at)
+     VALUES ${placeholders}`,
+    params,
+  );
+  return output;
+}
+
 /**
  * Insert one set. Runs PR detection against the exercise's prior best, stores is_pr + score.
  * The ONLY awaited write on the logging hot path — JUICE fires AFTER this resolves (never blocks).
@@ -229,6 +315,17 @@ export async function deleteSet(db: SQLiteDatabase, setId: string): Promise<SetL
     if (result.changes > 0) deleted = row;
   });
   return deleted;
+}
+
+/** Delete one quick-log command as a single SQLite statement (and therefore one atomic boundary). */
+export async function deleteSets(db: SQLiteDatabase, setIds: string[]): Promise<number> {
+  const uniqueIds = [...new Set(setIds)];
+  if (uniqueIds.length === 0) return 0;
+  const result = await db.runAsync(
+    `DELETE FROM set_log WHERE id IN (${uniqueIds.map(() => '?').join(',')})`,
+    uniqueIds,
+  );
+  return result.changes;
 }
 
 /** Set row tagged with its session's local calendar date — feeds the history daily timeline. */

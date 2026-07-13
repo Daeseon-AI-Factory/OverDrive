@@ -1,7 +1,8 @@
 # Health-data integration & platform compliance
 
-> **Status:** Launch-blocking reference. Last updated 2026-06-02.
-> **Scope:** Apple HealthKit (iOS) + Android Health Connect — the exact data types OVERDRIVE reads/writes, the platform review/policy checklists, and the official documentation. Maps the OVERDRIVE spec's data sources (workouts, energy, heart rate, VO2max, body composition, fitness tests) to concrete platform identifiers.
+> **Status:** Launch-blocking reference. iOS v1 scope reconciled 2026-07-12.
+> **Scope:** Apple HealthKit (iOS) + future Android Health Connect. The iOS v1 list below is the
+> exact release permission surface; broader ideas remain future work and must not be requested.
 > **Caveat:** Apple's developer-doc pages are JavaScript-rendered and could not be machine-fetched in full; identifier names below are confirmed against Apple's per-identifier doc pages and the canonical `HKQuantityTypeIdentifier` reference (URLs cited). Re-verify exact spelling against the live Apple docs in Xcode autocomplete before shipping.
 
 ---
@@ -17,35 +18,28 @@ Per CLAUDE.md non-negotiable §4 and Apple/Google policy:
 
 ## 1. Apple HealthKit (iOS)
 
-### 1.1 Data types to READ (for Combat Power computation)
+### 1.1 V1 data types to READ (exact minimum)
 
 | OVERDRIVE concept | HealthKit type | Identifier | Apple doc |
 |---|---|---|---|
 | Workouts (sessions, activity type, duration) | `HKWorkoutType` | `HKObjectType.workoutType()` | [HKWorkoutType](https://developer.apple.com/documentation/healthkit/hkworkouttype), [HKWorkoutActivityType](https://developer.apple.com/documentation/healthkit/hkworkoutactivitytype) |
-| Active energy burned (kcal) | `HKQuantityType` | `activeEnergyBurned` | [activeEnergyBurned](https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier/activeenergyburned) |
-| Basal/resting energy | `HKQuantityType` | `basalEnergyBurned` | [basalEnergyBurned](https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier/basalenergyburned) |
-| Heart rate | `HKQuantityType` | `heartRate` | [heartRate](https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier/heartrate) |
-| Resting heart rate | `HKQuantityType` | `restingHeartRate` | [HKQuantityTypeIdentifier ref](https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier) |
 | VO2 max (cardio fitness) | `HKQuantityType` | `vo2Max` | [vo2Max](https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier/vo2max) |
 | Body mass (weight) | `HKQuantityType` | `bodyMass` | [bodyMass](https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier/bodymass) |
 | Body fat % | `HKQuantityType` | `bodyFatPercentage` | [bodyFatPercentage](https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier/bodyfatpercentage) |
-| Lean body mass | `HKQuantityType` | `leanBodyMass` | [HKQuantityTypeIdentifier ref](https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier) |
-| Height | `HKQuantityType` | `height` | [HKQuantityTypeIdentifier ref](https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier) |
-| Step count | `HKQuantityType` | `stepCount` | [HKQuantityTypeIdentifier ref](https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier) |
-| Distance (walk/run) | `HKQuantityType` | `distanceWalkingRunning` | [HKQuantityTypeIdentifier ref](https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier) |
 
 > Identifier names verified against Apple's per-identifier pages where individually cited; the rest against the canonical [`HKQuantityTypeIdentifier`](https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier) list and [Data types](https://developer.apple.com/documentation/healthkit/data-types). `Verified by:` individual Apple doc pages above. Confirm exact casing in Xcode before shipping.
 
 ### 1.2 Data types to WRITE (share/write authorization)
 
-Write **only** real, user-performed activity logged in-app:
-- `HKWorkoutType` — the strength/cardio session the user actually completed (start/end time + `HKWorkoutActivityType`, e.g. `.traditionalStrengthTraining`, `.functionalStrengthTraining`).
-- Optionally `activeEnergyBurned` / `heartRate` samples attached to that workout, **only if genuinely measured** (do not synthesize).
+Write **only** real values logged or entered in-app:
+- `HKWorkoutType` — a strength session the user actually completed.
+- `bodyMass` — body weight the user entered.
+- `bodyFatPercentage` — body-fat value the user entered.
 - **Never write:** Combat Power, "aura level," or any gamified/derived number. Writing fabricated data violates Apple 5.1.3 ("must not write false or inaccurate data into HealthKit").
 
 ### 1.3 Required Info.plist usage strings
-- `NSHealthShareUsageDescription` — why OVERDRIVE **reads** health data ("OVERDRIVE reads your workouts, energy, heart rate, and body metrics on your device to calculate your Combat Power score.").
-- `NSHealthUpdateUsageDescription` — why OVERDRIVE **writes** ("OVERDRIVE saves the strength workouts you log so they appear in Apple Health.").
+- `NSHealthShareUsageDescription` — “Reploom reads workouts, VO2 max, body weight, and body fat to show your fitness progress and calculate the for-fun Combat Power score.”
+- `NSHealthUpdateUsageDescription` — “Reploom saves only workouts, body weight, and body fat that you log or enter so they can appear in Apple Health.”
 These are mandatory or the app crashes on the authorization call; they are also surfaced to App Review.
 
 ### 1.4 App Store health-app review checklist (must pass)
@@ -54,15 +48,16 @@ From the [App Review Guidelines](https://developer.apple.com/app-store/review/gu
 
 - [ ] **Privacy policy is required and linked** (App Store Connect metadata + in-app). Apps that use HealthKit, include login, or collect user data **must** have a privacy policy and obtain consent. (5.1.1 / 5.1.2)
 - [ ] **Explicit user consent** for data collection, and a simple way to **withdraw** consent. Paid features must not depend on or gate access to this data. (5.1.2)
-- [ ] **No iCloud storage of HealthKit data.** Quoted: *"Apps must not write false or inaccurate data into HealthKit … and may not store personal health information in iCloud."* (5.1.3(ii)) — OVERDRIVE Phase 1 is on-device; keep HealthKit-derived data out of CloudKit/iCloud entirely.
+- [x] **No iCloud storage of HealthKit data in the release design.** A tracked Expo config plugin creates `Documents/SQLite`, sets complete file protection, and excludes the entire directory (database/WAL/SHM) from backup. Runtime verification remains required for each release archive.
 - [ ] **No advertising / data-mining / sale.** Quoted intent: apps *"may not use or disclose to third parties data gathered in the health, fitness, and medical research context — including from the HealthKit API … for advertising or other use-based data mining purposes other than improving health management."* (5.1.3(i)) Matches spec §4: no ads, marketing, data-mining, or sale (incl. third parties).
-- [ ] **No third-party sharing without explicit permission**, including third-party AI (5.1.2(i), 2025 update). OVERDRIVE Phase 1 sends nothing off-device; if Phase 2+ adds a backend or LLM, this clause governs it.
+- [x] **No third-party sharing without explicit permission**, including third-party AI. HealthKit records never leave device; optional user-entered logging content uses a separate versioned Remote AI consent that defaults off.
 - [ ] **Minimum necessary data** — only request types tied to a real feature (5.1.1).
 - [ ] **No writing false/derived data** (Combat Power stays in-app). (5.1.3)
 
 Sources: [App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/), [Protecting user privacy (HealthKit)](https://developer.apple.com/documentation/healthkit/protecting-user-privacy), [User Privacy and Data Use](https://developer.apple.com/app-store/user-privacy-and-data-use/).
 
-> **Engineering note:** HealthKit requires a real device + Expo **dev client** (not Expo Go), per CLAUDE.md §10.
+> **Engineering note:** HealthKit behavior still requires a signed native build and physical-device
+> validation. `expo-dev-client` is intentionally absent from the App Store Release archive.
 
 ---
 
@@ -127,7 +122,7 @@ Sources: [Health Connect get started](https://developer.android.com/health-and-f
 
 ## 3. Cross-platform compliance summary (both stores)
 
-1. **Privacy policy: mandatory** on both, linked in-app and in store listings. (See `privacy-policy-draft.md`.)
+1. **Privacy policy: mandatory** on both, linked in-app and in store listings. (See `privacy-policy.md`.)
 2. **Explicit consent + easy withdrawal/deletion.**
 3. **Minimum-necessary data only.**
 4. **No iCloud for HealthKit data** (Apple); on-device-first overall (Phase 1).

@@ -1,4 +1,34 @@
-import { normalizeFoodItems } from './parseFoodAI';
+import {
+  FileSystemUploadType,
+  createUploadTask,
+  type FileSystemUploadResult,
+} from 'expo-file-system/legacy';
+import { normalizeFoodItems, parseFoodPhoto } from './parseFoodAI';
+
+jest.mock('expo-file-system/legacy', () => ({
+  FileSystemUploadType: { MULTIPART: 'multipart' },
+  createUploadTask: jest.fn(),
+}));
+
+const mockedCreateUploadTask = jest.mocked(createUploadTask);
+
+function uploadResult(status: number, body: string): FileSystemUploadResult {
+  return { status, body, headers: {} } as FileSystemUploadResult;
+}
+
+function installUploadTask(uploadAsync: () => Promise<FileSystemUploadResult | null | undefined>) {
+  const task = {
+    uploadAsync: jest.fn(uploadAsync),
+    cancelAsync: jest.fn(async () => undefined),
+  };
+  mockedCreateUploadTask.mockReturnValue(task as unknown as ReturnType<typeof createUploadTask>);
+  return task;
+}
+
+afterEach(() => {
+  jest.clearAllMocks();
+  jest.useRealTimers();
+});
 
 describe('normalizeFoodItems', () => {
   it('keeps named items, rounds + clamps numbers', () => {
@@ -30,5 +60,68 @@ describe('normalizeFoodItems', () => {
   it('negative values clamp to 0', () => {
     const out = normalizeFoodItems({ items: [{ name: 'weird', kcal: -50, proteinG: -3 }] });
     expect(out).toEqual([{ name: 'weird', kcal: 0, proteinG: 0 }]);
+  });
+});
+
+describe('parseFoodPhoto', () => {
+  it('uploads with the native task and returns normalized food items', async () => {
+    const task = installUploadTask(async () =>
+      uploadResult(200, JSON.stringify({ items: [{ name: 'rice', kcal: 301.4, proteinG: 6.2 }] })),
+    );
+
+    await expect(parseFoodPhoto('file:///meal.jpg', 'https://worker.example/')).resolves.toEqual([
+      { name: 'rice', kcal: 301, proteinG: 6 },
+    ]);
+    expect(mockedCreateUploadTask).toHaveBeenCalledWith(
+      'https://worker.example/food',
+      'file:///meal.jpg',
+      expect.objectContaining({
+        httpMethod: 'POST',
+        uploadType: FileSystemUploadType.MULTIPART,
+        fieldName: 'file',
+        mimeType: 'image/jpeg',
+        headers: { 'x-reploom-client': 'ios-v1' },
+      }),
+    );
+    expect(task.cancelAsync).not.toHaveBeenCalled();
+  });
+
+  it('cancels the native upload and rejects when the 20 second deadline expires', async () => {
+    jest.useFakeTimers();
+    const task = installUploadTask(() => new Promise(() => {}));
+
+    const result = parseFoodPhoto('file:///meal.jpg', 'https://worker.example');
+    const rejected = expect(result).rejects.toThrow('food photo timed out');
+    await jest.advanceTimersByTimeAsync(20_000);
+
+    await rejected;
+    expect(task.cancelAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels the native upload when the caller aborts', async () => {
+    const task = installUploadTask(() => new Promise(() => {}));
+    const controller = new AbortController();
+
+    const result = parseFoodPhoto('file:///meal.jpg', 'https://worker.example', controller.signal);
+    controller.abort();
+
+    await expect(result).rejects.toThrow('food photo cancelled');
+    expect(task.cancelAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves upload failures without reporting a cancellation', async () => {
+    const task = installUploadTask(async () => {
+      throw new Error('network down');
+    });
+
+    await expect(parseFoodPhoto('file:///meal.jpg', 'https://worker.example')).rejects.toThrow('network down');
+    expect(task.cancelAsync).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-success HTTP responses', async () => {
+    const task = installUploadTask(async () => uploadResult(503, '{"error":"unavailable"}'));
+
+    await expect(parseFoodPhoto('file:///meal.jpg', 'https://worker.example')).rejects.toThrow('food photo 503');
+    expect(task.cancelAsync).not.toHaveBeenCalled();
   });
 });

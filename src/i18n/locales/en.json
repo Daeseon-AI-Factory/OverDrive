@@ -37,7 +37,7 @@
     "cardioBody": "Running, cycling, intervals, rowing, and more.",
     "byRegion": "TRAINING AVATAR",
     "regionBody": "Tap the front or back. Today's plan and your recent movements come first.",
-    "avatarPreview": "Default sportswear avatar · a photo-based avatar is generated only when you choose it."
+    "avatarPreview": "Sportswear training avatar · taps map to fixed exercise regions."
   },
   "today": {
     "combatPowerLabel": "COMBAT POWER",
@@ -99,6 +99,7 @@
       "no_recording": "No recording captured — tap the mic, speak, then tap stop.",
       "empty_voice": "Didn't hear anything — speak, then tap stop.",
       "mic_denied": "Voice needs microphone permission.",
+      "ai_consent_required": "Remote AI is off — enable it in Settings, or log locally with the \"bench 100 5\" format.",
       "no_voice": "Voice needs the AI endpoint set (.env)."
     }
   },
@@ -109,7 +110,7 @@
       "verified": "Verified data"
     },
     "empty": "No data yet. Log a set on the Today tab and your Combat Power appears.",
-    "verifiedExplainer": "Verified {pct}% — watch/import/sensor data adds a bonus to Combat Power. In Phase 1 everything is self-reported, so the bonus is 0. (Self-reported data is never penalized.)",
+    "verifiedExplainer": "Verified {pct}% — authorized Apple Health data can add a trust bonus to Combat Power. Self-reported logs still count and are never penalized.",
     "demoFire": "⚡ Replay power burst (for clips)"
   },
   "history": {
@@ -148,13 +149,40 @@
     "kcal": "{n} kcal",
     "fail": "Couldn't estimate — try simpler wording.",
     "saveFailed": "Couldn't save that meal. Nothing was added — try again.",
-    "photoUnavailable": "Photo estimate needs the AI endpoint set (.env)."
+    "photoUnavailable": "Photo estimate needs the AI endpoint set (.env).",
+    "aiConsent": {
+      "required": "Remote AI is off — enable it in Settings before estimating a meal.",
+      "explainer": "Meal text and selected photos need optional remote AI processing. Repeating a saved meal stays local.",
+      "settings": "AI SETTINGS"
+    }
   },
   "rest": {
     "label": "REST"
   },
   "settings": {
     "title": "Settings",
+    "remoteAi": {
+      "section": "Remote AI processing",
+      "label": "I am 18+ and allow remote AI",
+      "explainer": "By turning this on, you confirm that you are 18 or older and consent to Reploom sending selected input through its Cloudflare Worker to Groq: workout text with your unit setting and exercise catalog names/IDs; microphone audio for transcription and, if local matching cannot resolve it, the transcript with the same workout context; and meal text/photos you submit. Groq's processing policies apply. You can turn this off at any time; local workout quick logging remains available.",
+      "on": "ON · Current disclosure accepted",
+      "off": "OFF · Nothing is sent to Groq"
+    },
+    "legal": {
+      "section": "Privacy, support & terms",
+      "privacy": "Privacy Policy",
+      "support": "Support",
+      "terms": "Terms of Use",
+      "data": "Data Controls",
+      "openFailed": "Couldn't open that page. Check your connection and try again.",
+      "legacyRankDelete": "Delete legacy leaderboard data",
+      "legacyRankDeleting": "Deleting legacy leaderboard data…",
+      "legacyRankHint": "Only shown if this device joined the retired TestFlight leaderboard.",
+      "legacyRankDeleteConfirm": "This permanently deletes this device's retired leaderboard row from Reploom's server. Your local workout history is not affected.",
+      "legacyRankDeleted": "Legacy leaderboard data was deleted.",
+      "legacyRankDeleteFailed": "Couldn't delete the legacy leaderboard data. Nothing local was changed; try again.",
+      "delete": "Delete"
+    },
     "juice": {
       "section": "JUICE intensity",
       "full": "Full",
@@ -171,7 +199,7 @@
       "pill": "{step}kg",
       "explainer": "How much the +/- buttons change the weight per tap in the set logger."
     },
-    "footer": "Reploom · local MVP. Combat Power is a for-fun original formula.",
+    "footer": "Reploom · Combat Power is for fun, not medical advice.",
     "language": {
       "section": "Language"
     },
@@ -208,7 +236,7 @@
     },
     "theme": {
       "section": "Theme",
-      "explainer": "Your theme swaps the callouts, colors and EVOLUTION character that explode when you log."
+      "explainer": "Your theme swaps the callouts, colors, and interface accents that fire when you log."
     },
     "skin": {
       "section": "Skin",
@@ -448,82 +476,6 @@
     "title": "Discipline · today",
     "protein": "🥩 Protein",
     "rest": "😴 Slept well"
-  },
-  "evolution": {
-    "title": "Evolution",
-    "intro": "Pick a photo of yourself — the AI evolves it to match your grade. It only ever levels UP.",
-    "pick": "Pick my photo",
-    "evolving": "EVOLVING…",
-    "tagEvolved": "{grade} FORM — tap to compare",
-    "tagOriginal": "ORIGINAL — tap to flip back",
-    "reEvolve": "Re-evolve as {grade} ⚡",
-    "changePhoto": "Change photo",
-    "fail": "Evolution failed —",
-    "noEndpoint": "Needs the AI endpoint (.env) + GEMINI_API_KEY on the worker.",
-    "privacy": "Your photo is sent through the Reploom Worker to Google Gemini. Reploom does not retain it on its server.",
-    "share": "🔥 Share",
-    "shareCaption": "Combat Power {cp} · {grade} 💥 I evolved my workouts into a hero #fitness #gym #workout"
-  },
-  "bodyAvatar": {
-    "open": "Create my photo-based avatar",
-    "title": "Photo-based training avatar",
-    "subtitle": "Your photo is sent only to make a fixed front-and-back sportswear avatar. The result is not a body measurement.",
-    "outfit": {
-      "title": "Sportswear",
-      "sleeveless": "Sleeveless + shorts",
-      "sport_top": "Performance top + shorts",
-      "compression": "Compression set"
-    },
-    "photo": {
-      "pick": "Choose my photo",
-      "change": "Choose another photo",
-      "ready": "Photo ready on this device · not sent yet"
-    },
-    "consent": {
-      "title": "Confirm before generation",
-      "provider": "When you generate, the selected photo is sent through the Reploom Worker to Google Gemini and Google's processing policies apply.",
-      "adultConfirmed": "I am 18 or older",
-      "ownershipConfirmed": "This is my photo and I have the right to use it",
-      "aiConsent": "I consent to Google AI processing and avatar generation"
-    },
-    "generate": "Generate sportswear avatar",
-    "generating": "Generating avatar…",
-    "cancelGeneration": "Cancel generation",
-    "cancel": "Cancel",
-    "preview": {
-      "title": "Check the front-and-back preview",
-      "instructions": "Use it only if the left panel is a complete front view, the right panel is a complete back view, and both heads and feet line up.",
-      "confirm": "Both full-body views are present and aligned",
-      "use": "Use this training avatar",
-      "activating": "Applying avatar…",
-      "retry": "Discard and try again"
-    },
-    "delete": {
-      "title": "Delete my avatar data",
-      "body": "Delete the original photo and generated avatar from this device.",
-      "action": "Delete photo and avatar"
-    },
-    "error": {
-      "pick": "Couldn't prepare that photo. Try another one.",
-      "timeout": "Generation timed out. Your photo is still on this device.",
-      "generate": "Couldn't generate the avatar. You can keep using the default avatar.",
-      "activate": "Couldn't apply that preview. The current avatar is unchanged.",
-      "delete": "Couldn't delete the avatar data. Try again."
-    }
-  },
-  "rank": {
-    "title": "Rankings",
-    "optIn": "Pick a handle to join the global leaderboard. Until then, nothing leaves your device.",
-    "handlePlaceholder": "HANDLE (e.g. DAESEON)",
-    "crewPlaceholder": "CREW CODE (your gym, e.g. IRON-GYM)",
-    "join": "JOIN",
-    "tabWeek": "WEEKLY ↑",
-    "tabCp": "POWER",
-    "tabCrew": "CREW",
-    "myRank": "#{rank}",
-    "empty": "Board's empty — share your crew code and fill it.",
-    "offline": "Couldn't reach the leaderboard.",
-    "selfReport": "Phase 1: self-reported scores · verified tiers coming later"
   },
   "arena": {
     "title": "Arena",

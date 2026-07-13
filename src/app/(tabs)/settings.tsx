@@ -1,14 +1,21 @@
 import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
+import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { updateLocale } from '@/db/repos/userRepo';
 import { useHealth } from '@/features/health/useHealth';
 import { Stepper } from '@/features/logging/Stepper';
+import { QUICKLOG_ENDPOINT } from '@/features/quicklog/config';
+import { deleteLegacyRank } from '@/features/rank/rankClient';
 import { THEME_IDS, THEMES, getTheme } from '@/features/theme/themes';
 import i18n, { LOCALE_LABEL, SUPPORTED_LOCALES, type AppLocale } from '@/i18n';
-import type { JuiceIntensity } from '@/lib/settings';
+import {
+  hasCurrentRemoteAiConsent,
+  REMOTE_AI_CONSENT_VERSION,
+  type JuiceIntensity,
+} from '@/lib/settings';
 import { displayToKg, kgToDisplay, weightUnit, type UnitSystem } from '@/lib/units';
 import { currentSettings, persistSettings, useSettingsStore } from '@/stores/settingsStore';
 import { Button, Card, Muted, Pill, Screen, SectionTitle, useAccent } from '@/ui/primitives';
@@ -21,6 +28,13 @@ const PROTEIN_PER_KG = 1.8;
 
 const INTENSITY: JuiceIntensity[] = ['full', 'mid', 'minimal'];
 const UNIT_SYSTEMS: UnitSystem[] = ['metric', 'imperial'];
+const PUBLIC_SITE_ORIGIN = 'https://reploom.pages.dev';
+const LEGAL_LINKS = [
+  { key: 'privacy', url: `${PUBLIC_SITE_ORIGIN}/privacy` },
+  { key: 'support', url: `${PUBLIC_SITE_ORIGIN}/support` },
+  { key: 'terms', url: `${PUBLIC_SITE_ORIGIN}/terms` },
+  { key: 'data', url: `${PUBLIC_SITE_ORIGIN}/data` },
+] as const;
 
 // Alert-only copy kept inline (the locale catalogs are owned by a separate workstream; every other
 // string here reuses existing keys). Disconnect is destructive — it wipes the synced health data
@@ -48,12 +62,16 @@ export default function SettingsScreen() {
   const startWeightKg = useSettingsStore((s) => s.startWeightKg);
   const proteinTargetG = useSettingsStore((s) => s.proteinTargetG);
   const customProgram = useSettingsStore((s) => s.customProgram);
+  const rankDeviceId = useSettingsStore((s) => s.rankDeviceId);
+  const remoteAiConsent = useSettingsStore((s) => s.remoteAiConsent);
   const apply = useSettingsStore((s) => s.apply);
   const setLocale = useSettingsStore((s) => s.setLocale);
   const hk = useHealth();
   const activeTheme = getTheme(aestheticPref);
   const [syncing, setSyncing] = useState(false);
   const [syncedFlash, setSyncedFlash] = useState(false); // brief ✓ so a successful sync is visible
+  const [deletingLegacyRank, setDeletingLegacyRank] = useState(false);
+  const remoteAiAllowed = hasCurrentRemoteAiConsent(remoteAiConsent);
   const onSyncHealth = async () => {
     setSyncing(true);
     setSyncedFlash(false);
@@ -75,10 +93,14 @@ export default function SettingsScreen() {
     // Success is self-evident (the card flips to the connected state); failure needs saying.
     if (!ok) Alert.alert(t('settings.health.connect'), t('inbody.saveFailed'));
   };
+  const onDisconnectHealth = async () => {
+    const ok = await hk.disconnect();
+    if (!ok) Alert.alert(t('settings.health.disconnect'), t('common.saveFailed'));
+  };
   const confirmDisconnect = () => {
     Alert.alert(t('settings.health.disconnect'), DISCONNECT_CONFIRM[locale], [
       { text: CANCEL_LABEL[locale], style: 'cancel' },
-      { text: t('settings.health.disconnect'), style: 'destructive', onPress: () => void hk.disconnect() },
+      { text: t('settings.health.disconnect'), style: 'destructive', onPress: () => void onDisconnectHealth() },
     ]);
   };
 
@@ -95,14 +117,16 @@ export default function SettingsScreen() {
     vo2: h?.vo2Max != null ? h.vo2Max.toFixed(0) : '—',
   };
 
-  const persist = async (patch: Partial<ReturnType<typeof currentSettings>>) => {
+  const persist = async (patch: Partial<ReturnType<typeof currentSettings>>): Promise<boolean> => {
     const prev = currentSettings();
     apply(patch);
     const ok = await persistSettings(db);
     if (!ok) {
       apply(prev);
       Alert.alert(t('common.saveFailed'));
+      return false;
     }
+    return true;
   };
 
   const changeLanguage = async (l: AppLocale) => {
@@ -117,6 +141,44 @@ export default function SettingsScreen() {
       await i18n.changeLanguage(prev).catch(() => {});
       Alert.alert(t('common.saveFailed'));
     }
+  };
+
+  const openLegalPage = async (url: string) => {
+    try {
+      await WebBrowser.openBrowserAsync(url);
+    } catch {
+      Alert.alert(t('settings.legal.openFailed'));
+    }
+  };
+
+  const deleteLegacyRankData = async () => {
+    const deviceId = currentSettings().rankDeviceId;
+    if (!deviceId || deletingLegacyRank) return;
+    setDeletingLegacyRank(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      await deleteLegacyRank(QUICKLOG_ENDPOINT, deviceId, controller.signal);
+      const clearedLocally = await persist({ rankHandle: null, rankCrew: null, rankDeviceId: null });
+      if (!clearedLocally) return;
+      Alert.alert(t('settings.legal.legacyRankDeleted'));
+    } catch {
+      Alert.alert(t('settings.legal.legacyRankDeleteFailed'));
+    } finally {
+      clearTimeout(timeout);
+      setDeletingLegacyRank(false);
+    }
+  };
+
+  const confirmLegacyRankDeletion = () => {
+    Alert.alert(t('settings.legal.legacyRankDelete'), t('settings.legal.legacyRankDeleteConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('settings.legal.delete'),
+        style: 'destructive',
+        onPress: () => void deleteLegacyRankData(),
+      },
+    ]);
   };
 
   return (
@@ -197,6 +259,31 @@ export default function SettingsScreen() {
             </View>
             <Text style={styles.chevron}>›</Text>
           </Pressable>
+        </Card>
+
+        <SectionTitle>{t('settings.remoteAi.section')}</SectionTitle>
+        <Card>
+          <View style={styles.switchRow}>
+            <Text style={[styles.label, styles.switchLabel]}>{t('settings.remoteAi.label')}</Text>
+            <Switch
+              value={remoteAiAllowed}
+              onValueChange={(enabled) =>
+                void persist({
+                  remoteAiConsent: enabled
+                    ? { version: REMOTE_AI_CONSENT_VERSION, acceptedAt: new Date().toISOString() }
+                    : null,
+                })
+              }
+              trackColor={{ true: accent.solid, false: colors.surface3 }}
+              thumbColor={colors.text}
+              accessibilityLabel={t('settings.remoteAi.label')}
+              accessibilityHint={t('settings.remoteAi.explainer')}
+            />
+          </View>
+          <Muted style={{ marginTop: space.sm }}>{t('settings.remoteAi.explainer')}</Muted>
+          <Muted style={{ marginTop: space.xs }}>
+            {remoteAiAllowed ? t('settings.remoteAi.on') : t('settings.remoteAi.off')}
+          </Muted>
         </Card>
 
         {hk.available ? (
@@ -325,7 +412,7 @@ export default function SettingsScreen() {
             <Text style={styles.label}>{t('settings.sound.label')}</Text>
             <Switch
               value={soundOn}
-              onValueChange={(v) => persist({ soundOn: v })}
+              onValueChange={(v) => void persist({ soundOn: v })}
               trackColor={{ true: accent.solid, false: colors.surface3 }}
               thumbColor={colors.text}
             />
@@ -342,6 +429,44 @@ export default function SettingsScreen() {
           <Muted style={{ marginTop: space.sm }}>{t('settings.weightStep.explainer')}</Muted>
         </Card>
 
+        <SectionTitle>{t('settings.legal.section')}</SectionTitle>
+        <Card>
+          {LEGAL_LINKS.map((link, index) => (
+            <Pressable
+              key={link.key}
+              accessibilityRole="link"
+              accessibilityLabel={t(`settings.legal.${link.key}`)}
+              onPress={() => void openLegalPage(link.url)}
+              style={({ pressed }) => [
+                styles.navRow,
+                index > 0 && styles.navRowDivided,
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <Text style={styles.label}>{t(`settings.legal.${link.key}`)}</Text>
+              <Text style={styles.chevron}>›</Text>
+            </Pressable>
+          ))}
+          {rankDeviceId ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('settings.legal.legacyRankDelete')}
+              disabled={deletingLegacyRank}
+              onPress={confirmLegacyRankDeletion}
+              style={({ pressed }) => [styles.navRow, styles.navRowDivided, pressed && { opacity: 0.7 }]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.deleteLabel}>
+                  {deletingLegacyRank
+                    ? t('settings.legal.legacyRankDeleting')
+                    : t('settings.legal.legacyRankDelete')}
+                </Text>
+                <Muted>{t('settings.legal.legacyRankHint')}</Muted>
+              </View>
+            </Pressable>
+          ) : null}
+        </Card>
+
         <Muted style={{ marginTop: space.xl }}>{t('settings.footer')}</Muted>
       </ScrollView>
     </Screen>
@@ -352,8 +477,10 @@ const styles = StyleSheet.create({
   title: { ...typeScale.title, color: colors.text, marginTop: space.lg },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 32 },
+  switchLabel: { flex: 1, marginRight: space.md },
   // Settings is a quiet monochrome list — rows 52pt, body-weight labels, hairline seams.
   label: { ...typeScale.body, color: colors.text },
+  deleteLabel: { ...typeScale.body, color: colors.danger },
   navRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   navRowDivided: {
     marginTop: space.sm,

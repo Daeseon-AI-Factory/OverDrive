@@ -14,9 +14,6 @@ import { EMPTY_HEALTH_SNAPSHOT, type HealthSnapshot } from './types';
 // to a real Combat Power input.
 const READ_TYPES = [
   'HKWorkoutTypeIdentifier',
-  'HKQuantityTypeIdentifierActiveEnergyBurned',
-  'HKQuantityTypeIdentifierHeartRate',
-  'HKQuantityTypeIdentifierRestingHeartRate',
   'HKQuantityTypeIdentifierVO2Max',
   'HKQuantityTypeIdentifierBodyMass',
   'HKQuantityTypeIdentifierBodyFatPercentage',
@@ -28,7 +25,6 @@ const WRITE_TYPES = [
   'HKWorkoutTypeIdentifier',
   'HKQuantityTypeIdentifierBodyMass',
   'HKQuantityTypeIdentifierBodyFatPercentage',
-  'HKQuantityTypeIdentifierLeanBodyMass',
 ] as const;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -64,35 +60,28 @@ export async function writeWorkout(start: Date, end: Date): Promise<void> {
 }
 
 /** Write the user's body weight (kg) to Apple Health. Real measured data only. Never throws. */
-export async function writeBodyMass(kg: number): Promise<void> {
-  if (!healthAvailable() || !(kg > 0)) return;
+export async function writeBodyMass(kg: number): Promise<boolean> {
+  if (!healthAvailable() || !Number.isFinite(kg) || !(kg > 0)) return false;
   try {
     const now = new Date();
-    await saveQuantitySample('HKQuantityTypeIdentifierBodyMass', 'kg', kg, now, now);
+    const saved = await saveQuantitySample('HKQuantityTypeIdentifierBodyMass', 'kg', kg, now, now);
+    return saved != null;
   } catch (e) {
     console.error('[health] writeBodyMass failed', e);
+    return false;
   }
 }
 
 /** Write body-fat as a FRACTION (0..1) to Apple Health (HealthKit % unit is a fraction). Never throws. */
-export async function writeBodyFat(fraction: number): Promise<void> {
-  if (!healthAvailable() || !(fraction >= 0)) return;
+export async function writeBodyFat(fraction: number): Promise<boolean> {
+  if (!healthAvailable() || !Number.isFinite(fraction) || !(fraction >= 0 && fraction <= 1)) return false;
   try {
     const now = new Date();
-    await saveQuantitySample('HKQuantityTypeIdentifierBodyFatPercentage', '%', fraction, now, now);
+    const saved = await saveQuantitySample('HKQuantityTypeIdentifierBodyFatPercentage', '%', fraction, now, now);
+    return saved != null;
   } catch (e) {
     console.error('[health] writeBodyFat failed', e);
-  }
-}
-
-/** Write lean/muscle body mass (kg) to Apple Health. Never throws. */
-export async function writeLeanBodyMass(kg: number): Promise<void> {
-  if (!healthAvailable() || !(kg > 0)) return;
-  try {
-    const now = new Date();
-    await saveQuantitySample('HKQuantityTypeIdentifierLeanBodyMass', 'kg', kg, now, now);
-  } catch (e) {
-    console.error('[health] writeLeanBodyMass failed', e);
+    return false;
   }
 }
 
@@ -100,15 +89,21 @@ export async function writeLeanBodyMass(kg: number): Promise<void> {
 export async function writeBodyComposition(input: {
   weightKg?: number | null;
   bodyFatFraction?: number | null;
-  leanMassKg?: number | null;
 }): Promise<boolean> {
   if (!healthAvailable()) return false;
   const ok = await requestHealthAuthorization();
   if (!ok) return false;
-  if (input.weightKg != null) await writeBodyMass(input.weightKg);
-  if (input.bodyFatFraction != null) await writeBodyFat(input.bodyFatFraction);
-  if (input.leanMassKg != null) await writeLeanBodyMass(input.leanMassKg);
-  return true;
+  let attempted = false;
+  let savedAll = true;
+  if (input.weightKg != null) {
+    attempted = true;
+    savedAll = (await writeBodyMass(input.weightKg)) && savedAll;
+  }
+  if (input.bodyFatFraction != null) {
+    attempted = true;
+    savedAll = (await writeBodyFat(input.bodyFatFraction)) && savedAll;
+  }
+  return attempted && savedAll;
 }
 
 async function recent(id: Parameters<typeof getMostRecentQuantitySample>[0]): Promise<number | null> {
@@ -132,13 +127,12 @@ export async function readHealthSnapshot(): Promise<HealthSnapshot> {
     } catch (e) {
       console.error('[health] workout query failed', e);
     }
-    const [bodyMassKg, bodyFatFraction, vo2Max, restingHeartRate] = await Promise.all([
+    const [bodyMassKg, bodyFatFraction, vo2Max] = await Promise.all([
       recent('HKQuantityTypeIdentifierBodyMass'),
       recent('HKQuantityTypeIdentifierBodyFatPercentage'),
       recent('HKQuantityTypeIdentifierVO2Max'),
-      recent('HKQuantityTypeIdentifierRestingHeartRate'),
     ]);
-    return { connected: true, workouts7d, bodyMassKg, bodyFatFraction, vo2Max, restingHeartRate };
+    return { connected: true, workouts7d, bodyMassKg, bodyFatFraction, vo2Max };
   } catch (e) {
     console.error('[health] snapshot failed', e);
     return EMPTY_HEALTH_SNAPSHOT;

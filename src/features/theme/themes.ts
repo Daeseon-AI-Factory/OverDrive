@@ -1,6 +1,6 @@
 // Power-fantasy THEMES (spec §5 — ORIGINAL IP only; no trademarked franchise names/phrases/assets).
 // A theme is one "who do you become when you log" persona. It swaps the JUICE callouts + tier colors,
-// and selects the EVOLUTION persona (the worker maps themeId → an original character prompt server-side).
+// and selects the matching local visual/callout persona.
 //
 // 드래곤볼/실존 연예인 등은 §5로 불가 → 같은 "감성"을 오리지널로 재현한다:
 //   aura   = 에너지 오라 전사 (드래곤볼 '감성'의 오리지널 버전)

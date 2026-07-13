@@ -2,7 +2,7 @@
   "expo": {
     "name": "Reploom",
     "slug": "reploom",
-    "version": "1.0.0",
+    "version": "1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "reploom",
@@ -11,7 +11,56 @@
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "ai.daeseon.reploom",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false,
+          "NSAllowsLocalNetworking": false
+        }
+      },
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyCollectedDataTypes": [
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeFitness",
+            "NSPrivacyCollectedDataTypeLinked": false,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeHealth",
+            "NSPrivacyCollectedDataTypeLinked": false,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypePhotosorVideos",
+            "NSPrivacyCollectedDataTypeLinked": false,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeAudioData",
+            "NSPrivacyCollectedDataTypeLinked": false,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          },
+          {
+            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeOtherUserContent",
+            "NSPrivacyCollectedDataTypeLinked": false,
+            "NSPrivacyCollectedDataTypeTracking": false,
+            "NSPrivacyCollectedDataTypePurposes": [
+              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
+            ]
+          }
+        ]
       }
     },
     "android": {
@@ -32,6 +81,7 @@
     },
     "plugins": [
       "expo-router",
+      "./plugins/withReploomIosCompliance",
       [
         "expo-splash-screen",
         {
@@ -54,7 +104,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Reploom uses your photo library only when you pick a photo for your Evolution avatar or a meal log.",
+          "photosPermission": "Reploom accesses only the meal photo you choose so it can estimate and log that meal.",
           "cameraPermission": false,
           "microphonePermission": false
         }
@@ -62,11 +112,12 @@
       [
         "@kingstinct/react-native-healthkit",
         {
-          "NSHealthShareUsageDescription": "Reploom reads your workouts, energy, heart rate, and body metrics on your device to calculate your Combat Power score.",
-          "NSHealthUpdateUsageDescription": "Reploom saves the strength workouts you log so they appear in Apple Health.",
+          "NSHealthShareUsageDescription": "Reploom reads workouts, VO2 max, body weight, and body fat to show your fitness progress and calculate the for-fun Combat Power score.",
+          "NSHealthUpdateUsageDescription": "Reploom saves only workouts, body weight, and body fat that you log or enter so they can appear in Apple Health.",
           "background": false
         }
-      ]
+      ],
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true,

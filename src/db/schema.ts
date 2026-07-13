@@ -2,10 +2,10 @@
 // .sql imports). PG-forward conventions: ISO-UTC TEXT timestamps, client_uuid sync keys,
 // CHECK(...IN...) enums, JSON-in-TEXT, 0/1 booleans, exercise.id = slug (Phase 2 fuzzy-match key).
 //
-// Deferred to later phases: BodyComp/FitnessTest (Phase 5), League/Friendship/AuraCard (Phase 3-4).
+// Deferred to later phases: FitnessTest (Phase 5), League/Friendship/AuraCard (Phase 3-4).
 // Program is a code constant (defaultProgram.ts), not a table. Streak is computed, not stored.
 
-export const DATABASE_VERSION = 5;
+export const DATABASE_VERSION = 6;
 
 export const SCHEMA_V1 = `
 CREATE TABLE IF NOT EXISTS user (
@@ -143,6 +143,16 @@ CREATE TABLE IF NOT EXISTS food_log (
   logged_at  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_food_user_date ON food_log(user_id, date);
+
+CREATE TABLE IF NOT EXISTS body_composition_log (
+  id                TEXT PRIMARY KEY NOT NULL,
+  client_uuid       TEXT NOT NULL UNIQUE,
+  user_id           TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+  weight_kg         REAL NOT NULL CHECK (weight_kg > 0),
+  body_fat_fraction REAL NOT NULL CHECK (body_fat_fraction >= 0 AND body_fat_fraction <= 1),
+  measured_at       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_bodycomp_user_measured ON body_composition_log(user_id, measured_at);
 `;
 
 // v2 → v3: add the discipline table to already-migrated databases (idempotent).
@@ -198,4 +208,17 @@ CREATE TABLE IF NOT EXISTS food_log (
   logged_at  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_food_user_date ON food_log(user_id, date);
+`;
+
+// v5 → v6: durable manual body-composition history. Each save keeps weight + body-fat together.
+export const MIGRATION_006 = `
+CREATE TABLE IF NOT EXISTS body_composition_log (
+  id                TEXT PRIMARY KEY NOT NULL,
+  client_uuid       TEXT NOT NULL UNIQUE,
+  user_id           TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+  weight_kg         REAL NOT NULL CHECK (weight_kg > 0),
+  body_fat_fraction REAL NOT NULL CHECK (body_fat_fraction >= 0 AND body_fat_fraction <= 1),
+  measured_at       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_bodycomp_user_measured ON body_composition_log(user_id, measured_at);
 `;

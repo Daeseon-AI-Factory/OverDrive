@@ -1,7 +1,7 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getRecentExercises } from '@/db/repos/setLogRepo';
 import type { ExerciseRow, ExerciseType } from '@/db/types';
@@ -180,57 +180,60 @@ export function ExerciseRegionSheet({
       onRequestClose={close}
       onDismiss={deliverSelection}
     >
-      <Pressable style={styles.backdrop} onPress={close} />
-      <View style={[styles.sheet, { paddingBottom: Math.max(space.lg, insets.bottom) }]}>
-        <View pointerEvents="none" style={styles.sheetEdge} />
-        {picker ? (
-          <>
-            <View style={styles.grabber} />
-            <Text style={styles.title}>{picker.title}</Text>
-            <Input
-              value={query}
-              onChangeText={setQuery}
-              placeholder={t('exerciseDiscovery.searchPlaceholder')}
-              accessibilityLabel={t('exerciseDiscovery.searchPlaceholder')}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoFocus={picker.exerciseIds == null && picker.type == null}
-              returnKeyType="search"
-              style={styles.search}
-            />
-            <FlatList
-              data={visibleItems}
-              keyExtractor={(item) => item.exercise.id}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ paddingVertical: space.sm }}
-              renderItem={({ item }) => (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`${item.localizedName}. ${exerciseMeta(item)}`}
-                  style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-                  onPress={() => select(item)}
-                >
-                  <View style={styles.rowBody}>
-                    <Text style={styles.exName}>{item.localizedName}</Text>
-                    <Muted>{exerciseMeta(item)}</Muted>
-                  </View>
-                  <Text style={styles.chevron}>›</Text>
-                </Pressable>
-              )}
-              ListEmptyComponent={<Muted style={{ paddingVertical: space.lg }}>{t('logger.exerciseListEmpty')}</Muted>}
-            />
-            <Pressable onPress={close} style={styles.closeBtn} hitSlop={8}>
-              <Muted>{t('logger.close')}</Muted>
-            </Pressable>
-          </>
-        ) : null}
-      </View>
+      <KeyboardAvoidingView style={styles.modalRoot} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <Pressable style={styles.backdrop} onPress={close} />
+        <View style={[styles.sheet, { paddingBottom: Math.max(space.lg, insets.bottom) }]}>
+          <View pointerEvents="none" style={styles.sheetEdge} />
+          {picker ? (
+            <>
+              <View style={styles.grabber} />
+              <Text style={styles.title}>{picker.title}</Text>
+              <Input
+                value={query}
+                onChangeText={setQuery}
+                placeholder={t('exerciseDiscovery.searchPlaceholder')}
+                accessibilityLabel={t('exerciseDiscovery.searchPlaceholder')}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoFocus={picker.exerciseIds == null && picker.type == null}
+                returnKeyType="search"
+                style={styles.search}
+              />
+              <FlatList
+                data={visibleItems}
+                keyExtractor={(item) => item.exercise.id}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingVertical: space.sm }}
+                renderItem={({ item }) => (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.localizedName}. ${exerciseMeta(item)}`}
+                    style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                    onPress={() => select(item)}
+                  >
+                    <View style={styles.rowBody}>
+                      <Text style={styles.exName}>{item.localizedName}</Text>
+                      <Muted>{exerciseMeta(item)}</Muted>
+                    </View>
+                    <Text style={styles.chevron}>›</Text>
+                  </Pressable>
+                )}
+                ListEmptyComponent={<Muted style={{ paddingVertical: space.lg }}>{t('logger.exerciseListEmpty')}</Muted>}
+              />
+              <Pressable onPress={close} style={styles.closeBtn} hitSlop={8}>
+                <Muted>{t('logger.close')}</Muted>
+              </Pressable>
+            </>
+          ) : null}
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  modalRoot: { flex: 1 },
   backdrop: { flex: 1, backgroundColor: colors.backdrop },
   sheet: {
     maxHeight: '70%',

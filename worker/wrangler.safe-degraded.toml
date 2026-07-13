@@ -1,0 +1,12 @@
+name = "overdrive-quicklog"
+main = "src/safe-degraded.js"
+compatibility_date = "2024-11-01"
+
+# Emergency rollback target: no AI-provider code path and no request/application logging.
+[observability]
+enabled = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "overdrive-rank"
+database_id = "a789812b-6608-4dae-90d8-8dd1f83de42a"

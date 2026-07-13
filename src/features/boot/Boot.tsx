@@ -10,6 +10,8 @@ import { OnboardingFlow } from '@/features/onboarding/OnboardingFlow';
 import { getOpenSessionForDate, getSessionActivitySummary } from '@/db/repos/sessionRepo';
 import { useSessionStore } from '@/features/forge/sessionStore';
 import { todayLocal } from '@/lib/date';
+import { purgeDeprecatedAvatarFiles } from './purgeDeprecatedAvatarFiles';
+import { purgeSensitiveTemporaryFiles } from './purgeSensitiveTemporaryFiles';
 import { buildInput, upsertSnapshot } from '../../db/repos/combatPowerRepo';
 import { getSettings, getUser, updateLocale } from '../../db/repos/userRepo';
 import { useCombatPowerStore } from '../../stores/combatPowerStore';
@@ -31,7 +33,21 @@ export function Boot({ children }: { children: React.ReactNode }) {
     void loadSfx(); // preload JUICE SFX players (fire-and-forget; splash never waits on audio)
     (async () => {
       // Independent reads run in parallel — first paint waits on no serial round-trips.
-      const [settings, user, input] = await Promise.all([getSettings(db), getUser(db), buildInput(db)]);
+      const [settings, user, input, deprecatedAvatarFilesPurged, sensitiveTemporaryFilesPurged] = await Promise.all([
+        getSettings(db),
+        getUser(db),
+        buildInput(db),
+        purgeDeprecatedAvatarFiles(),
+        purgeSensitiveTemporaryFiles(),
+      ]);
+      if (!deprecatedAvatarFilesPurged) {
+        // Retry on every launch; never mark a failed privacy cleanup as complete.
+        console.error('[privacy] deprecated avatar files could not be fully removed');
+      }
+      if (!sensitiveTemporaryFilesPurged) {
+        // The per-request cleanup still runs; retry the crash-recovery sweep on the next launch.
+        console.error('[privacy] sensitive temporary files could not be fully removed');
+      }
       useSettingsStore.getState().hydrate(settings);
       if (alive && !settings.onboardedAt) setNeedsOnboarding(true);
 

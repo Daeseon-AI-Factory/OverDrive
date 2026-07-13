@@ -58,6 +58,7 @@ export function currentSettings(): UserSettings {
     rankDeviceId: s.rankDeviceId,
     customProgram: s.customProgram,
     onboardedAt: s.onboardedAt,
+    remoteAiConsent: s.remoteAiConsent,
     health: s.health,
   };
 }

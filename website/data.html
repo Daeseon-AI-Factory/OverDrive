@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reploom — Data Deletion Guide</title>
+  <meta name="description" content="How to remove local Reploom data, Apple Health permissions and records, AI inputs, and a legacy TestFlight ranking entry." />
+  <meta name="theme-color" content="#07070B" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <nav aria-label="Primary navigation">
+    <div class="wrap">
+      <a class="wordmark" href="index.html" style="text-decoration:none">REPLOOM</a>
+      <span class="links">
+        <a href="index.html">Home</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="support.html">Support</a>
+        <a href="terms.html">Terms</a>
+      </span>
+    </div>
+  </nav>
+
+  <main>
+    <article class="doc">
+      <a class="back" href="index.html">← Back to Reploom</a>
+      <h1>Data Deletion Guide</h1>
+      <p class="updated">Deletion guidance last updated: July 12, 2026</p>
+
+      <div class="lead">
+        Reploom has no user account. Most data lives only in the app's private container on your
+        iPhone, so deleting the app removes that local data. Apple Health records and a legacy
+        TestFlight ranking row live in different systems and must be handled separately.
+      </div>
+
+      <div class="notice warning">
+        <strong>Contact status.</strong> <code>support@reploom.app</code> is the designated deletion
+        contact, but mailbox delivery has not yet been verified. The legacy ranking removal flow
+        does not depend on email; use the in-app action while the old random ID is still on the phone.
+      </div>
+
+      <nav class="toc" aria-label="Deletion guide contents">
+        <a href="#local">Local Reploom data</a>
+        <a href="#health">Apple Health</a>
+        <a href="#ai">AI-assisted inputs</a>
+        <a href="#leaderboard">Legacy ranking entry</a>
+        <a href="#account">No account to delete</a>
+        <a href="#checklist">Complete removal checklist</a>
+      </nav>
+
+      <h2 id="local">1. Delete local Reploom data</h2>
+      <p>The local app container can include:</p>
+      <ul>
+        <li>workouts, sets, cardio, food logs, and body-composition entries;</li>
+        <li>daily goals, programs, settings, and local profile values;</li>
+        <li>Combat Power history and in-app progress; and</li>
+        <li>a small local cache of Health-derived values used by the interface.</li>
+      </ul>
+      <ol class="steps">
+        <li>On the iPhone Home Screen or App Library, touch and hold Reploom.</li>
+        <li>Choose <strong>Remove App</strong>, then <strong>Delete App</strong>.</li>
+        <li>Confirm deletion. This removes Reploom's private local app container from that device.</li>
+      </ol>
+      <p>
+        Offloading an app can preserve its documents and is not the same as deleting it. Use
+        <strong>Delete App</strong> when your goal is local data removal. The release build excludes
+        the app-managed fitness and health SQLite database directory, including its database, WAL,
+        and SHM files, from iCloud device backup.
+      </p>
+
+      <h2 id="health">2. Revoke Apple Health access or delete Health records</h2>
+      <p>
+        Removing Reploom does not delete a workout or body measurement already written to Apple
+        Health. Apple Health is controlled separately.
+      </p>
+      <ul>
+        <li><strong>Stop future access:</strong> open the Health app or iOS Settings, find Reploom under Health access, and disable its read/write permissions.</li>
+        <li><strong>Delete an existing Health record:</strong> locate and remove that record in the Health app.</li>
+      </ul>
+      <p>
+        Reploom cannot remotely change Apple Health permissions or erase an Apple Health record for
+        you after app deletion.
+      </p>
+
+      <h2 id="ai">3. AI-assisted logging inputs</h2>
+      <p>
+        Remote AI is off by default, requires an 18+ confirmation, and its consent setting is removed
+        with the local app container. If you enable it and choose workout parsing, voice transcription,
+        typed meal estimation, or meal-photo
+        estimation, the selected input passes through Reploom's Cloudflare Worker to Groq. The Worker
+        application code does not write request bodies or results to D1, KV, R2, or another Reploom
+        application store. There is therefore no Reploom account copy to delete from those stores.
+        Reploom deletes request-time voice recordings and app-cache meal-photo copies after each
+        request or cancellation. If an interrupted app session prevents that cleanup, the next
+        launch sweeps the dedicated recording and selected-photo cache directories.
+      </p>
+      <p>
+        Groq says inference content is not retained by default. It may temporarily log inputs and
+        outputs for platform reliability or suspected-abuse investigation for up to 30 days, or
+        longer if legally required, and separately retains usage metadata that it says excludes
+        customer inputs and outputs. Reploom cannot remove provider-side records that it cannot
+        identify or control. Reploom's release-candidate Worker configuration disables Cloudflare
+        Worker observability/application logs; this becomes an operational statement only after
+        that exact version is deployed and verified. Cloudflare still processes ordinary network
+        and security metadata under its own service policies. Review <a href="https://console.groq.com/docs/your-data">Groq's data
+        documentation</a> and <a href="https://groq.com/privacy-policy/">privacy policy</a> before
+        enabling Remote AI. The built-in v1 sportswear character uses no personal photo and makes no
+        remote avatar request.
+      </p>
+
+      <h2 id="leaderboard">4. Delete a legacy TestFlight ranking entry</h2>
+      <p>
+        Public leaderboards are not available in v1, and v1 submits no new ranking data. An earlier
+        TestFlight build may have stored a handle, random app-generated device ID, Combat Power,
+        weekly gain, grade label, optional crew code, and update time in Cloudflare D1. Deleting the
+        app alone does not automatically remove that old server row.
+      </p>
+      <ol class="steps">
+        <li>Before deleting Reploom, open its <strong>Settings</strong> tab.</li>
+        <li>Choose the legacy leaderboard data deletion action, if it is shown.</li>
+        <li>Keep the app open until it confirms that the server row was deleted. Reploom then clears the old handle, crew code, and random ranking ID from local settings.</li>
+        <li>Continue with Apple Health cleanup and <strong>Delete App</strong> if you also want all local data removed.</li>
+      </ol>
+      <p>
+        The delete request contains only the random ID already associated with that row. If the
+        action is not shown, the app does not hold a legacy ranking ID. Do not delete the app before
+        using the action: without the locally held random ID, Reploom has no account identity with
+        which to match the row keyed by that ID. A user-chosen public handle in the row may itself
+        be identifying.
+      </p>
+
+      <h2 id="account">5. No account to delete</h2>
+      <p>
+        Reploom does not create an email, password, Sign in with Apple, or social account. Deleting
+        the app therefore removes the local profile rather than closing an online account. The
+        legacy ranking row described above is keyed by a random app-generated ID, but its
+        user-chosen handle may be identifying; it is service data, not a login account.
+      </p>
+
+      <h2 id="checklist">6. Complete removal checklist</h2>
+      <ol class="steps">
+        <li>If Settings shows the legacy ranking deletion action, run it and wait for confirmation before deleting the app.</li>
+        <li>Revoke Reploom's Apple Health read and write permissions.</li>
+        <li>Delete any Reploom-written Health records you no longer want in the Health app.</li>
+        <li>Choose <strong>Delete App</strong>, not Offload App, to remove Reploom's local container.</li>
+      </ol>
+      <p>
+        For questions, the designated address is <code>support@reploom.app</code>. It is not
+        represented as operational until the activation notice above is removed after a delivery
+        test.
+      </p>
+    </article>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <a class="wordmark" href="index.html" style="font-size:20px;text-decoration:none">REPLOOM</a>
+      <span>
+        <a href="privacy.html">Privacy</a>
+        <a href="support.html">Support</a>
+        <a href="terms.html">Terms</a>
+        <a href="data.html">Data deletion</a>
+      </span>
+    </div>
+    <p class="disclaimer">Combat Power and nutrition estimates are for general wellness and entertainment, not medical advice. © 2026 Reploom.</p>
+  </footer>
+</body>
+</html>

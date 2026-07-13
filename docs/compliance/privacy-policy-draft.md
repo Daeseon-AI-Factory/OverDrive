@@ -1,6 +1,8 @@
 # Privacy Policy — DRAFT (requires legal review)
 
-> **DRAFT — NOT LEGAL ADVICE. This document MUST be reviewed by a qualified privacy/IP attorney before publication or app-store submission.** It is a first draft written to reflect Reploom's stated constraints (CLAUDE.md non-negotiable §4 and §3) and the Apple/Google health-app requirements documented in `health-data.md`. Bracketed `[…]` items are placeholders the operator must fill in.
+> **SUPERSEDED DRAFT — DO NOT PUBLISH OR USE FOR APP STORE ANSWERS.** The reconciled v1 inventory is
+> `docs/compliance/privacy-policy.md` and the publishable page is `website/privacy.html`. This file is
+> retained only as historical drafting context and contains pre-v1 assumptions.
 >
 > **App-name note:** per `brand-availability.md`, "OverDrive" is **not** cleared as a public app name (live "Overdrive Fitness" collision + the well-known OverDrive, Inc. mark). This draft now uses the working launch candidate "Reploom"; run final trademark/privacy review before publishing.
 

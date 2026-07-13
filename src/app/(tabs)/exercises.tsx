@@ -7,7 +7,6 @@ import { CARDIO_EXERCISE_IDS } from '@/features/character/regions';
 import type { BodyHitRegionId } from '@/features/character/bodyHitMap';
 import { useForge } from '@/features/forge/useForge';
 import { CardioLoggerSheet } from '@/features/logging/CardioLoggerSheet';
-import { BodyAvatarSetupSheet } from '@/features/evolution/BodyAvatarSetupSheet';
 import { ExerciseRegionSheet, type RegionPicker } from '@/features/logging/ExerciseRegionSheet';
 import { SetLoggerSheet } from '@/features/logging/SetLoggerSheet';
 import { useTodayProgram } from '@/features/program/useProgram';
@@ -26,7 +25,6 @@ export default function ExercisesScreen() {
       byRegion: t('exerciseScreen.byRegion'),
       regionBody: t('exerciseScreen.regionBody'),
       avatarPreview: t('exerciseScreen.avatarPreview'),
-      customizeAvatar: t('bodyAvatar.open'),
     }),
     [t],
   );
@@ -38,8 +36,6 @@ export default function ExercisesScreen() {
   const [picker, setPicker] = useState<RegionPicker | null>(null);
   const [activeRegion, setActiveRegion] = useState<BodyHitRegionId | null>(null);
   const [activeExercise, setActiveExercise] = useState<ExerciseRow | null>(null);
-  const [avatarSetupVisible, setAvatarSetupVisible] = useState(false);
-  const [avatarRefreshKey, setAvatarRefreshKey] = useState(0);
 
   const ensureSession = useCallback(async (): Promise<string> => {
     return enterSilently();
@@ -96,19 +92,7 @@ export default function ExercisesScreen() {
 
         <Card live eyebrow={copy.byRegion} style={styles.avatarCard}>
           <Muted>{copy.regionBody}</Muted>
-          <MyCharacter
-            variant="hero"
-            activeRegion={activeRegion}
-            onRegionPress={openRegion}
-            onCardioPress={openCardio}
-            avatarRefreshKey={avatarRefreshKey}
-          />
-          <Button
-            label={copy.customizeAvatar}
-            variant="ghost"
-            onPress={() => setAvatarSetupVisible(true)}
-            style={styles.avatarButton}
-          />
+          <MyCharacter variant="hero" activeRegion={activeRegion} onRegionPress={openRegion} onCardioPress={openCardio} />
           <Muted style={styles.previewNote}>{copy.avatarPreview}</Muted>
         </Card>
       </ScrollView>
@@ -130,11 +114,6 @@ export default function ExercisesScreen() {
         ensureSession={ensureSession}
         onClose={() => setActiveExercise(null)}
       />
-      <BodyAvatarSetupSheet
-        visible={avatarSetupVisible}
-        onClose={() => setAvatarSetupVisible(false)}
-        onAvatarChanged={() => setAvatarRefreshKey((value) => value + 1)}
-      />
     </Screen>
   );
 }
@@ -146,6 +125,5 @@ const styles = StyleSheet.create({
   subtitle: { marginTop: space.xs },
   searchButton: { marginBottom: space.md },
   avatarCard: { paddingBottom: space.lg },
-  avatarButton: { marginTop: space.md },
   previewNote: { textAlign: 'center', marginTop: space.md },
 });

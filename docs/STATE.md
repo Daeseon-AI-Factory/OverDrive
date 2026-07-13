@@ -1,6 +1,16 @@
-# OVERDRIVE — 현재 상태 (handoff / 새 컨텍스트용 단일 진실)
+# OVERDRIVE — 2026-06 historical snapshot (superseded)
 
-> 컨텍스트 압축·새 세션·**Codex 핸드오프 시 여기부터 읽으면 이어받는다.** 정본 스펙은 [`docs/overdrive-spec.md`](overdrive-spec.md), Phase 1 플랜 [`docs/phase1-plan.md`](phase1-plan.md). 버그/함정은 [`docs/troubleshooting.md`](troubleshooting.md), 내러티브는 `content/logs/OverDrive/`. **갱신: 2026-06-18.**
+> **Do not use this file as current release truth.** It is retained as a historical development
+> snapshot and still describes retired leaderboard, Gemini EVOLUTION, broad HealthKit access, and
+> old build/test counts. Current handoff: [`HANDOFF-codex.md`](HANDOFF-codex.md). Current release
+> gates and exact v1 scope: [`app-store-launch-checklist.md`](app-store-launch-checklist.md) and
+> [`launch/app-store-listing.md`](launch/app-store-listing.md). V1 removes public ranking and remote
+> photo-avatar/evolution UI, defaults remote AI consent off, minimizes HealthKit, and keeps only
+> Groq parsing/transcription/meal routes plus legacy rank deletion.
+
+> 아래 내용의 마지막 정확한 시점은 2026-06-18이다. 정본 제품 원칙은
+> [`docs/overdrive-spec.md`](overdrive-spec.md), 버그/함정은
+> [`docs/troubleshooting.md`](troubleshooting.md), 내러티브는 `content/logs/OverDrive/`에 있다.
 
 ## ▶ 새 세션 첫 행동 (여기부터)
 1. 이 파일 + `docs/overdrive-spec.md`(정본) + `docs/troubleshooting.md`(함정) + 아래 **§열린·미검증** 훑기.
@@ -29,7 +39,7 @@ Phase 1 로컬 MVP **완성 + Phase 2~5 기능 다수 선행** — 아이폰 실
 - 교훈(메모리): 배관 깔기 전에 **가치 적합성부터** 확인. 빌더는 "묻지말고 가" 지향이나, 큰 방향·IP 리스크는 확인.
 
 ## 인프라 (Cloudflare — 라이브)
-- **Worker** `https://overdrive-quicklog.daeseon.workers.dev` (`worker/src/index.js`, wrangler 로그인 캐시됨). 배포: 서브셸 `( cd worker && npx wrangler deploy )` — **cwd 잔류 금지**. 프로덕션 deploy는 빌더의 명시적 승인 필요(자동승인 차단). **최신 배포: 2026-06-20, Version ID 1aef7442-2f7c-4af3-859b-649205f2f906 (테마별 EVOLUTION persona 포함).**
+- **Worker** `https://overdrive-quicklog.daeseon.workers.dev` (`worker/src/index.js`, wrangler 로그인 캐시됨). 릴리스는 `worker/README.md`의 immutable version upload → 0% version override smoke → 명시적 ID 100% 승격 절차만 사용한다. 즉시 `wrangler deploy`와 ID 없는 rollback은 금지. 프로덕션 승격은 빌더의 명시적 승인 필요(자동승인 차단). **현재 라이브: 2026-06-20, Version ID 1aef7442-2f7c-4af3-859b-649205f2f906 (v1 이전 구현이므로 롤백 대상으로 사용 금지).**
 - 라우트: `/parse`(Groq llama, 미등록 운동 자동생성) · `/transcribe`(Groq whisper, UI 로케일 강제) · `/food`(텍스트=Groq, 사진=llama-4-scout) · `/rank/submit`·`/rank/board`(D1 `overdrive-rank`) · `/evolve`(**Gemini 이미지 — GEMINI_API_KEY 필요, 빌더가 유료 billing까지 충전**).
 - 시크릿: GROQ_API_KEY·GEMINI_API_KEY 둘 다 주입됨. **키는 `~/.secrets/api-keys.env`에서 파이프, 절대 출력/깃 금지.**
 - ✅ **테마별 EVOLUTION persona 배포 완료(2026-06-20, ver 1aef7442).** 전체 루프 연결 검증: 워커 라이브(GET→라우트 405) + 폰 번들에 `themeId` 전송 코드 존재 + 워커가 themeId→THEME_PERSONA 매핑. 남은 건 빌더가 폰에서 테마 골라 EVOLUTION 실행 → 실제 캐릭터 확인(Gemini 호출, 내가 못 함).

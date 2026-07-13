@@ -11,6 +11,8 @@ import { classifyEvent } from '@/features/juice/classifyEvent';
 import { useJuice } from '@/features/juice/JuiceProvider';
 import { QUICKLOG_ENDPOINT } from '@/features/quicklog/config';
 import { downscaleForUpload } from '@/lib/image';
+import { deleteAppCacheFile } from '@/lib/temporaryFiles';
+import { hasCurrentRemoteAiConsent } from '@/lib/settings';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { Button, Card, IconSquare, Input, Metric, Muted, SectionTitle, useAccent } from '@/ui/primitives';
@@ -35,6 +37,7 @@ export function FoodCard() {
   const juice = useJuice();
   const accent = useAccent();
   const proteinTargetG = useSettingsStore((s) => s.proteinTargetG);
+  const remoteAiAllowed = useSettingsStore((s) => hasCurrentRemoteAiConsent(s.remoteAiConsent));
   const [today, setToday] = useState({ kcal: 0, proteinG: 0, entries: 0 });
   const [latestMeal, setLatestMeal] = useState<FoodMealBatch | null>(null);
   const [text, setText] = useState('');
@@ -53,6 +56,13 @@ export function FoodCard() {
   const aiOffline = () =>
     t('food.aiOffline', {
       defaultValue: dv('AI 연결 실패 — 잠시 후 다시 해봐.', "Couldn't reach AI — try again in a moment."),
+    });
+  const aiConsentRequired = () =>
+    t('food.aiConsent.required', {
+      defaultValue: dv(
+        '원격 AI가 꺼져 있어 — 식단을 추정하려면 설정에서 먼저 켜줘.',
+        'Remote AI is off — enable it in Settings before estimating a meal.',
+      ),
     });
   const saveFailed = () =>
     t('food.saveFailed', {
@@ -118,6 +128,10 @@ export function FoodCard() {
   const submit = async () => {
     const value = text.trim();
     if (!value || busy) return;
+    if (!remoteAiAllowed) {
+      setHint(aiConsentRequired());
+      return;
+    }
     if (!QUICKLOG_ENDPOINT) {
       setHint(aiUnavailable()); // no AI in this build — say so, don't blame the user's wording
       return;
@@ -150,19 +164,25 @@ export function FoodCard() {
   /** Photo — snap/pick a meal photo → Worker vision → logged. */
   const onPhoto = async () => {
     if (busy) return;
+    if (!remoteAiAllowed) {
+      setHint(aiConsentRequired());
+      return;
+    }
     if (!QUICKLOG_ENDPOINT) {
       setHint(aiUnavailable());
       return;
     }
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 }).catch(() => null);
     if (!res || res.canceled || !res.assets?.[0]?.uri) return;
+    const pickedUri = res.assets[0].uri;
+    let uploadUri: string | null = null;
     setBusy(true);
     setHint(null);
     setConfirm(null);
     setUndoMeal(null);
     try {
-      const uri = await downscaleForUpload(res.assets[0].uri);
-      const items = await parseFoodPhoto(uri, QUICKLOG_ENDPOINT);
+      uploadUri = await downscaleForUpload(pickedUri);
+      const items = await parseFoodPhoto(uploadUri, QUICKLOG_ENDPOINT);
       try {
         await logItems(items, 'photo');
       } catch {
@@ -171,6 +191,9 @@ export function FoodCard() {
     } catch {
       setHint(aiOffline());
     } finally {
+      const temporaryUris = [...new Set([pickedUri, uploadUri].filter((uri): uri is string => !!uri))];
+      const cleaned = await Promise.all(temporaryUris.map((uri) => deleteAppCacheFile(uri)));
+      if (cleaned.some((ok) => !ok)) console.error('[privacy] temporary meal photo could not be removed');
       setBusy(false);
     }
   };
@@ -275,6 +298,18 @@ export function FoodCard() {
           />
         ) : null}
 
+        {!remoteAiAllowed ? (
+          <View style={styles.aiConsentRow}>
+            <Muted style={styles.hintText}>{t('food.aiConsent.explainer')}</Muted>
+            <Button
+              label={t('food.aiConsent.settings')}
+              onPress={() => router.push('/settings')}
+              variant="ghost"
+              compact
+            />
+          </View>
+        ) : null}
+
         <View style={styles.inputRow}>
           <IconSquare
             compact
@@ -335,6 +370,7 @@ const styles = StyleSheet.create({
   setTarget: { ...typeScale.caption },
   kcal: { marginTop: space.xs },
   repeatButton: { marginTop: space.md },
+  aiConsentRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.md },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.md },
   input: { flex: 1 },
   hintText: { flex: 1, color: colors.warning },

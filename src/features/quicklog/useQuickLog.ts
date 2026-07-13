@@ -4,12 +4,13 @@ import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
 import { getSessionActivitySummary } from '@/db/repos/sessionRepo';
-import { deleteSet, ensureExercise, getRecentExercises, getSetCountsForExercisesOnDate } from '@/db/repos/setLogRepo';
+import { deleteSets, ensureExercise, getRecentExercises, getSetCountsForExercisesOnDate } from '@/db/repos/setLogRepo';
 import type { ExerciseRow } from '@/db/types';
 import { useForge } from '@/features/forge/useForge';
 import { useSessionStore } from '@/features/forge/sessionStore';
-import { useLogSet } from '@/features/logging/useLogSet';
+import { useLogSet, useLogSets } from '@/features/logging/useLogSet';
 import { todayLocal } from '@/lib/date';
+import { hasCurrentRemoteAiConsent } from '@/lib/settings';
 import { formatWeight } from '@/lib/units';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -48,7 +49,10 @@ export type QuickSubmitResult =
   | { ok: true; summary: string; saved: SavedQuickSet[] }
   /** Genuinely ambiguous parse — NOTHING was saved; offer `options` for a one-tap submitWith(). */
   | { ok: false; reason: 'ambiguous'; options: ParseCandidate[] }
-  | { ok: false; reason: 'empty' | 'no_exercise' | 'no_reps' | 'no_session' | 'ai_offline' };
+  | {
+      ok: false;
+      reason: 'empty' | 'no_exercise' | 'no_reps' | 'no_session' | 'ai_offline' | 'ai_consent_required';
+    };
 
 /**
  * The brain behind the one-input QuickLog: load the exercise catalog (→ parser aliases) + recent
@@ -60,8 +64,10 @@ export function useQuickLog() {
   const db = useSQLiteContext();
   const { t } = useTranslation();
   const logSet = useLogSet();
+  const logSets = useLogSets();
   const { enterSilently } = useForge();
   const unitSystem = useSettingsStore((s) => s.unitSystem);
+  const remoteAiAllowed = useSettingsStore((s) => hasCurrentRemoteAiConsent(s.remoteAiConsent));
   const logRevision = useSessionStore((s) => s.logRevision);
   const [candidates, setCandidates] = useState<ParseCandidate[]>([]);
   const [recents, setRecents] = useState<RecentChip[]>([]);
@@ -195,7 +201,11 @@ export function useQuickLog() {
         return r.ok ? { ok: true, summary: r.summary, saved: [r.saved] } : r;
       }
 
-      // 2) AI fallback — only for what the rules couldn't read (and only if an endpoint is configured).
+      // 2) AI fallback — only for what the rules couldn't read. Consent defaults OFF, and a
+      // stale disclosure version is treated as withdrawn. The local parser above is unaffected.
+      if (!remoteAiAllowed) return { ok: false, reason: 'ai_consent_required' };
+
+      // Remote fallback is also build-config gated.
       if (QUICKLOG_ENDPOINT) {
         let sets: ParsedSet[];
         try {
@@ -212,18 +222,48 @@ export function useQuickLog() {
           return { ok: false, reason: 'ai_offline' };
         }
         if (sets.length > 0) {
-          const savedAll: SavedQuickSet[] = [];
-          for (const s of sets) {
-            // catalog match, or create the exercise on the fly (burpees, farmer's walk, …)
-            const exId =
-              s.exerciseId && exMap.current.has(s.exerciseId)
-                ? s.exerciseId
-                : await ensureExercise(db, { name: s.exerciseName, isBodyweight: s.isBodyweight });
-            await getExerciseRow(exId); // warm exMap so saveParsed sees the fresh row
-            const r = await saveParsed({ ...s, exerciseId: exId });
-            if (!r.ok) return r;
-            savedAll.push(r.saved);
-          }
+          // Resolve every catalog row before the durable write, then insert the whole command with
+          // one SQLite statement. A failure can no longer leave a silent half-saved workout.
+          const resolved = await Promise.all(
+            sets.map(async (set) => {
+              const exerciseId =
+                set.exerciseId && exMap.current.has(set.exerciseId)
+                  ? set.exerciseId
+                  : await ensureExercise(db, { name: set.exerciseName, isBodyweight: set.isBodyweight });
+              const exercise = await getExerciseRow(exerciseId);
+              return { ...set, exerciseId, exercise };
+            }),
+          );
+          const sessionId = await ensureSession();
+          if (!sessionId) return { ok: false, reason: 'no_session' };
+          const inserted = await logSets(
+            resolved.map((set) => ({
+              sessionId,
+              exerciseId: set.exerciseId,
+              weight: set.weightKg,
+              reps: set.reps,
+              rir: set.rir,
+              hitTargetReps: set.exercise ? set.reps >= set.exercise.rep_low : true,
+              loggedVia: 'quick',
+            })),
+          );
+          const counts = await getSetCountsForExercisesOnDate(
+            db,
+            [...new Set(resolved.map((set) => set.exerciseId))],
+            todayLocal(),
+          ).catch(() => ({} as Record<string, number>));
+          const savedAll: SavedQuickSet[] = resolved.map((set, index) => ({
+            setId: inserted[index].setId,
+            sessionId,
+            exerciseId: set.exerciseId,
+            exercise: set.exercise,
+            name: set.exerciseName,
+            weightKg: set.weightKg,
+            reps: set.reps,
+            rir: set.rir,
+            volumeKg: set.weightKg * set.reps,
+            setCountToday: counts[set.exerciseId] ?? 1,
+          }));
           const head = setSummary(sets[0].exerciseName, sets[0].weightKg, sets[0].reps);
           return {
             ok: true,
@@ -236,7 +276,7 @@ export function useQuickLog() {
       // Neither the rules nor the AI could read it → parse-failure hint (format guidance).
       return { ok: false, reason: local.reason };
     },
-    [db, candidates, unitSystem, saveParsed, getExerciseRow, setSummary],
+    [db, candidates, unitSystem, remoteAiAllowed, saveParsed, getExerciseRow, ensureSession, logSets, setSummary],
   );
 
   /**
@@ -270,16 +310,23 @@ export function useQuickLog() {
   );
 
   /**
-   * Undo the JUST-saved set (confirm card [취소]): delete the row, hand its volume back to the
-   * Forge session counters, recompute Combat Power (same pattern as history.tsx onDeleteSet).
+   * Undo the JUST-saved command (confirm card [취소]): atomically delete every row produced by
+   * that command, then reconcile the Forge session counters and Combat Power once.
    */
   const undoSave = useCallback(
-    async (saved: SavedQuickSet): Promise<void> => {
+    async (saved: SavedQuickSet | SavedQuickSet[]): Promise<void> => {
+      const batch = Array.isArray(saved) ? saved : [saved];
+      if (batch.length === 0) return;
+      const sessionId = batch[0].sessionId;
+      if (batch.some((item) => item.sessionId !== sessionId)) throw new Error('batch_session_mismatch');
       if (!useSessionStore.getState().tryBeginLogWrite()) throw new Error('session_finishing');
       try {
-        await deleteSet(db, saved.setId);
-        const summary = await getSessionActivitySummary(db, saved.sessionId);
-        useSessionStore.getState().reconcileActivity(saved.sessionId, summary.itemCount, summary.volumeKg);
+        await deleteSets(
+          db,
+          batch.map((item) => item.setId),
+        );
+        const summary = await getSessionActivitySummary(db, sessionId);
+        useSessionStore.getState().reconcileActivity(sessionId, summary.itemCount, summary.volumeKg);
         const result = await recomputeAndStore(db);
         useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
       } finally {

@@ -37,7 +37,7 @@
     "cardioBody": "러닝·사이클·인터벌·로잉 등을 찾는다.",
     "byRegion": "트레이닝 아바타",
     "regionBody": "앞·뒤 몸의 부위를 누르면 오늘 프로그램과 최근 운동부터 보여준다.",
-    "avatarPreview": "기본 스포츠웨어 캐릭터 · 사진 기반 캐릭터는 직접 선택해야 생성된다."
+    "avatarPreview": "스포츠웨어 트레이닝 캐릭터 · 탭 위치는 고정된 운동 부위에 연결된다."
   },
   "today": {
     "combatPowerLabel": "전투력",
@@ -88,7 +88,7 @@
       "verified": "검증 데이터"
     },
     "empty": "아직 데이터가 없어. 오늘 탭에서 세트를 기록하면 전투력이 나타난다.",
-    "verifiedExplainer": "검증 비율 {pct}% — 워치/임포트/센서 데이터는 전투력에 가중(보너스)된다. Phase 1은 전부 자기보고라 보너스 0. (자기보고도 절대 깎이지 않음.)",
+    "verifiedExplainer": "검증 비율 {pct}% — 허용한 Apple 건강 데이터는 전투력에 신뢰 보너스를 더할 수 있다. 직접 기록한 운동도 그대로 반영되며 절대 감점되지 않는다.",
     "demoFire": "⚡ 전투력 폭발 재생 (클립 녹화용)"
   },
   "history": {
@@ -117,6 +117,28 @@
   },
   "settings": {
     "title": "설정",
+    "remoteAi": {
+      "section": "원격 AI 처리",
+      "label": "만 18세 이상이며 원격 AI 처리에 동의",
+      "explainer": "이 기능을 켜면 만 18세 이상임을 확인하고, 선택한 입력을 Reploom의 Cloudflare Worker를 거쳐 Groq로 보내는 데 동의합니다: 단위 설정·운동 카탈로그 이름/ID와 함께 보내는 운동 텍스트, 전사용 음성(로컬 매칭이 해결하지 못하면 같은 운동 맥락과 함께 transcript도 전송), 그리고 제출한 식단 텍스트/사진입니다. Groq의 처리 정책이 적용됩니다. 언제든 끌 수 있고 로컬 운동 빠른 기록은 계속 사용할 수 있습니다.",
+      "on": "켜짐 · 현재 고지에 동의함",
+      "off": "꺼짐 · Groq로 전송하지 않음"
+    },
+    "legal": {
+      "section": "개인정보·지원·약관",
+      "privacy": "개인정보 처리방침",
+      "support": "지원",
+      "terms": "이용약관",
+      "data": "데이터 관리",
+      "openFailed": "페이지를 열지 못했어. 연결을 확인하고 다시 시도해줘.",
+      "legacyRankDelete": "이전 리더보드 데이터 삭제",
+      "legacyRankDeleting": "이전 리더보드 데이터 삭제 중…",
+      "legacyRankHint": "종료된 TestFlight 리더보드에 이 기기가 참여한 경우에만 보여.",
+      "legacyRankDeleteConfirm": "서버에 남아 있는 이 기기의 이전 리더보드 행을 영구 삭제해. 기기 안의 운동 기록은 영향을 받지 않아.",
+      "legacyRankDeleted": "이전 리더보드 데이터를 삭제했어.",
+      "legacyRankDeleteFailed": "이전 리더보드 데이터를 삭제하지 못했어. 기기 데이터는 바뀌지 않았으니 다시 시도해줘.",
+      "delete": "삭제"
+    },
     "juice": {
       "section": "JUICE 강도",
       "full": "풀",
@@ -133,7 +155,7 @@
       "pill": "{step}kg",
       "explainer": "세트 기록에서 +/- 버튼이 한 번에 바꾸는 무게."
     },
-    "footer": "Reploom · 로컬 MVP. 전투력은 재미용 자체 산식이다.",
+    "footer": "Reploom · 전투력은 재미용이며 의료 조언이 아니다.",
     "language": {
       "section": "언어"
     },
@@ -170,7 +192,7 @@
     },
     "theme": {
       "section": "테마",
-      "explainer": "기록할 때 터지는 콜아웃·색·EVOLUTION 캐릭터가 테마 따라 바뀐다."
+      "explainer": "기록할 때 터지는 콜아웃·색·화면 포인트가 테마에 따라 바뀐다."
     },
     "skin": {
       "section": "스킨",
@@ -459,6 +481,7 @@
       "no_recording": "녹음이 안 잡혔어 — 마이크 탭, 말하고, 다시 탭.",
       "empty_voice": "아무 소리도 못 들었어 — 말하고 탭해서 멈춰.",
       "mic_denied": "음성엔 마이크 권한 필요.",
+      "ai_consent_required": "원격 AI가 꺼져 있어 — 설정에서 켜거나 \"벤치 100 5\" 형식으로 로컬 기록해줘.",
       "no_voice": "음성은 AI 엔드포인트 설정 필요(.env)."
     },
     "recording": "● 녹음 중… 탭해서 멈춤",
@@ -492,86 +515,15 @@
     "kcal": "{n} kcal",
     "fail": "추정 실패 — 더 간단히 써봐.",
     "saveFailed": "식사를 저장하지 못했어. 기록은 추가되지 않았어 — 다시 해봐.",
-    "photoUnavailable": "사진 추정은 AI 엔드포인트 설정 필요(.env)."
+    "photoUnavailable": "사진 추정은 AI 엔드포인트 설정 필요(.env).",
+    "aiConsent": {
+      "required": "원격 AI가 꺼져 있어 — 식단을 추정하려면 설정에서 먼저 켜줘.",
+      "explainer": "식단 텍스트와 선택한 사진을 추정하려면 선택형 원격 AI 처리가 필요해. 저장된 식사 반복은 기기 안에서 처리돼.",
+      "settings": "AI 설정"
+    }
   },
   "rest": {
     "label": "휴식"
-  },
-  "rank": {
-    "title": "랭킹",
-    "optIn": "핸들을 정하면 글로벌 랭킹에 참가. 그 전엔 아무것도 전송 안 됨.",
-    "handlePlaceholder": "핸들 (예: DAESEON)",
-    "crewPlaceholder": "크루 코드 (네 헬스장, 예: IRON-GYM)",
-    "join": "참가",
-    "tabWeek": "주간 ↑",
-    "tabCp": "전투력",
-    "tabCrew": "크루",
-    "myRank": "#{rank}",
-    "empty": "보드가 비었어 — 크루 코드를 공유해서 채워.",
-    "offline": "랭킹 서버에 연결 실패.",
-    "selfReport": "Phase 1: 자가신고 점수 · 검증 티어는 추후"
-  },
-  "evolution": {
-    "title": "진화",
-    "intro": "네 사진 한 장 골라 — AI가 네 등급에 맞게 진화시킨다. 오르기만 한다.",
-    "pick": "내 사진 고르기",
-    "evolving": "진화 중…",
-    "tagEvolved": "{grade} 폼 — 탭해서 비교",
-    "tagOriginal": "원본 — 탭해서 복귀",
-    "reEvolve": "{grade}로 재진화 ⚡",
-    "changePhoto": "사진 변경",
-    "fail": "진화 실패 —",
-    "noEndpoint": "AI 엔드포인트(.env) + 워커 GEMINI_API_KEY 필요.",
-    "privacy": "사진은 Reploom Worker를 거쳐 Google Gemini로 전송된다. Reploom은 서버에 사진을 보관하지 않는다.",
-    "share": "🔥 공유하기",
-    "shareCaption": "전투력 {cp} · {grade} 💥 내 운동을 캐릭터로 진화시켰다 #운동 #전투력 #헬스"
-  },
-  "bodyAvatar": {
-    "open": "내 사진으로 캐릭터 만들기",
-    "title": "사진 기반 트레이닝 캐릭터",
-    "subtitle": "사진은 고정된 앞·뒤 스포츠웨어 캐릭터를 만들 때만 전송된다. 생성 이미지는 신체 측정값이 아니다.",
-    "outfit": {
-      "title": "스포츠웨어",
-      "sleeveless": "민소매 + 쇼츠",
-      "sport_top": "기능성 상의 + 쇼츠",
-      "compression": "컴프레션 세트"
-    },
-    "photo": {
-      "pick": "내 사진 선택",
-      "change": "사진 다시 선택",
-      "ready": "사진이 이 기기에 준비됨 · 아직 전송되지 않음"
-    },
-    "consent": {
-      "title": "생성 전 확인",
-      "provider": "생성을 누르면 선택한 사진이 Reploom Worker를 거쳐 Google Gemini로 전송되며 Google의 처리 정책이 적용된다.",
-      "adultConfirmed": "나는 만 18세 이상이다",
-      "ownershipConfirmed": "본인 사진이며 사용 권한이 있다",
-      "aiConsent": "Google AI 전송과 캐릭터 생성에 동의한다"
-    },
-    "generate": "스포츠웨어 캐릭터 생성",
-    "generating": "캐릭터 생성 중…",
-    "cancelGeneration": "생성 취소",
-    "cancel": "취소",
-    "preview": {
-      "title": "앞·뒤 미리보기 확인",
-      "instructions": "왼쪽은 온전한 정면, 오른쪽은 온전한 후면이고 두 머리와 발끝이 같은 높이일 때만 사용해줘.",
-      "confirm": "정면·후면 전신이 모두 있고 위치가 맞다",
-      "use": "이 트레이닝 캐릭터 사용",
-      "activating": "캐릭터 적용 중…",
-      "retry": "버리고 다시 생성"
-    },
-    "delete": {
-      "title": "내 캐릭터 데이터 삭제",
-      "body": "이 기기의 원본 사진과 생성 캐릭터를 모두 삭제한다.",
-      "action": "원본과 캐릭터 삭제"
-    },
-    "error": {
-      "pick": "사진을 준비하지 못했다. 다른 사진으로 다시 시도해줘.",
-      "timeout": "생성 시간이 초과됐다. 사진은 이 기기에 남아 있다.",
-      "generate": "캐릭터를 생성하지 못했다. 기본 캐릭터로 계속 사용할 수 있다.",
-      "activate": "미리보기를 적용하지 못했다. 기존 캐릭터는 바뀌지 않았다.",
-      "delete": "캐릭터 데이터를 삭제하지 못했다. 다시 시도해줘."
-    }
   },
   "common": {
     "back": "뒤로",

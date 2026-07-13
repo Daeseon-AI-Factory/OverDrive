@@ -15,8 +15,6 @@ export interface HealthSnapshot {
   bodyFatFraction: number | null;
   /** Most recent VO2 max (cardio fitness). */
   vo2Max: number | null;
-  /** Most recent resting heart rate (bpm). */
-  restingHeartRate: number | null;
 }
 
 export const EMPTY_HEALTH_SNAPSHOT: HealthSnapshot = {
@@ -25,5 +23,4 @@ export const EMPTY_HEALTH_SNAPSHOT: HealthSnapshot = {
   bodyMassKg: null,
   bodyFatFraction: null,
   vo2Max: null,
-  restingHeartRate: null,
 };

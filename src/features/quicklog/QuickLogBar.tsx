@@ -33,7 +33,7 @@ import { useQuickLog, type RecentChip, type SavedQuickSet } from './useQuickLog'
  */
 export function QuickLogBar() {
   const { t, i18n } = useTranslation();
-  const skin = useSkinOrNull(); // themed CTA word (주입/단조/KO!…) — the skin's voice on the one log button
+  const skin = useSkinOrNull(); // Korean keeps the skin's original CTA voice; other locales use their translated action.
   const unitSystem = useSettingsStore((s) => s.unitSystem);
   const { recents, submitText, submitWith, repeat, undoSave } = useQuickLog();
   const [text, setText] = useState('');
@@ -45,7 +45,7 @@ export function QuickLogBar() {
   // Disambiguation: the parse was a near-tie → NOTHING saved yet; one chip tap resolves it.
   const [pending, setPending] = useState<{ text: string; options: ParseCandidate[] } | null>(null);
   // Confirm-as-undo card for the JUST-saved set. A new save replaces it (nonce restarts its clock).
-  const [card, setCard] = useState<{ nonce: number; saved: SavedQuickSet } | null>(null);
+  const [card, setCard] = useState<{ nonce: number; saved: SavedQuickSet; savedBatch: SavedQuickSet[] } | null>(null);
   const [undoingNonce, setUndoingNonce] = useState<number | null>(null);
   const cardNonce = useRef(0);
 
@@ -57,8 +57,9 @@ export function QuickLogBar() {
   // New copy not yet in the locale catalogs (owned elsewhere) — per-locale defaults until translated.
   const dv = useCallback((koStr: string, enStr: string) => (ko ? koStr : enStr), [ko]);
 
-  const showCard = useCallback((saved: SavedQuickSet) => {
-    setCard({ nonce: ++cardNonce.current, saved });
+  const showCard = useCallback((savedBatch: SavedQuickSet[]) => {
+    const saved = savedBatch[savedBatch.length - 1];
+    if (saved) setCard({ nonce: ++cardNonce.current, saved, savedBatch });
   }, []);
 
   // ── Shared submit reactions (typed path + MicButton callbacks — identical by construction) ──
@@ -68,8 +69,7 @@ export function QuickLogBar() {
       setHint(null);
       setPending(null);
       setConfirm(summary ? `✓ ${summary}` : null); // echo WHAT was logged — misparses are visible
-      const last = saved[saved.length - 1]; // multi-set AI saves: the card acts on the newest
-      if (last) showCard(last);
+      showCard(saved);
     },
     [showCard],
   );
@@ -128,8 +128,7 @@ export function QuickLogBar() {
           setText('');
           setHint(null);
           setConfirm(`✓ ${r.summary}`);
-          const last = r.saved[r.saved.length - 1];
-          if (last) showCard(last);
+          showCard(r.saved);
         } else {
           setPending(null);
           setHint(t('quicklog.fail.log'));
@@ -153,10 +152,10 @@ export function QuickLogBar() {
 
   /** Confirm card [취소] → delete the just-saved set + recompute CP; brief '취소됨' echo. */
   const onCardUndo = useCallback(
-    async (saved: SavedQuickSet, nonce: number) => {
+    async (savedBatch: SavedQuickSet[], nonce: number) => {
       setUndoingNonce(nonce);
       try {
-        await undoSave(saved);
+        await undoSave(savedBatch);
         setCard((current) => (current?.nonce === nonce ? null : current));
         setHint(null);
         setConfirm(t('quicklog.cancelled', { defaultValue: dv('취소됨', 'Cancelled') }));
@@ -178,7 +177,7 @@ export function QuickLogBar() {
         const saved = await repeat(chip);
         const w = formatWeight(chip.weight, unitSystem);
         setConfirm(`✓ ${chip.name}  ${w ? `${w}×` : ''}${chip.reps}`);
-        if (saved) showCard(saved);
+        if (saved) showCard([saved]);
       } catch {
         setHint(t('quicklog.fail.log'));
       } finally {
@@ -224,10 +223,10 @@ export function QuickLogBar() {
         <ConfirmUndoCard
           nonce={card.nonce}
           saved={card.saved}
-          editable={card.saved.exercise?.type === 'strength'}
+          editable={card.savedBatch.length === 1 && card.saved.exercise?.type === 'strength'}
           busy={undoingNonce === card.nonce}
           onEdit={() => onCardEdit(card.saved)}
-          onUndo={() => void onCardUndo(card.saved, card.nonce)}
+          onUndo={() => void onCardUndo(card.savedBatch, card.nonce)}
           onDismiss={() => setCard(null)}
         />
       ) : null}
@@ -261,7 +260,7 @@ export function QuickLogBar() {
           editable={!recording && !transcribing}
         />
         <Button
-          label={skin?.cta.logWord ?? t('quicklog.log')}
+          label={ko && skin ? skin.cta.logWord : t('quicklog.log')}
           onPress={() => void onSubmit()}
           variant="secondary"
           compact

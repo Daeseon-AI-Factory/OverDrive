@@ -37,7 +37,7 @@
     "cardioBody": "跑步、骑行、间歇、划船等。",
     "byRegion": "训练角色",
     "regionBody": "点选正面或背面，优先显示今日计划和最近训练。",
-    "avatarPreview": "默认运动服角色 · 只有你主动选择时才会生成照片角色。"
+    "avatarPreview": "运动服训练角色 · 每次点按都对应固定的训练部位。"
   },
   "today": {
     "combatPowerLabel": "战斗力",
@@ -88,7 +88,7 @@
       "verified": "已验证数据"
     },
     "empty": "暂无数据。在「今日」记录一组，战斗力随即显现。",
-    "verifiedExplainer": "已验证 {pct}% — 手表/导入/传感器数据会为战斗力加成。Phase 1 全部为自填数据，故加成为 0。（自填数据绝不扣分。）",
+    "verifiedExplainer": "已验证 {pct}% — 经授权的 Apple 健康数据可为战斗力增加可信加成。手动记录同样计入，绝不会被扣分。",
     "demoFire": "⚡ 重播战力爆发（录制用）"
   },
   "history": {
@@ -117,6 +117,28 @@
   },
   "settings": {
     "title": "设置",
+    "remoteAi": {
+      "section": "远程 AI 处理",
+      "label": "我已满 18 岁并允许远程 AI",
+      "explainer": "开启即表示你确认已满 18 岁，并同意 Reploom 通过其 Cloudflare Worker 向 Groq 发送你选择的输入：训练文字及单位设置、动作目录名称/ID；用于转写的录音，以及本地匹配无法解决时连同相同训练上下文发送的转写文本；还有你提交的餐食文字/照片。Groq 的处理政策适用。你可随时关闭；本地训练快速记录仍可使用。",
+      "on": "已开启 · 已接受当前说明",
+      "off": "已关闭 · 不向 Groq 发送内容"
+    },
+    "legal": {
+      "section": "隐私、支持与条款",
+      "privacy": "隐私政策",
+      "support": "支持",
+      "terms": "使用条款",
+      "data": "数据控制",
+      "openFailed": "无法打开页面。请检查网络后重试。",
+      "legacyRankDelete": "删除旧排行榜数据",
+      "legacyRankDeleting": "正在删除旧排行榜数据…",
+      "legacyRankHint": "仅当此设备参加过已停用的 TestFlight 排行榜时显示。",
+      "legacyRankDeleteConfirm": "这会从服务器永久删除此设备的旧排行榜记录。本地训练历史不会受到影响。",
+      "legacyRankDeleted": "旧排行榜数据已删除。",
+      "legacyRankDeleteFailed": "无法删除旧排行榜数据。本地内容未更改，请重试。",
+      "delete": "删除"
+    },
     "juice": {
       "section": "JUICE 强度",
       "full": "全开",
@@ -133,7 +155,7 @@
       "pill": "{step}kg",
       "explainer": "记录组数时，每点一次 +/- 按钮改变的重量值。"
     },
-    "footer": "Reploom · 本地 MVP。战斗力为趣味原创算法。",
+    "footer": "Reploom · 战斗力仅供娱乐，不构成医疗建议。",
     "language": {
       "section": "语言"
     },
@@ -170,7 +192,7 @@
     },
     "theme": {
       "section": "主题",
-      "explainer": "主题会切换记录时爆发的呼喊、颜色和 EVOLUTION 角色。"
+      "explainer": "主题会切换记录时出现的提示、颜色和界面点缀。"
     },
     "skin": {
       "section": "皮肤",
@@ -459,6 +481,7 @@
       "no_recording": "没有录到音频 — 点麦克风，说话，再点停止。",
       "empty_voice": "没有听到内容 — 说话后点停止。",
       "mic_denied": "语音需要麦克风权限。",
+      "ai_consent_required": "远程 AI 已关闭 — 请在设置中开启，或用“卧推 100 5”的格式在本地记录。",
       "no_voice": "语音需要设置 AI 端点(.env)。"
     },
     "recording": "● 录音中… 点按停止",
@@ -492,86 +515,15 @@
     "kcal": "{n} 千卡",
     "fail": "无法估算 — 试试更简单的描述。",
     "saveFailed": "这餐未能保存，也没有新增记录 — 请重试。",
-    "photoUnavailable": "照片估算需要设置 AI 端点(.env)。"
+    "photoUnavailable": "照片估算需要设置 AI 端点(.env)。",
+    "aiConsent": {
+      "required": "远程 AI 已关闭 — 请先在设置中开启，再估算餐食。",
+      "explainer": "餐食文字和所选照片需要可选的远程 AI 处理。重复已保存的餐食仍在本地完成。",
+      "settings": "AI 设置"
+    }
   },
   "rest": {
     "label": "休息"
-  },
-  "rank": {
-    "title": "排行榜",
-    "optIn": "设置昵称即可加入全球排行。在此之前不会上传任何数据。",
-    "handlePlaceholder": "昵称 (例如 DAESEON)",
-    "crewPlaceholder": "战队代码 (你的健身房)",
-    "join": "加入",
-    "tabWeek": "周榜 ↑",
-    "tabCp": "战斗力",
-    "tabCrew": "战队",
-    "myRank": "#{rank}",
-    "empty": "榜单是空的 — 分享你的战队代码。",
-    "offline": "无法连接排行榜服务器。",
-    "selfReport": "Phase 1: 自报分数 · 验证分级后续推出"
-  },
-  "evolution": {
-    "title": "进化",
-    "intro": "选一张你的照片 — AI 按你的等级进化它。只会变强。",
-    "pick": "选择我的照片",
-    "evolving": "进化中…",
-    "tagEvolved": "{grade} 形态 — 点按对比",
-    "tagOriginal": "原图 — 点按返回",
-    "reEvolve": "以 {grade} 重新进化 ⚡",
-    "changePhoto": "更换照片",
-    "fail": "进化失败 —",
-    "noEndpoint": "需要 AI 端点(.env) + GEMINI_API_KEY。",
-    "privacy": "照片会经 Reploom Worker 发送至 Google Gemini。Reploom 不会在服务器上保留照片。",
-    "share": "🔥 分享",
-    "shareCaption": "战斗力 {cp} · {grade} 💥 我把训练进化成了英雄 #健身 #撸铁 #运动"
-  },
-  "bodyAvatar": {
-    "open": "用我的照片创建角色",
-    "title": "照片训练角色",
-    "subtitle": "照片只用于生成固定正背面的运动服角色，生成结果不是身体测量数据。",
-    "outfit": {
-      "title": "运动服",
-      "sleeveless": "无袖上衣 + 短裤",
-      "sport_top": "功能上衣 + 短裤",
-      "compression": "压缩训练套装"
-    },
-    "photo": {
-      "pick": "选择我的照片",
-      "change": "重新选择照片",
-      "ready": "照片已保存在本机 · 尚未发送"
-    },
-    "consent": {
-      "title": "生成前确认",
-      "provider": "点击生成后，照片将经 Reploom Worker 发送至 Google Gemini，并适用 Google 的处理政策。",
-      "adultConfirmed": "我已年满 18 岁",
-      "ownershipConfirmed": "这是我的照片且我有权使用",
-      "aiConsent": "我同意 Google AI 处理并生成角色"
-    },
-    "generate": "生成运动服角色",
-    "generating": "正在生成角色…",
-    "cancelGeneration": "取消生成",
-    "cancel": "取消",
-    "preview": {
-      "title": "检查正面和背面预览",
-      "instructions": "仅当左侧为完整正面、右侧为完整背面，且两侧头部和脚部对齐时使用。",
-      "confirm": "两幅全身视图都存在且位置对齐",
-      "use": "使用此训练角色",
-      "activating": "正在应用角色…",
-      "retry": "丢弃并重新生成"
-    },
-    "delete": {
-      "title": "删除我的角色数据",
-      "body": "删除本机上的原始照片和生成角色。",
-      "action": "删除照片和角色"
-    },
-    "error": {
-      "pick": "无法准备这张照片，请换一张重试。",
-      "timeout": "生成超时，照片仍保存在本机。",
-      "generate": "无法生成角色，你仍可继续使用默认角色。",
-      "activate": "无法应用该预览，当前角色未更改。",
-      "delete": "无法删除角色数据，请重试。"
-    }
   },
   "common": {
     "back": "返回",

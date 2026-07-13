@@ -37,7 +37,7 @@
     "cardioBody": "Carrera, ciclismo, intervalos, remo y más.",
     "byRegion": "AVATAR DE ENTRENAMIENTO",
     "regionBody": "Toca el frente o la espalda. Primero verás el plan de hoy y tus movimientos recientes.",
-    "avatarPreview": "Avatar deportivo predeterminado · el avatar basado en una foto solo se genera si lo eliges."
+    "avatarPreview": "Avatar deportivo · cada toque corresponde a una zona de ejercicios fija."
   },
   "today": {
     "combatPowerLabel": "PODER DE COMBATE",
@@ -88,7 +88,7 @@
       "verified": "Datos verificados"
     },
     "empty": "Aún no hay datos. Registra una serie en la pestaña Hoy y aparecerá tu Poder de Combate.",
-    "verifiedExplainer": "Verificado {pct}% — los datos del reloj/importados/sensores suman un bonus al Poder de Combate. En la Fase 1 todo es autorreportado, así que el bonus es 0. (Los datos autorreportados nunca se penalizan.)",
+    "verifiedExplainer": "Verificado {pct}% — los datos autorizados de Apple Health pueden añadir un bonus de confianza. Los registros manuales también cuentan y nunca se penalizan.",
     "demoFire": "⚡ Repetir explosión de poder (para clips)"
   },
   "history": {
@@ -117,6 +117,28 @@
   },
   "settings": {
     "title": "Ajustes",
+    "remoteAi": {
+      "section": "Procesamiento remoto con IA",
+      "label": "Tengo 18+ y permito la IA remota",
+      "explainer": "Al activarlo, confirmas que tienes 18 años o más y aceptas que Reploom envíe a Groq, mediante su Worker de Cloudflare, las entradas que elijas: texto de entrenamiento con tu unidad y nombres/ID del catálogo; audio para transcribir y, si la coincidencia local no basta, la transcripción con el mismo contexto; y texto o fotos de comidas que envíes. Se aplican las políticas de Groq. Puedes desactivarlo cuando quieras; el registro rápido local seguirá disponible.",
+      "on": "ACTIVADO · Aviso actual aceptado",
+      "off": "DESACTIVADO · No se envía nada a Groq"
+    },
+    "legal": {
+      "section": "Privacidad, soporte y términos",
+      "privacy": "Política de privacidad",
+      "support": "Soporte",
+      "terms": "Términos de uso",
+      "data": "Controles de datos",
+      "openFailed": "No se pudo abrir la página. Comprueba tu conexión e inténtalo de nuevo.",
+      "legacyRankDelete": "Eliminar datos del marcador anterior",
+      "legacyRankDeleting": "Eliminando datos del marcador anterior…",
+      "legacyRankHint": "Solo aparece si este dispositivo participó en el marcador retirado de TestFlight.",
+      "legacyRankDeleteConfirm": "Esto elimina permanentemente del servidor la fila del marcador anterior de este dispositivo. Tu historial local de entrenamientos no cambia.",
+      "legacyRankDeleted": "Se eliminaron los datos del marcador anterior.",
+      "legacyRankDeleteFailed": "No se pudieron eliminar los datos del marcador anterior. No se cambió nada local; inténtalo de nuevo.",
+      "delete": "Eliminar"
+    },
     "juice": {
       "section": "Intensidad de JUICE",
       "full": "Total",
@@ -133,7 +155,7 @@
       "pill": "{step}kg",
       "explainer": "Cuánto cambian el peso los botones +/- en cada toque dentro del registro de series."
     },
-    "footer": "Reploom · MVP local. El Poder de Combate es una fórmula original por diversión.",
+    "footer": "Reploom · El Poder de Combate es recreativo, no consejo médico.",
     "language": {
       "section": "Idioma"
     },
@@ -170,7 +192,7 @@
     },
     "theme": {
       "section": "Tema",
-      "explainer": "Tu tema cambia los avisos, colores y el personaje EVOLUTION que explotan al registrar."
+      "explainer": "Tu tema cambia los avisos, colores y acentos visuales que aparecen al registrar."
     },
     "skin": {
       "section": "Skin",
@@ -459,6 +481,7 @@
       "no_recording": "No se capturó audio — toca el micrófono, habla y toca parar.",
       "empty_voice": "No se oyó nada — habla y toca parar.",
       "mic_denied": "La voz necesita permiso de micrófono.",
+      "ai_consent_required": "La IA remota está desactivada — actívala en Ajustes o registra localmente con el formato \"banca 100 5\".",
       "no_voice": "La voz necesita el endpoint AI (.env)."
     },
     "recording": "● Grabando… toca para parar",
@@ -492,86 +515,15 @@
     "kcal": "{n} kcal",
     "fail": "No se pudo estimar — simplifica.",
     "saveFailed": "No se pudo guardar esta comida. No se añadió nada — inténtalo de nuevo.",
-    "photoUnavailable": "La estimación por foto necesita el endpoint AI (.env)."
+    "photoUnavailable": "La estimación por foto necesita el endpoint AI (.env).",
+    "aiConsent": {
+      "required": "La IA remota está desactivada — actívala en Ajustes antes de estimar una comida.",
+      "explainer": "El texto de comidas y las fotos elegidas requieren el procesamiento remoto opcional. Repetir una comida guardada sigue siendo local.",
+      "settings": "AJUSTES DE IA"
+    }
   },
   "rest": {
     "label": "DESCANSO"
-  },
-  "rank": {
-    "title": "Clasificación",
-    "optIn": "Elige un alias para unirte al ranking global. Hasta entonces, nada sale de tu dispositivo.",
-    "handlePlaceholder": "ALIAS (ej. DAESEON)",
-    "crewPlaceholder": "CÓDIGO DE CREW (tu gym)",
-    "join": "UNIRSE",
-    "tabWeek": "SEMANAL ↑",
-    "tabCp": "PODER",
-    "tabCrew": "CREW",
-    "myRank": "#{rank}",
-    "empty": "Tabla vacía — comparte tu código de crew.",
-    "offline": "No se pudo conectar al ranking.",
-    "selfReport": "Fase 1: puntuaciones autoinformadas"
-  },
-  "evolution": {
-    "title": "Evolución",
-    "intro": "Elige una foto tuya — la IA la evoluciona según tu rango. Solo sube.",
-    "pick": "Elegir mi foto",
-    "evolving": "EVOLUCIONANDO…",
-    "tagEvolved": "FORMA {grade} — toca para comparar",
-    "tagOriginal": "ORIGINAL — toca para volver",
-    "reEvolve": "Re-evolucionar como {grade} ⚡",
-    "changePhoto": "Cambiar foto",
-    "fail": "Falló la evolución —",
-    "noEndpoint": "Requiere endpoint AI (.env) + GEMINI_API_KEY.",
-    "privacy": "Tu foto se envía mediante el Worker de Reploom a Google Gemini. Reploom no la conserva en su servidor.",
-    "share": "🔥 Compartir",
-    "shareCaption": "Poder de Combate {cp} · {grade} 💥 evolucioné mis entrenos en un héroe #fitness #gym"
-  },
-  "bodyAvatar": {
-    "open": "Crear mi avatar desde una foto",
-    "title": "Avatar de entrenamiento basado en foto",
-    "subtitle": "La foto solo se envía para crear un avatar deportivo fijo de frente y espalda. No es una medición corporal.",
-    "outfit": {
-      "title": "Ropa deportiva",
-      "sleeveless": "Sin mangas + shorts",
-      "sport_top": "Camiseta técnica + shorts",
-      "compression": "Conjunto de compresión"
-    },
-    "photo": {
-      "pick": "Elegir mi foto",
-      "change": "Elegir otra foto",
-      "ready": "Foto lista en este dispositivo · aún no enviada"
-    },
-    "consent": {
-      "title": "Confirma antes de generar",
-      "provider": "Al generar, la foto se envía mediante el Worker de Reploom a Google Gemini y se aplican las políticas de Google.",
-      "adultConfirmed": "Tengo 18 años o más",
-      "ownershipConfirmed": "Es mi foto y tengo derecho a usarla",
-      "aiConsent": "Acepto el procesamiento de Google AI y la generación del avatar"
-    },
-    "generate": "Generar avatar deportivo",
-    "generating": "Generando avatar…",
-    "cancelGeneration": "Cancelar generación",
-    "cancel": "Cancelar",
-    "preview": {
-      "title": "Comprueba la vista frontal y trasera",
-      "instructions": "Úsalo solo si el panel izquierdo muestra el frente completo, el derecho la espalda completa, y cabezas y pies están alineados.",
-      "confirm": "Las dos vistas de cuerpo entero están presentes y alineadas",
-      "use": "Usar este avatar de entrenamiento",
-      "activating": "Aplicando avatar…",
-      "retry": "Descartar e intentar de nuevo"
-    },
-    "delete": {
-      "title": "Eliminar datos de mi avatar",
-      "body": "Eliminar la foto original y el avatar generado de este dispositivo.",
-      "action": "Eliminar foto y avatar"
-    },
-    "error": {
-      "pick": "No se pudo preparar la foto. Prueba con otra.",
-      "timeout": "La generación agotó el tiempo. La foto sigue en este dispositivo.",
-      "generate": "No se pudo generar el avatar. Puedes seguir usando el predeterminado.",
-      "activate": "No se pudo aplicar la vista previa. El avatar actual no cambió.",
-      "delete": "No se pudieron eliminar los datos del avatar. Inténtalo de nuevo."
-    }
   },
   "common": {
     "back": "Atrás",
