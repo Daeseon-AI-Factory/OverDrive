@@ -1,52 +1,109 @@
-# Reploom (OverDrive) — 세션 핸드오프 (2026-07-09)
+# Reploom (OverDrive) — 세션 핸드오프 (2026-07-13)
 
-다른 에이전트(Codex 등)가 이어받기 위한 브리핑. 이 문서 하나 + 아래 "붙여넣을 프롬프트"만 새 세션에 주면 된다.
+다른 에이전트가 App Store 제출 작업을 그대로 이어받기 위한 현재 상태다. 추측하지 말고 아래 ID와 live readback을 다시 확인한 뒤 진행한다.
 
 ## 한 줄 상태
-게임화 운동 앱 Reploom(구 OverDrive)을 TestFlight로 반복 배포 중. **현재 빌드 12가 TestFlight VALID(설치 가능)**. main 브랜치 클린, 최신 커밋 `6c30d3b`.
 
-## 지금까지 한 것 (빌드별)
-- **b4** 첫 TestFlight 배포 (EAS 프로젝트/인증서/앱 레코드 세팅 완료).
-- **b5** 로깅 UX 수리: 로컬-퍼스트 즉시 저장(§6, 네트워크 대기 제거), 키보드 수정, 무음 세션 시작, AI 엔드포인트 빌드 주입.
-- **b7** 디자인 언어 MONOLITH 전면 적용(`ac0d450`) — 3안 경쟁·심사.
-- **b8~9** 스킨 엔진 12벌(`ab1eaba`) + 확실한 기록 루프(`c723937`): 포즈 애니메이션(12 동작 패밀리, Skia), 파서 후보 좁히기, 컨펌-되돌리기 카드, 일별 타임라인.
-- **b10** 다음-액션 코치 엔진(`0ca0e20`): 상황 인지 히어로(시작/휴식/방치/마무리), 원탭 제안 세트, 자동 휴식 카운트다운, 마이크 FAB, 탈텍스트 타일.
-- **b11** 시뮬레이터 시각 감사 8건 수정(`c7c8852`): Skia 글리프 글로우(textShadow 박스 근절), 20pt 미만 시스템 숫자(Orbitron 슬래시-제로), 코치 2열, 빈 주간 축약, 이모지 제거.
-- **b12** 코치 세션 복원 버그 수정(`ba80eed`): 진행 중 세션을 부팅 시 DB에서 재수화 → 앱 재실행/백그라운드 킬 후에도 코치 루프 유지.
+브랜치 `codex/usability-cockpit`은 GitHub에 `fafe712`까지 push됐다. **Build 13은 App Store Connect에서 `VALID` / `APP_STORE_ELIGIBLE`이고 version 1.0에 연결돼 있다.** Review Submission 초안은 만들었지만 private 설문과 공개 정책 URL이 없어 version item 추가가 `409 STATE_ERROR.ENTITY_STATE_INVALID`로 차단됐으며 아직 심사 제출되지 않았다.
 
-## 아직 미검증 / 열린 것 (사용자 판정 대기)
-1. **b12 실기기 판정**: 세트 기록 → 앱 완전 종료·재실행 → 코치가 "IN SESSION·다음 세트"로 이어지는지. (시뮬레이터로는 복원 확인됨: 스크린샷 `scratchpad/fix-probe.png`.)
-2. **메인 스킨 미선정**: 12벌 중 사용자가 꽂히는 1~2벌 정하면 그 스킨 시그니처(타코미터/레티클/클로컷 등) 심화 + JUICE 연동.
-3. **UX 백로그**(troubleshooting.md 참조): 음식 로그 수정/삭제 UI(write-only), i18n 신규 키 정식 카탈로그 등록(현재 defaultValue 폴백), health.ts write 에러 전파, DisciplineCard 단백질 중복.
-4. **6/30 전략 결정 미해결**: "진전이 cosmetic 축에 몰림, 실사용/매일사용 미검증." 실제 운동에서 매일 쓰는지가 성공 기준.
+## 현재 Git / 산출물
 
-## 반드시 지킬 규칙 (하드)
-- **CLAUDE.md 프로젝트 규칙 + `~/.claude/PLAYBOOK.md` 작업 프로토콜** 준수. 특히 첫 응답에 `[유형·강도]` 분류 선언, 표준 이상은 착수 전 계약 5줄.
-- **스펙 사수 항목**(`docs/overdrive-spec.md` §0·§9): §6 로깅은 어떤 연출/네트워크도 못 막는다(저장 우선). §5 오리지널 IP만(드래곤볼 등 프랜차이즈 이름/문구 금지, 감성만 재현). §7 그래픽은 히어로(Skia 한계까지). §9 반수치심(낮은 숫자·방치 조롱 금지).
-- **TypeScript strict**, 새 의존성 금지 원칙, 스킨 토큰만 사용(하드코딩 hex 금지).
-- **dual-write 로그 강제**(Stop 훅): 비-사소 커밋마다 `docs/troubleshooting.md` + `content/logs/OverDrive/<date>-<slug>.mdx` 동시 기록. **로그 커밋 제목엔 트리거 키워드(audit/decision/pivot) 금지** → `docs(log): record for <hash>` 중립 형식 (안 그러면 훅 재귀 오탐).
+- 브랜치: `codex/usability-cockpit`
+- 원격: `https://github.com/Daeseon-AI-Factory/OverDrive.git`
+- 출시 자산 커밋: `ca82eb4 docs(release): prepare App Store submission assets`
+- dual-write 로그: `fafe712 docs(log): record for ca82eb4 [no-log]`
+- 의도된 유일한 미커밋 변경: `docs/troubleshooting.md`의 다음 marker 한 줄
+  `<!-- skipped: af57b8c docs: session handoff briefing for next agent [no-log] -->`
+- App Store 원본: `docs/artifacts/app-store-v1/`의 5개 1320×2868 PNG
+- 스토어 정본: `store.config.json`
+- IPA: `/tmp/Reploom-13-export-local-account/Reploom.ipa`
+- IPA SHA-256: `72e97bcc23796f2cf637214b9d8c68bc908501d0ea3bf29e1edc0a65e7c3a24c`
 
-## 빌드·배포 파이프라인 (검증됨, 재사용 가능)
-EAS 무료 큐가 자주 정체 → **altool 직접 업로드가 기본 경로**:
-```
-npx eas-cli build -p ios --profile production --non-interactive --no-wait --json   # BUILD_ID 획득
-# FINISHED 후:
-URL=$(npx eas-cli build:view <BUILD_ID> --json | jq -r .artifacts.applicationArchiveUrl)
-curl -sL -o app.ipa "$URL"
-xcrun altool --upload-app -f app.ipa -t ios --apiKey 84HQ6ZG4L2 --apiIssuer 6586aecd-c733-4fcc-ba9a-cf460061e243
-```
-- ASC 앱 ID `6786831176`, 번들 `ai.daeseon.reploom`, Team `Z2BGA7G287`.
-- ASC API 키: `~/.secrets/asc/AuthKey_84HQ6ZG4L2.p8` (키 식별자는 `~/.secrets/api-keys.env`의 ASC_* 라인).
-- 애플 처리(VALID)는 보통 몇 분~30분, 가끔 수 시간 지연(장애 아님). 내부 그룹 자동 배포 켜져 있음.
+커밋 전 marker를 제거하고, 구현 커밋 뒤 `docs/troubleshooting.md` + 새 `content/logs/OverDrive/*.mdx`를 작성해 `docs(log): record for <hash> [no-log]`로 별도 커밋한 다음 marker를 다시 unstaged로 복원한다.
 
-## UI 검증 방법 (이번 세션의 핵심 교훈)
-**코드/테스트 통과 ≠ UI 검증.** 반드시 시뮬레이터에서 눈으로 본다. 그리고 **빈 첫 화면이 아니라 실사용 상태를 seed**해서 본다:
-```
-xcrun expo run:ios --configuration Release --device "iPhone 17 Pro"   # 또는 metro reload(JS-only 변경 시)
-# DB: <sim-container>/Documents/SQLite/overdrive.db 에 workout_session + set_log seed → 앱 재실행 → 스크린샷
-xcrun simctl io booted screenshot shot.png
-```
-세션성 상태(진행 중 운동)는 **재실행 후에도 복원되는지** 반드시 확인.
+## App Store Connect live 상태
 
-## 기술 스택
-RN 0.85 + Expo 56(dev client), TypeScript strict, expo-sqlite(온디바이스, 백엔드 없음 — Phase 1), @shopify/react-native-skia 2.6.2, reanimated 4.3.1, Anton/Orbitron 폰트. 핵심 디렉터리: `src/ui/skins/`(스킨 엔진), `src/features/coach/`(다음-액션), `src/features/exercise-art/`(포즈), `src/features/quicklog/`(로깅), `src/app/(tabs)/`(화면). 테스트: `npm test`(jest), `npx tsc --noEmit`, `npm run lint`.
+- App ID: `6786831176`; bundle: `ai.daeseon.reploom`
+- Version 1.0 ID: `6d40b6b7-eb2c-413b-a907-90829331c594`
+- Build 13 ID: `60e4f17c-e5a9-4cba-93f9-0554a50b543c`
+- Review Submission draft: `72f01614-39bb-4b0e-95e7-a3810e5fbb97`, state `READY_FOR_REVIEW`, item 0, submitted date null
+- Build 13: `VALID`, `APP_STORE_ELIGIBLE`, min iOS 16.4, non-exempt encryption false
+- Version: Build 13 연결, manual release, `usesIdfa=false`, copyright `2026 Daeseon Yoo`
+- Category: `HEALTH_AND_FITNESS`; content rights: `USES_THIRD_PARTY_CONTENT`
+- Age rating: global 4+, Health/Wellness yes, Age Assurance yes, Contests no, 나머지 공개 항목 none/no
+- Review contact·notes·demo-account-not-required 입력 및 readback 완료
+- Screenshots: en-US `APP_IPHONE_67` 5장 모두 `COMPLETE`, 순서 Today → Explore → Chest recommendations → History → Power
+- 가격: USA base, manual 1 + automatic 174 모두 customer price/proceeds 0
+- 지역: 전체 175 = 판매 132 + 제외 43, preorder 0, 신규 storefront 자동 포함 false
+- 제외: EU 27 + 기타 유럽 15 + China mainland; Hong Kong/Macau/Taiwan 포함
+- Korea e-Commerce Act: 사용자 제공 readback `Active`, last updated 2026-06-16
+
+## 아직 닫히지 않은 Apple private gate
+
+공개 App Store Connect API v4.4에는 아래 쓰기 필드가 없다. API key JWT와 저장된 cookie 모두 확인했으며 cookie는 만료 상태다. Chrome/in-app Browser/Computer Use 연결도 현재 런타임에서 제공되지 않았다.
+
+1. App Privacy 설문과 Publish
+   - 보수적 대상: Fitness, Health, Photos or Videos, Audio Data, Other User Content
+   - 모두 App Functionality, Data Not Linked to You, Tracking 없음
+   - HealthKit on-device records 자체는 network collection에 포함하지 않는다.
+2. DSA trader/non-trader self-declaration
+   - EU 27은 모두 `TRADER_STATUS_NOT_PROVIDED`; Europe 제외와 별개로 선언 필요
+3. Regulated Medical Device = `No`
+4. iPhone-only 출시를 위한 Mac/Vision availability toggle readback 및 필요 시 disable
+5. Tax Category live selection/readback
+
+새 Apple ID web/cookie session 또는 실제 계정 비밀번호 + 2FA 세션이 필요하다. app-specific password는 `apple-utils login`에 실패했고 대체물이 아니다.
+
+## 공개 서비스 상태와 Cloudflare gate
+
+- `reploom.pages.dev` / `reploom.app`: 현재 DNS 없음; Pages project도 없음
+- ASC의 Support/Privacy/Privacy Choices/Marketing URL: null 유지 중
+- live Worker version: `1aef7442-2f7c-4af3-859b-649205f2f906` 100%; 구형 Gemini/Groq/rank/evolve 코드라 출시 후보가 아님
+- 후보 Worker: source tests 14/14, normal/safe dry-run 통과, Build 13 client marker 있음
+- 배포 전 상태: `/tmp/reploom-worker-pre-20260713T0544Z.json`
+- 정책 문구는 후보 Worker observability disabled가 **배포·검증 후에만 운영 사실**이라고 조건부로 기록함
+
+Cloudflare Worker/Pages upload는 승인 심사기가 “리포 코드와 정적 파일을 확인되지 않은 외부 대상에 업로드”로 막았다. 우회하거나 재시도하지 말고 사용자가 다음 범위를 명시적으로 승인한 뒤 실행한다:
+
+`Cloudflare에 이 리포의 Worker 코드와 website 정적 파일 업로드를 승인한다`
+
+승인 후 immutable Worker upload → safe version 0% smoke → normal version 승격, rollback ID 기록, Pages project를 정확히 `reploom`으로 생성해 `https://reploom.pages.dev`를 확보한다. `/`, `/privacy`, `/support`, `/terms`, `/data`의 HTTPS 200과 모바일/데스크톱 렌더를 확인한 뒤에만 ASC URL을 입력한다.
+
+## 새 Release UI 검증
+
+- Native Release arm64 simulator build 성공, app path `/tmp/ReploomSimBuild/Build/Products/Release-iphonesimulator/Reploom.app`
+- Simulator: iPhone 17 Pro Max, iOS 26.5, 1320×2868
+- Seed: 5 sessions / open 1 / 20 sets / 1 cardio / 3 foods / locale en
+- SQLite: foreign-key error 0, integrity `ok`
+- 육안 확인: Today, Log, sportswear front body map, Chest recommendation sheet, History, Power, Settings Remote AI `OFF`
+- Maestro 실제 동작: chest tap → recommendation sheet; `bench` 입력 → Barbell Bench Press + last set context
+- App Store 5장 원본 육안 검수 및 Apple `COMPLETE` readback 완료
+- 공개 HTML은 local HTTP 200과 상대 링크/fragment 검사는 통과했지만 Browser 런타임 부재로 mobile/desktop 시각 렌더 미검증
+
+## 기계 검증
+
+- `npm run typecheck`: 통과
+- `npm run lint`: 통과
+- `npm test -- --runInBand`: 45 suites / 294 tests 통과
+- `npm --prefix worker test`: 14 tests 통과
+- `npx eas metadata:lint`: 통과, screenshots 경로 포함
+- `git diff --check`: 통과
+- dependency 변경 없음; 변경 파일 비밀정보 검사 통과
+
+## 다음 실행 순서
+
+1. Cloudflare 범위 승인 확보 후 Worker safe/normal immutable 배포와 Pages 공개, live rollback/readback 기록
+2. 정책 페이지 mobile/desktop 시각 QA, exact URL HTTPS 200 확인
+3. fresh ASC web session으로 App Privacy publish, DSA, Medical Device No, Mac/Vision, Tax Category 처리·readback
+4. `store.config.json`의 4개 URL을 ASC에 push하고 다시 읽기
+5. 기존 Review Submission draft에 version 1.0 item 추가
+6. 모든 blocker가 닫힌 뒤에만 `submitted=true`; state가 `WAITING_FOR_REVIEW`인지 readback
+7. 외부 상태 변경을 체크리스트에 기록하고 commit + dual-write + push
+
+## 하드 규칙
+
+- `CLAUDE.md`, `~/.claude/PLAYBOOK.md`, `docs/overdrive-spec.md` 준수
+- TypeScript strict, 새 의존성 금지, 스킨 토큰만
+- §5 오리지널 IP, §6 저장 우선·로깅 비차단, §7 그래픽 히어로, §9 반수치심
+- UI 변경은 Release simulator + 실사용 DB seed + 원본 screenshot 육안 검증 없이는 출고 금지
+- Europe/China mainland 포함, 결제, 사용자 데이터 삭제, 허위 법적 선언은 현재 범위 밖
