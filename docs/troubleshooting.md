@@ -516,3 +516,12 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 59c05ec
 - **Verification**: Jest 45 suites / 294 tests, strict TypeScript, lint, Expo Doctor 21/21, Worker 14 tests, 정상·safe dry-run, diff check 통과. iPhone 17 Pro Max / iOS 26.5 Release 빌드 0 errors / 1 warning. 시드 DB는 v6, 6 sessions / 15 sets / 3 foods / 3 body-composition rows, integrity `ok`; DB/WAL/SHM backup exclusion과 ATS fail-closed를 확인했다. 1320×2868 원본 스크린샷에서 진행 중 운동·QuickLog·식사 상태를 육안 확인했다. 다중 세트 Undo 실제 터치, 물리 iPhone 잠금 후 FileProtection, 라이브 Worker/Pages, 새 TestFlight 빌드와 App Review 제출은 미검증이다.
 - **Pattern**: 출시 가능 여부는 테스트 통과가 아니라 앱 동작·정책 문구·서버 배포·스토어 답변이 같은 버전을 설명하는지로 판정한다. 미확인 법적 정보나 live 상태는 placeholder와 gate로 표시하고, 배포와 rollback은 반드시 immutable version ID로 실행한다.
+
+## 공개 정책이 확인된 운영자 이름까지 미확인으로 표시했다
+
+- **Symptom**: Reploom 공개 Privacy/Terms와 출시 체크리스트가 법적 운영자 이름을 미확인 상태로 남겼지만, 빌더가 기존 App Store 판매자와 동일한 `Daeseon Yoo`를 Reploom 운영자·저작권자로 사용하라고 확정했다.
+- **Cause**: 저장소만으로 법적 신원을 추측하지 않는 publication gate는 맞았지만, 사용자의 명시적 확인 뒤에도 해당 gate를 운영자 이름·주소·메일·DSA가 결합된 하나의 미완료 항목으로 유지했다.
+- **Fix**: Privacy/Terms의 계약 당사자와 모든 공개 푸터를 `Daeseon Yoo`로 통일하고, App Store 예상 copyright를 `2026 Daeseon Yoo`로 기록했다. 주소·관할·지원메일·DSA는 별도 미확인 gate로 유지했다.
+- **Commit**: a66cf44
+- **Verification**: 5개 공개 HTML을 `xmllint --html --noout`으로 파싱해 exit 0을 확인했고, operator/copyright 문구 전수 검색과 `git diff --check`를 통과했다. HTML5 semantic tag에 대한 xmllint 경고는 있었으며, 브라우저 연결 실패로 모바일/데스크톱 시각 렌더는 미검증이다.
+- **Pattern**: 법적 메타데이터는 확인된 필드만 독립적으로 완료 처리한다. 이름 확인이 주소·연락처·DSA 확인을 대신하지 않으며, 남은 gate를 뭉뚱그려 완료하거나 전체를 계속 미확인으로 둘 이유도 없다.

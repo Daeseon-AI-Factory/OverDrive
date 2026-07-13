@@ -1,0 +1,18 @@
+---
+title: "확인된 운영자 이름과 남은 법적 게이트를 분리했다"
+date: "2026-07-12"
+project: "OverDrive"
+kind: "release-note"
+visibility: "public"
+language: "ko"
+summary: "Reploom 운영자와 저작권자를 Daeseon Yoo로 기록하되, 주소·지원메일·DSA 같은 별도 미확인 항목은 출시 게이트로 유지했다."
+tags: ["app-store", "privacy", "legal", "release"]
+---
+
+Reploom의 운영자와 저작권자는 **Daeseon Yoo**로 확인됐다. 공개 Privacy와 Terms의 계약 당사자, 사이트 푸터, App Store 출시 문서가 같은 이름을 사용하도록 맞췄다. App Store Connect에 입력할 예상 copyright 필드는 `2026 Daeseon Yoo`다.
+
+이 확인이 다른 법적 필드까지 자동으로 채우지는 않는다. 운영자 우편주소, governing-law venue, 작동하는 공개 지원메일, DSA trader 상태, App Review 전화번호는 계속 별도 출시 게이트다. 기존 Mimi 앱의 공개 판매자와 연락처는 참고 근거가 되지만 Reploom의 App Privacy, 카테고리, 연령등급, 출시 국가는 앱별로 다시 검증해야 한다.
+
+5개 공개 HTML은 정적 파서에서 exit 0을 확인했고 operator/copyright 문구와 diff를 전수 검사했다. 로컬 브라우저 연결이 열리지 않아 모바일·데스크톱 시각 렌더는 아직 확인하지 못했다.
+
+구현 커밋: `a66cf44`.
