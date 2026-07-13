@@ -4,8 +4,9 @@ Last reconciled with the v1 code: 2026-07-12. The publishable HTML is
 `website/privacy.html`; this Markdown file is the repository source-of-truth inventory used to
 check App Store Connect answers.
 
-> Publication gate: `support@reploom.app` has not been verified and the legal operator identity has
-> not been supplied. Do not publish or submit the current placeholders as final contact details.
+> Operator: Daeseon Yoo. Publication gate: `support@reploom.app` has not been verified and a postal
+> address has not been supplied. Do not publish or submit the current placeholders as final contact
+> details.
 
 ## Plain-language summary
 
@@ -123,6 +124,6 @@ Reploom is not directed to children under 13. Remote AI is gated by a user confi
 are 18 or older. Transport uses HTTPS and provider API keys stay server-side, but no system is
 perfectly secure; users should avoid unnecessary names, diagnoses, or other sensitive text.
 
-The final policy must identify the verified operator and a working privacy/support contact. Until
-the gate above is resolved, `support@reploom.app` is a placeholder rather than an operational
-promise.
+The verified operator is Daeseon Yoo. The final policy must also identify a working privacy/support
+contact and a postal address where legally required. Until the gate above is resolved,
+`support@reploom.app` is a placeholder rather than an operational promise.

@@ -7,6 +7,8 @@ Last reconciled with the v1 code and App Store Connect record: 2026-07-12.
 - Name: `Reploom`
 - Bundle ID: `ai.daeseon.reploom`
 - App Store Connect app ID: `6786831176`
+- Seller / legal operator: `Daeseon Yoo`
+- Expected App Store copyright field: `2026 Daeseon Yoo` (read it back after entry)
 - Version: `1.0`
 - Primary category: Health & Fitness
 - Secondary category: none

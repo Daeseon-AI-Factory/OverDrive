@@ -22,7 +22,8 @@ Updated: 2026-07-12. App Store Connect app `6786831176`, bundle `ai.daeseon.repl
 ## Gates before creating a production build
 
 - [ ] Replace the unverified `support@reploom.app` placeholder with a working public contact.
-- [ ] Add the verified operator identity required for the published privacy/terms pages.
+- [x] Record the verified operator and copyright owner as `Daeseon Yoo` in the release sources.
+- [ ] Add the operator postal address where required for the published privacy/terms pages.
 - [ ] Render and inspect Privacy, Support, Terms, and Data pages at mobile and desktop widths.
 - [x] Run full Jest, strict TypeScript, lint, Expo config/doctor, Worker dry-run, plist validation.
 - [x] Build Release for a 6.9-inch simulator with realistic seeded data.
@@ -58,7 +59,7 @@ Updated: 2026-07-12. App Store Connect app `6786831176`, bundle `ai.daeseon.repl
 - [ ] Upload with App Store Connect API credentials and wait for `VALID` / App Store eligibility.
 - [ ] Upload 1–10 truthful 6.9-inch screenshots from the same release candidate.
 - [ ] Set Health & Fitness category, content-rights declaration, description, subtitle, keywords,
-  copyright, Support/Privacy/Privacy Choices URLs, and reviewer notes.
+  copyright `2026 Daeseon Yoo`, Support/Privacy/Privacy Choices URLs, and reviewer notes.
 - [ ] Confirm `usesIdfa = false`, price = Free, Tax Category (`Fitness and health`, subject to account
   owner confirmation), distribution territories, and Version Release Setting = Manual.
 - [ ] Keep v1 iPhone-only; read back and disable unverified Apple-silicon Mac and Apple Vision
@@ -71,7 +72,8 @@ Updated: 2026-07-12. App Store Connect app `6786831176`, bundle `ai.daeseon.repl
   live answers and Apple's generated global and regional results.
 - [ ] Declare `Regulated Medical Device = No` in App Information and read it back.
 - [ ] Complete DSA trader self-assessment; if trader, verify the public address, phone, and email.
-- [ ] Verify export-compliance readback, exact copyright, Account Holder agreements, and tax/banking gates.
+- [ ] Verify export-compliance readback, copyright `2026 Daeseon Yoo`, Account Holder agreements,
+  and tax/banking gates.
 - [ ] Add required review contact name, phone, and email; set demo account required to false.
 - [ ] If support uses email, document the mailbox provider, support-message fields, retention, and
   deletion handling in the published Privacy Policy.

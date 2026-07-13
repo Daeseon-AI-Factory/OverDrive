@@ -3,6 +3,9 @@
 Last audited: 2026-07-12. This ledger records evidence available in the repository; it is not a
 substitute for the Account Holder's content-rights attestation or trademark clearance.
 
+Verified operator and copyright owner for the release record: **Daeseon Yoo**. This identity does
+not by itself prove the origin or licensing of each bundled asset.
+
 | Shipped asset | Repository evidence | Rights basis | Release status |
 |---|---|---|---|
 | Reploom mark, wordmark, app icon, splash, favicon, Android icon layers | Project vector sources and raster derivatives introduced in `a873470` | Repository-authored brand artwork; no third-party source is recorded | Account Holder must attest ownership and retain the editable sources |
@@ -20,7 +23,7 @@ submission, the Account Holder must:
 1. confirm the sportswear PNG origin and absence of a real-person/third-party likeness;
 2. confirm ownership of the Reploom brand artwork and all project-authored source;
 3. retain the Anton and Orbitron package license texts with the release records; and
-4. record the exact copyright owner entered in App Store Connect.
+4. enter and read back the exact year-and-owner copyright field for Daeseon Yoo in App Store Connect.
 
 The old Expo/React template images that remain unreferenced in `assets/` are not imported by the
 v1 application code. Archive inspection, rather than repository presence alone, determines what
@@ -28,4 +31,5 @@ is distributed in the IPA.
 
 The repository root `LICENSE` is the untouched Expo template MIT notice naming 650 Industries. It
 is evidence for upstream template material only and must not be presented as Reploom's copyright
-ownership record. Replacing or supplementing it requires the verified Reploom copyright owner.
+ownership record. The verified Reploom copyright owner is Daeseon Yoo; the upstream notice must
+still be preserved for its covered template material.
