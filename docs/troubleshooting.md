@@ -607,3 +607,15 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 4e511a4
 - **Verification**: 집중 6 suites / 36 tests와 전체 Jest 53 suites / 357 tests, strict TypeScript, lint, `git diff --check`를 통과했다. 회귀 fixture는 같은 날 완료 세션과 25분 된 열린 세션, 열린 세션의 12분 된 다른 운동 세트를 분리했고 `Continue` 뒤 행 수 불변, 명시 세트 CTA 뒤 +1을 확인했다. Release simulator의 실사용 seed·원본 screenshot 육안 검증은 통합 브랜치에서 아직 실행하지 않았다.
 - **Pattern**: 당일 목표 집계와 현재 세션의 타이머·직전 운동은 같은 날짜를 공유해도 identity 경계가 다르다. 재개 UI의 동사는 쓰기 여부를 숨기지 않아야 한다.
+
+## AI를 쓸 수 없으면 새 식사를 로컬에 기록할 수 없었다
+
+- **Symptom**: 신규 식사 이름을 입력해도 Remote AI가 꺼진 상태에서는 저장 대신 다음 문구가 표시됐고, 무료 로컬 경로는 이미 저장된 마지막 식사 반복만 제공했다.
+  ```text
+  Remote AI is off — enable it in Settings before estimating a meal.
+  ```
+- **Cause**: `src/features/food/FoodCard.tsx`의 신규 식사 입력과 사진 버튼이 모두 consent·구독·quota를 거쳐 Worker 추정을 호출했고, `food_log.source` CHECK도 `text|voice|photo`만 허용했다. 최근 식사의 경계는 별도 ID가 아니라 같은 `logged_at` 값에 의존했다.
+- **Fix**: `src/features/food/FoodCard.tsx`에 이름·kcal·단백질 직접 입력을 항상 노출하고 `src/features/food/manualMeal.ts`에서 입력·0.5×/1×/1.5× 재기록을 순수 계산한다. `src/db/schema.ts`의 v7 migration은 기존 행을 보존하며 `batch_id`와 `manual` source를 추가하고, `src/db/repos/foodRepo.ts`는 exact batch undo·단일 manual row edit·최근 distinct meal 조회를 제공한다. 네 locale 모두 사용자 입력값이며 영양 정확도를 검증하지 않는다고 명시했다.
+- **Commit**: 750f674
+- **Verification**: focused 4 suites / 18 tests와 전체 Jest 52 suites / 363 tests, strict TypeScript, lint, `git diff --check` 통과. 실제 SQLite v6형 테이블 1행에 v7 SQL을 적용해 원본 `old-1` 행·source를 보존하고 manual 행 삽입 뒤 2행 / 430 kcal / 22g / `integrity_check=ok`를 확인했다. Release simulator 실사용 상태의 터치·레이아웃·원본 스크린샷 검증은 통합 단계에 남겼다.
+- **Pattern**: 유료 AI 추정은 값 생성 보조일 뿐 로컬 원장을 여는 권한이 아니다. 사용자가 직접 아는 값은 계정·네트워크·quota와 무관하게 먼저 저장돼야 한다.
