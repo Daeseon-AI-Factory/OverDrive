@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS ai_quota_period (
   FOREIGN KEY (actor_key) REFERENCES ai_entitlement_principal(actor_key) ON DELETE CASCADE
 );
 
+-- Sandbox subscription periods renew on an accelerated cadence. This actor/day budget does not
+-- reset with those synthetic renewals, so a TestFlight or review account cannot regain provider
+-- headroom every few minutes. Production entitlements never write this table.
 CREATE TABLE IF NOT EXISTS ai_sandbox_daily_attempt (
   actor_key TEXT NOT NULL,
   day_key TEXT NOT NULL CHECK (length(day_key) = 64),
@@ -50,12 +53,16 @@ CREATE TABLE IF NOT EXISTS ai_quota_request (
     REFERENCES ai_sandbox_daily_attempt(actor_key, day_key) ON DELETE CASCADE
 );
 
+-- A privacy deletion removes usage detail but cannot become a quota-reset primitive. This minimal
+-- pseudonymous tombstone expires at the end of the already-verified App Store billing period.
 CREATE TABLE IF NOT EXISTS ai_entitlement_tombstone (
   actor_key TEXT PRIMARY KEY CHECK (length(actor_key) = 64),
   blocked_until_ms INTEGER NOT NULL,
   deleted_at_ms INTEGER NOT NULL
 );
 
+-- The AFTER trigger runs only when a new idempotency row was actually inserted. INSERT OR IGNORE
+-- retries therefore cannot increment usage a second time.
 CREATE TRIGGER IF NOT EXISTS ai_quota_reserve_after_insert
 AFTER INSERT ON ai_quota_request
 BEGIN
@@ -78,6 +85,9 @@ BEGIN
       AND photos_used + NEW.photo_cost > 60
   ) THEN RAISE(ABORT, 'monthly_photo_limit_reached') END;
 
+  -- Successful allowance is refunded on provider failure, but provider attempts are not. The 25%
+  -- headroom prevents an outage from charging customer-visible quota while still bounding provider
+  -- spend and request-row growth when callers rotate request ids after failures.
   SELECT CASE WHEN EXISTS (
     SELECT 1 FROM ai_quota_period
     WHERE actor_key = NEW.actor_key

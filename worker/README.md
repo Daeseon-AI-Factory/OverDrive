@@ -17,11 +17,19 @@ npx wrangler secret put APPLE_IAP_KEY_ID
 npx wrangler secret put APPLE_IAP_PRIVATE_KEY
 npx wrangler secret put ENTITLEMENT_IDENTITY_SECRET # stable backup; NEVER rotate after launch
 npx wrangler secret put ENTITLEMENT_SESSION_SECRET  # rotatable; at least 32 random characters
-npx wrangler d1 migrations apply overdrive-rank --remote
+npm run d1:migrate:remote
 npm test
 npx wrangler deploy --dry-run --config wrangler.toml
 npx wrangler deploy --dry-run --config wrangler.safe-degraded.toml
 ```
+
+The quota migration contains SQLite triggers. Wrangler 4.110's remote `d1 migrations apply` sends
+the whole migration through the query endpoint, which rejects this valid trigger batch with
+`incomplete input` even though the same migration succeeds locally. `d1:migrate:remote` builds an
+atomic temporary import from the canonical migration, records the same filename in
+`d1_migrations`, executes it through D1's file-ingestion path, and deletes the temporary file. It
+uses only the repository's pinned Wrangler and Node standard library and works on macOS and Windows.
+Do not replace it with manual statement-by-statement production edits.
 
 Do not use `wrangler deploy` or an immediate-deploy package script for a release. Upload immutable
 normal and safe-degraded versions first, record both IDs, and smoke-test each with a version

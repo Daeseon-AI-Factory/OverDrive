@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "wrangler dev",
     "test": "node --test test/*.test.mjs",
-    "check": "npm test && wrangler deploy --dry-run"
+    "check": "npm test && wrangler deploy --dry-run",
+    "d1:migrate:local": "node scripts/apply-d1-migration.mjs --local 0001_ai_subscription_quota.sql",
+    "d1:migrate:remote": "node scripts/apply-d1-migration.mjs --remote 0001_ai_subscription_quota.sql"
   },
   "devDependencies": {
     "wrangler": "^4.110.0"
