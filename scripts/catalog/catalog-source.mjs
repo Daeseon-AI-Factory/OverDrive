@@ -1,5 +1,4 @@
 const EFFECTIVE_AT = '2026-07-14T00:00:00Z';
-export const EVIDENCE_ID = 'catalog-v1-source-check-2026-07-14';
 
 export const STRENGTH_SOURCE_REFS = [
   {
@@ -29,20 +28,18 @@ export const CARDIO_SOURCE_REFS = [
   },
 ];
 
-export const SOURCE_CHECK_EVIDENCE = {
-  evidenceId: EVIDENCE_ID,
-  reviewStatus: 'source_checked',
-  reviewMethod: 'source_comparison',
-  reviewedByRole: 'catalog-source-check-agent',
-  reviewedAt: EFFECTIVE_AT,
+export const REFERENCE_CONTEXT = {
+  contextId: 'catalog-v1-program-safety-context-2026-07-14',
+  purpose: 'program_and_safety_context_only',
+  exerciseSpecificReview: false,
   humanReviewed: false,
-  scope: [
-    'Neutral exercise identity, body-region taxonomy, equipment class, movement pattern, difficulty label, and logging defaults.',
-    'ACSM/AHA are used only for strength rows and general resistance-training taxonomy and neutral prescription ranges.',
-    'HHS Physical Activity Guidelines are used only for cardio activity classification; modality names and aliases remain original metadata.',
-    'Names and aliases are independently authored catalog metadata and are not copied from the cited papers.',
+  uses: [
+    'General resistance-training program and safety context.',
+    'General physical-activity and cardio program context.',
   ],
-  exclusions: [
+  limitations: [
+    'These references were not compared exercise by exercise and are not row citations.',
+    'They do not establish exercise-specific taxonomy, equipment, aliases, or prescriptions.',
     'Descriptions, instructions, coaching text, medical or diagnostic claims, images, and video.',
     'OpenStax content, wger bulk imports, and any proprietary exercise copy.',
     'Human editorial approval or endorsement.',
@@ -60,14 +57,25 @@ const loc = (en, enAlias, ko, koAlias, es, esAlias, zhHans, zhHansAlias) => ({
   'zh-Hans': { displayName: zhHans, aliases: [zhHansAlias] },
 });
 
-const reps = (sets, low, high) => ({
+const reps = (sets, low, high, countingConvention = 'total') => ({
   sets,
   trackingMode: 'reps',
+  countingConvention,
   target: { unit: 'reps', low, high },
 });
 
-const duration = (sets = 1) => ({ sets, trackingMode: 'duration', target: null });
-const durationDistance = () => ({ sets: 1, trackingMode: 'duration_distance', target: null });
+const duration = (sets = 1) => ({
+  sets,
+  trackingMode: 'duration',
+  countingConvention: 'not_applicable',
+  target: null,
+});
+const durationDistance = () => ({
+  sets: 1,
+  trackingMode: 'duration_distance',
+  countingConvention: 'not_applicable',
+  target: null,
+});
 
 const row = (
   id,
@@ -99,7 +107,7 @@ const ROWS = [
   row(
     'barbell_bench_press',
     loc('Barbell Bench Press', 'Bench Press', '바벨 벤치프레스', '바벨 벤치', 'Press de banca con barra', 'Banca con barra', '杠铃卧推', '平板杠铃推举'),
-    'strength', false, ['barbell', 'bench'], ['rack'], 'horizontal_push', 'intermediate', ['chest'], ['triceps', 'shoulders'], reps(3, 5, 8),
+    'strength', false, ['barbell', 'bench', 'rack'], [], 'horizontal_push', 'intermediate', ['chest'], ['triceps', 'shoulders'], reps(3, 5, 8),
   ),
   row(
     'incline_db_press',
@@ -109,7 +117,7 @@ const ROWS = [
   row(
     'overhead_press',
     loc('Overhead Press', 'Standing Barbell Press', '오버헤드 프레스', '밀리터리 프레스', 'Press sobre la cabeza', 'Press de hombros con barra', '站姿推举', '杠铃肩推'),
-    'strength', false, ['barbell'], ['rack'], 'vertical_push', 'intermediate', ['shoulders'], ['triceps', 'core'], reps(3, 5, 8),
+    'strength', false, ['barbell'], ['rack'], 'vertical_push', 'intermediate', ['shoulders'], ['triceps'], reps(3, 5, 8),
   ),
   row(
     'lateral_raise',
@@ -119,12 +127,12 @@ const ROWS = [
   row(
     'pull_up',
     loc('Pull-Up', 'Overhand Pull-Up', '풀업', '턱걸이', 'Dominada', 'Dominada pronada', '引体向上', '正手引体'),
-    'strength', true, ['pull_up_bar'], [], 'vertical_pull', 'intermediate', ['back'], ['biceps', 'core'], reps(3, 5, 12),
+    'strength', true, ['pull_up_bar'], [], 'vertical_pull', 'intermediate', ['back'], ['biceps'], reps(3, 5, 12),
   ),
   row(
     'barbell_row',
     loc('Barbell Row', 'Bent-Over Row', '바벨 로우', '바벨 벤트오버 로우', 'Remo con barra', 'Remo inclinado', '杠铃划船', '俯身杠铃划船'),
-    'strength', false, ['barbell'], [], 'horizontal_pull', 'intermediate', ['back'], ['biceps', 'core'], reps(3, 6, 10),
+    'strength', false, ['barbell'], [], 'horizontal_pull', 'intermediate', ['back'], ['biceps'], reps(3, 6, 10),
   ),
   row(
     'lat_pulldown',
@@ -133,8 +141,8 @@ const ROWS = [
   ),
   row(
     'db_curl',
-    loc('Dumbbell Curl', 'Alternating Dumbbell Curl', '덤벨 컬', '덤벨 이두 컬', 'Curl con mancuernas', 'Curl de bíceps', '哑铃弯举', '哑铃二头弯举'),
-    'strength', false, ['dumbbell'], [], 'elbow_flexion', 'beginner', ['biceps'], [], reps(3, 8, 12),
+    loc('Alternating Dumbbell Curl', 'Dumbbell Curl', '교대 덤벨 컬', '덤벨 컬', 'Curl alterno con mancuernas', 'Curl con mancuernas', '交替哑铃弯举', '哑铃弯举'),
+    'strength', false, ['dumbbell'], [], 'elbow_flexion', 'beginner', ['biceps'], [], reps(3, 8, 12, 'per_side'),
   ),
   row(
     'triceps_pushdown',
@@ -144,47 +152,47 @@ const ROWS = [
   row(
     'barbell_back_squat',
     loc('Barbell Back Squat', 'High-Bar Back Squat', '바벨 백스쿼트', '백스쿼트', 'Sentadilla trasera con barra', 'Sentadilla con barra', '杠铃深蹲', '杠铃后蹲'),
-    'strength', false, ['barbell', 'rack'], ['smith_machine'], 'squat', 'intermediate', ['quads', 'glutes'], ['core', 'hamstrings'], reps(3, 5, 8),
+    'strength', false, ['barbell', 'rack'], [], 'squat', 'intermediate', ['quads', 'glutes'], [], reps(3, 5, 8),
   ),
   row(
     'deadlift',
     loc('Deadlift', 'Conventional Deadlift', '데드리프트', '컨벤셔널 데드리프트', 'Peso muerto', 'Peso muerto convencional', '硬拉', '传统硬拉'),
-    'strength', false, ['barbell'], [], 'hinge', 'intermediate', ['glutes', 'hamstrings', 'back'], ['core', 'quads'], reps(3, 3, 6),
+    'strength', false, ['barbell'], [], 'hinge', 'intermediate', ['glutes', 'hamstrings', 'back'], ['quads'], reps(3, 3, 6),
   ),
   row(
     'romanian_deadlift',
     loc('Romanian Deadlift', 'Barbell RDL', '루마니안 데드리프트', '루마니안 데드', 'Peso muerto rumano', 'RDL con barra', '罗马尼亚硬拉', '罗马尼亚式硬拉'),
-    'strength', false, ['barbell'], [], 'hinge', 'intermediate', ['hamstrings', 'glutes'], ['back', 'core'], reps(3, 8, 12),
+    'strength', false, ['barbell'], [], 'hinge', 'intermediate', ['hamstrings', 'glutes'], [], reps(3, 8, 12),
   ),
   row(
     'leg_press',
     loc('Leg Press', '45-Degree Leg Press', '레그 프레스', '머신 레그 프레스', 'Prensa de piernas', 'Prensa inclinada', '腿举', '倒蹬机'),
-    'strength', false, ['leg_press_machine'], [], 'knee_extension', 'beginner', ['quads'], ['glutes', 'hamstrings'], reps(3, 10, 15),
+    'strength', false, ['leg_press_machine'], [], 'squat', 'beginner', ['quads', 'glutes'], [], reps(3, 10, 15),
   ),
   row(
     'leg_curl',
-    loc('Leg Curl', 'Hamstring Curl', '레그 컬', '햄스트링 컬', 'Curl femoral', 'Flexión de piernas', '腿弯举', '腘绳肌弯举'),
-    'strength', false, ['leg_curl_machine'], [], 'knee_flexion', 'beginner', ['hamstrings'], ['calves'], reps(3, 10, 15),
+    loc('Machine Leg Curl', 'Hamstring Curl', '머신 레그 컬', '햄스트링 컬', 'Curl femoral en máquina', 'Flexión de piernas', '器械腿弯举', '腘绳肌弯举'),
+    'strength', false, ['leg_curl_machine'], [], 'knee_flexion', 'beginner', ['hamstrings'], [], reps(3, 10, 15),
   ),
   row(
     'bulgarian_split_squat',
-    loc('Bulgarian Split Squat', 'Rear-Foot-Elevated Split Squat', '불가리안 스플릿 스쿼트', '불스스', 'Sentadilla búlgara', 'Zancada búlgara', '保加利亚分腿蹲', '后脚抬高分腿蹲'),
-    'strength', false, ['dumbbell', 'bench'], [], 'lunge', 'intermediate', ['quads', 'glutes'], ['hamstrings', 'core'], reps(3, 8, 12),
+    loc('Dumbbell Rear-Foot-Elevated Split Squat', 'Bulgarian Split Squat', '덤벨 후면발 거상 스플릿 스쿼트', '불가리안 스플릿 스쿼트', 'Sentadilla dividida con pie trasero elevado y mancuernas', 'Sentadilla búlgara', '哑铃后脚抬高分腿蹲', '保加利亚分腿蹲'),
+    'strength', false, ['dumbbell', 'bench'], [], 'lunge', 'intermediate', ['quads', 'glutes'], [], reps(3, 8, 12, 'per_side'),
   ),
   row(
     'standing_calf_raise',
-    loc('Standing Calf Raise', 'Calf Raise Machine', '스탠딩 카프 레이즈', '스탠딩 카프', 'Elevación de gemelos de pie', 'Gemelos de pie', '站姿提踵', '站姿小腿提踵'),
-    'strength', false, ['calf_raise_machine'], ['smith_machine'], 'ankle_plantar_flexion', 'beginner', ['calves'], [], reps(4, 10, 15),
+    loc('Machine Standing Calf Raise', 'Standing Calf Raise', '머신 스탠딩 카프 레이즈', '스탠딩 카프', 'Elevación de gemelos de pie en máquina', 'Gemelos de pie', '器械站姿提踵', '站姿小腿提踵'),
+    'strength', false, ['calf_raise_machine'], [], 'ankle_plantar_flexion', 'beginner', ['calves'], [], reps(4, 10, 15),
   ),
   row(
     'hanging_leg_raise',
-    loc('Hanging Leg Raise', 'Bar Leg Raise', '행잉 레그 레이즈', '행레레', 'Elevación de piernas en suspensión', 'Elevación colgado', '悬垂举腿', '吊杠举腿'),
-    'strength', true, ['pull_up_bar'], [], 'hip_flexion', 'intermediate', ['core'], ['quads'], reps(3, 8, 15),
+    loc('Hanging Leg Raise', 'Bar Leg Raise', '행잉 레그 레이즈', '행레레', 'Elevación de piernas en suspensión', 'Elevación colgada de piernas', '悬垂举腿', '吊杠举腿'),
+    'strength', true, ['pull_up_bar'], [], 'hip_flexion', 'intermediate', ['core'], [], reps(3, 8, 15),
   ),
   row(
     'plank',
     loc('Plank', 'Forearm Plank', '플랭크', '엘보 플랭크', 'Plancha', 'Plancha de antebrazos', '平板支撑', '前臂平板'),
-    'strength', true, ['bodyweight_space'], ['mat'], 'trunk_anti_extension', 'beginner', ['core'], ['shoulders'], { sets: 3, trackingMode: 'duration', target: { unit: 'seconds', low: 30, high: 60 } },
+    'strength', true, ['bodyweight_space'], ['mat'], 'trunk_anti_extension', 'beginner', ['core'], [], { sets: 3, trackingMode: 'duration', countingConvention: 'total', target: { unit: 'seconds', low: 30, high: 60 } },
   ),
   row(
     'cable_fly',
@@ -193,23 +201,23 @@ const ROWS = [
   ),
   row(
     'dips',
-    loc('Dips', 'Parallel Bar Dips', '딥스', '평행봉 딥스', 'Fondos', 'Fondos en paralelas', '双杠臂屈伸', '双杠下压'),
-    'strength', true, ['dip_bars'], [], 'horizontal_push', 'intermediate', ['chest', 'triceps'], ['shoulders'], reps(3, 6, 12),
+    loc('Dips', 'Parallel Bar Dips', '딥스', '평행봉 딥스', 'Fondos', 'Fondos en paralelas', '双杠臂屈伸', '双杠撑体'),
+    'strength', true, ['dip_bars'], [], 'vertical_push', 'intermediate', ['chest', 'triceps'], ['shoulders'], reps(3, 6, 12),
   ),
   row(
     'face_pull',
     loc('Face Pull', 'Rope Face Pull', '페이스 풀', '로프 페이스 풀', 'Face pull', 'Tirón a la cara', '面拉', '绳索面拉'),
-    'strength', false, ['cable_machine'], [], 'shoulder_external_rotation', 'beginner', ['shoulders', 'back'], ['biceps'], reps(3, 12, 20),
+    'strength', false, ['cable_machine'], [], 'shoulder_external_rotation', 'beginner', ['shoulders', 'back'], [], reps(3, 12, 20),
   ),
   row(
     'hammer_curl',
-    loc('Hammer Curl', 'Neutral-Grip Curl', '해머 컬', '뉴트럴 그립 컬', 'Curl martillo', 'Curl neutro', '锤式弯举', '中立握弯举'),
+    loc('Two-Arm Hammer Curl', 'Hammer Curl', '양팔 해머 컬', '해머 컬', 'Curl martillo a dos brazos', 'Curl martillo', '双臂锤式弯举', '锤式弯举'),
     'strength', false, ['dumbbell'], [], 'elbow_flexion', 'beginner', ['biceps'], [], reps(3, 8, 12),
   ),
   row(
     'hip_thrust',
-    loc('Hip Thrust', 'Barbell Hip Thrust', '힙 쓰러스트', '바벨 힙 쓰러스트', 'Empuje de cadera', 'Hip thrust con barra', '臀冲', '杠铃臀推'),
-    'strength', false, ['barbell', 'bench'], ['smith_machine'], 'hip_extension', 'beginner', ['glutes'], ['hamstrings', 'core'], reps(3, 8, 15),
+    loc('Barbell Hip Thrust', 'Hip Thrust', '바벨 힙 쓰러스트', '힙 쓰러스트', 'Empuje de cadera con barra', 'Hip thrust con barra', '杠铃臀推', '臀冲'),
+    'strength', false, ['barbell', 'bench'], [], 'hip_extension', 'beginner', ['glutes'], ['hamstrings'], reps(3, 8, 15),
   ),
   row(
     'cable_crunch',
@@ -228,13 +236,13 @@ const ROWS = [
   ),
   row(
     'zone2_run',
-    loc('Zone 2 Run', 'Easy Aerobic Run', 'Zone 2 러닝', '존투 러닝', 'Carrera Zona 2', 'Rodaje Zona 2', 'Zone 2 慢跑', '二区慢跑'),
-    'cardio', true, [], ['treadmill'], 'locomotion_run', 'beginner', [], [], durationDistance(),
+    loc('Outdoor Zone 2 Run', 'Easy Outdoor Aerobic Run', '야외 Zone 2 러닝', '야외 존투 러닝', 'Carrera Zona 2 al aire libre', 'Rodaje aeróbico exterior', '户外 Zone 2 慢跑', '户外二区慢跑'),
+    'cardio', true, [], [], 'locomotion_run', 'beginner', [], [], durationDistance(),
   ),
   row(
     'hiit_intervals',
-    loc('HIIT Intervals', 'High-Intensity Intervals', 'HIIT 인터벌', '고강도 인터벌', 'Intervalos HIIT', 'Intervalos de alta intensidad', 'HIIT 间歇', '高强度间歇'),
-    'cardio', true, [], ['bodyweight_space', 'treadmill', 'bicycle', 'rowing_machine'], 'interval_mixed', 'intermediate', [], [], duration(),
+    loc('Bodyweight HIIT Session', 'Bodyweight High-Intensity Intervals', '맨몸 HIIT 세션', '맨몸 고강도 인터벌', 'Sesión HIIT con peso corporal', 'Intervalos intensos sin equipo', '自重 HIIT 训练', '自重高强度间歇'),
+    'cardio', true, ['bodyweight_space'], [], 'interval_mixed', 'intermediate', [], [], duration(),
   ),
   row(
     'cycling',
@@ -264,7 +272,7 @@ const ROWS = [
   row(
     'push_up',
     loc('Push-Up', 'Press-Up', '푸시업', '팔굽혀펴기', 'Flexión de brazos', 'Lagartija', '俯卧撑', '标准俯卧撑'),
-    'strength', true, ['bodyweight_space'], [], 'horizontal_push', 'beginner', ['chest'], ['triceps', 'shoulders', 'core'], reps(3, 8, 15),
+    'strength', true, ['bodyweight_space'], [], 'horizontal_push', 'beginner', ['chest'], ['triceps', 'shoulders'], reps(3, 8, 15),
   ),
   row(
     'chest_press_machine',
@@ -272,14 +280,14 @@ const ROWS = [
     'strength', false, ['chest_press_machine'], [], 'horizontal_push', 'beginner', ['chest'], ['triceps', 'shoulders'], reps(3, 8, 12),
   ),
   row(
-    'pec_deck_fly',
-    loc('Pec Deck Fly', 'Machine Fly', '펙덱 플라이', '버터플라이 머신', 'Aperturas en pec deck', 'Mariposa en máquina', '蝴蝶机夹胸', '器械飞鸟'),
-    'strength', false, ['pec_deck_machine'], [], 'shoulder_horizontal_adduction', 'beginner', ['chest'], ['shoulders'], reps(3, 10, 15),
+    'machine_chest_fly',
+    loc('Machine Chest Fly', 'Seated Chest Fly', '머신 체스트 플라이', '버터플라이 머신', 'Aperturas de pecho en máquina', 'Mariposa en máquina', '器械夹胸', '坐姿飞鸟'),
+    'strength', false, ['chest_fly_machine'], [], 'shoulder_horizontal_adduction', 'beginner', ['chest'], ['shoulders'], reps(3, 10, 15),
   ),
   row(
-    'arnold_press',
-    loc('Arnold Press', 'Rotating Shoulder Press', '아놀드 프레스', '회전 숄더 프레스', 'Press Arnold', 'Press con giro', '阿诺德推举', '旋转肩推'),
-    'strength', false, ['dumbbell'], ['bench'], 'vertical_push', 'intermediate', ['shoulders'], ['triceps'], reps(3, 8, 12),
+    'rotating_dumbbell_press',
+    loc('Standing Rotating Dumbbell Press', 'Rotating Shoulder Press', '스탠딩 회전 덤벨 프레스', '회전 숄더 프레스', 'Press rotacional de pie con mancuernas', 'Press con giro', '站姿旋转哑铃推举', '转腕肩推'),
+    'strength', false, ['dumbbell'], [], 'vertical_push', 'intermediate', ['shoulders'], ['triceps'], reps(3, 8, 12),
   ),
   row(
     'shoulder_press_machine',
@@ -287,14 +295,14 @@ const ROWS = [
     'strength', false, ['shoulder_press_machine'], [], 'vertical_push', 'beginner', ['shoulders'], ['triceps'], reps(3, 8, 12),
   ),
   row(
-    'rear_delt_fly',
-    loc('Reverse Pec Deck Fly', 'Rear Delt Machine Fly', '리버스 펙덱 플라이', '리어 델트 머신', 'Aperturas inversas en pec deck', 'Pájaros en máquina', '反向蝴蝶机飞鸟', '器械后束飞鸟'),
-    'strength', false, ['pec_deck_machine'], [], 'horizontal_pull', 'beginner', ['shoulders', 'back'], [], reps(3, 12, 15),
+    'machine_rear_delt_fly',
+    loc('Machine Rear Delt Fly', 'Reverse Machine Fly', '머신 리어 델트 플라이', '리버스 머신 플라이', 'Aperturas posteriores en máquina', 'Pájaros en máquina', '器械后束飞鸟', '反向器械飞鸟'),
+    'strength', false, ['chest_fly_machine'], [], 'horizontal_pull', 'beginner', ['shoulders', 'back'], [], reps(3, 12, 15),
   ),
   row(
     'assisted_pull_up',
     loc('Band-Assisted Pull-Up', 'Assisted Chin-Up', '밴드 어시스트 풀업', '밴드 턱걸이', 'Dominada asistida con banda', 'Dominada con goma', '弹力带辅助引体', '辅助引体'),
-    'strength', true, ['pull_up_bar', 'resistance_band'], [], 'vertical_pull', 'beginner', ['back'], ['biceps', 'core'], reps(3, 6, 12),
+    'strength', true, ['pull_up_bar', 'resistance_band'], [], 'vertical_pull', 'beginner', ['back'], ['biceps'], reps(3, 6, 12),
   ),
   row(
     'seated_cable_row',
@@ -304,37 +312,37 @@ const ROWS = [
   row(
     'single_arm_db_row',
     loc('One-Arm Dumbbell Row', 'Single-Arm DB Row', '원암 덤벨 로우', '한팔 덤벨 로우', 'Remo a una mano con mancuerna', 'Remo unilateral', '单臂哑铃划船', '单手哑铃划船'),
-    'strength', false, ['dumbbell', 'bench'], [], 'horizontal_pull', 'beginner', ['back'], ['biceps', 'core'], reps(3, 8, 12),
+    'strength', false, ['dumbbell', 'bench'], [], 'horizontal_pull', 'beginner', ['back'], ['biceps'], reps(3, 8, 12, 'per_side'),
   ),
   row(
     'straight_arm_pulldown',
     loc('Straight-Arm Pulldown', 'Cable Pullover', '스트레이트 암 풀다운', '암 풀다운', 'Jalón con brazos rectos', 'Pullover en polea', '直臂下拉', '绳索直臂下压'),
-    'strength', false, ['cable_machine'], [], 'vertical_pull', 'beginner', ['back'], ['triceps'], reps(3, 10, 15),
+    'strength', false, ['cable_machine'], [], 'vertical_pull', 'beginner', ['back'], [], reps(3, 10, 15),
   ),
   row(
-    'ez_bar_curl',
-    loc('EZ-Bar Curl', 'EZ Curl', '이지바 컬', 'EZ바 이두 컬', 'Curl con barra EZ', 'Curl EZ', 'EZ 杠弯举', '曲杆弯举'),
-    'strength', false, ['ez_curl_bar'], [], 'elbow_flexion', 'beginner', ['biceps'], [], reps(3, 8, 12),
+    'angled_bar_curl',
+    loc('Angled-Bar Curl', 'Cambered Bar Curl', '각도바 컬', '굴곡바 이두 컬', 'Curl con barra angular', 'Curl con barra curva', '曲杆弯举', '弯杆二头弯举'),
+    'strength', false, ['angled_curl_bar'], [], 'elbow_flexion', 'beginner', ['biceps'], [], reps(3, 8, 12),
   ),
   row(
     'overhead_triceps_extension',
-    loc('Overhead Triceps Extension', 'Dumbbell French Press', '오버헤드 트라이셉스 익스텐션', '덤벨 프렌치 프레스', 'Extensión de tríceps sobre la cabeza', 'Press francés con mancuerna', '过头三头伸展', '哑铃颈后臂屈伸'),
-    'strength', false, ['dumbbell'], [], 'elbow_extension', 'beginner', ['triceps'], ['shoulders'], reps(3, 10, 15),
+    loc('Overhead Triceps Extension', 'Two-Hand Dumbbell Extension', '오버헤드 트라이셉스 익스텐션', '양손 덤벨 익스텐션', 'Extensión de tríceps sobre la cabeza', 'Extensión con mancuerna a dos manos', '过头三头伸展', '双手哑铃臂屈伸'),
+    'strength', false, ['dumbbell'], [], 'elbow_extension', 'beginner', ['triceps'], [], reps(3, 10, 15),
   ),
   row(
     'front_squat',
     loc('Front Squat', 'Barbell Front Squat', '프론트 스쿼트', '앞스쿼트', 'Sentadilla frontal', 'Sentadilla con barra al frente', '杠铃前蹲', '前架深蹲'),
-    'strength', false, ['barbell', 'rack'], [], 'squat', 'intermediate', ['quads'], ['glutes', 'core', 'back'], reps(3, 5, 8),
+    'strength', false, ['barbell', 'rack'], [], 'squat', 'intermediate', ['quads', 'glutes'], [], reps(3, 5, 8),
   ),
   row(
-    'goblet_squat',
-    loc('Goblet Squat', 'Kettlebell Goblet Squat', '고블릿 스쿼트', '케틀벨 스쿼트', 'Sentadilla goblet', 'Sentadilla copa', '高脚杯深蹲', '壶铃杯式深蹲'),
-    'strength', false, ['kettlebell'], ['dumbbell'], 'squat', 'beginner', ['quads', 'glutes'], ['core'], reps(3, 8, 12),
+    'kettlebell_goblet_squat',
+    loc('Kettlebell Goblet Squat', 'Kettlebell Cup Squat', '케틀벨 고블릿 스쿼트', '케틀벨 스쿼트', 'Sentadilla goblet con kettlebell', 'Sentadilla copa con pesa rusa', '壶铃高脚杯深蹲', '壶铃杯式深蹲'),
+    'strength', false, ['kettlebell'], [], 'squat', 'beginner', ['quads', 'glutes'], [], reps(3, 8, 12),
   ),
   row(
-    'hack_squat',
-    loc('Hack Squat', 'Hack Squat Machine', '핵 스쿼트', '핵스쿼트 머신', 'Sentadilla hack', 'Prensa hack', '哈克深蹲', '哈克机深蹲'),
-    'strength', false, ['hack_squat_machine'], [], 'squat', 'beginner', ['quads'], ['glutes', 'hamstrings'], reps(3, 8, 12),
+    'sled_squat_machine',
+    loc('Sled Squat Machine', 'Machine Sled Squat', '슬레드 스쿼트 머신', '머신 스쿼트', 'Sentadilla en trineo', 'Sentadilla guiada en máquina', '雪橇式深蹲机', '轨道深蹲机'),
+    'strength', false, ['sled_squat_machine'], [], 'squat', 'beginner', ['quads', 'glutes'], [], reps(3, 8, 12),
   ),
   row(
     'leg_extension',
@@ -344,57 +352,57 @@ const ROWS = [
   row(
     'walking_lunge',
     loc('Walking Lunge', 'Forward Walking Lunge', '워킹 런지', '걷는 런지', 'Zancada caminando', 'Estocada andando', '行走弓步', '走步箭蹲'),
-    'strength', true, ['bodyweight_space'], ['dumbbell'], 'lunge', 'beginner', ['quads', 'glutes'], ['hamstrings', 'core'], reps(3, 8, 12),
+    'strength', true, ['bodyweight_space'], ['dumbbell'], 'lunge', 'beginner', ['quads', 'glutes'], [], reps(3, 8, 12, 'per_side'),
   ),
   row(
-    'step_up',
-    loc('Step-Up', 'Bench Step-Up', '스텝업', '박스 오르기', 'Subida al banco', 'Step-up en banco', '登台阶', '箱式踏步'),
-    'strength', true, ['bench'], ['dumbbell'], 'step', 'beginner', ['quads', 'glutes'], ['hamstrings', 'calves'], reps(3, 8, 12),
+    'step_platform_step_up',
+    loc('Step-Platform Step-Up', 'Platform Step-Up', '스텝 플랫폼 스텝업', '플랫폼 오르기', 'Subida a plataforma', 'Step-up en plataforma', '踏台阶', '平台踏步'),
+    'strength', true, ['step_platform'], ['dumbbell'], 'step', 'beginner', ['quads', 'glutes'], [], reps(3, 8, 12, 'per_side'),
   ),
   row(
     'trap_bar_deadlift',
     loc('Trap-Bar Deadlift', 'Hex-Bar Deadlift', '트랩바 데드리프트', '헥스바 데드', 'Peso muerto con barra hexagonal', 'Peso muerto trap bar', '六角杠硬拉', '六角杠铃硬拉'),
-    'strength', false, ['trap_bar'], [], 'hinge', 'intermediate', ['glutes', 'quads', 'hamstrings'], ['back', 'core'], reps(3, 5, 8),
+    'strength', false, ['trap_bar'], [], 'hinge', 'intermediate', ['glutes', 'quads', 'hamstrings'], [], reps(3, 5, 8),
   ),
   row(
     'kettlebell_swing',
     loc('Kettlebell Swing', 'KB Swing', '케틀벨 스윙', 'KB 스윙', 'Balanceo con kettlebell', 'Swing con pesa rusa', '壶铃摆动', '壶铃甩摆'),
-    'strength', false, ['kettlebell'], [], 'hinge', 'intermediate', ['glutes', 'hamstrings'], ['core', 'back'], reps(3, 10, 15),
+    'strength', false, ['kettlebell'], [], 'hinge', 'intermediate', ['glutes', 'hamstrings'], [], reps(3, 10, 15),
   ),
   row(
     'glute_bridge',
     loc('Glute Bridge', 'Floor Hip Bridge', '글루트 브리지', '힙 브리지', 'Puente de glúteos', 'Puente de cadera', '臀桥', '地面臀桥'),
-    'strength', true, ['bodyweight_space'], ['mat', 'weight_plate'], 'hip_extension', 'beginner', ['glutes'], ['hamstrings', 'core'], reps(3, 10, 15),
+    'strength', true, ['bodyweight_space'], ['mat', 'weight_plate'], 'hip_extension', 'beginner', ['glutes'], ['hamstrings'], reps(3, 10, 15),
   ),
   row(
     'seated_calf_raise',
-    loc('Seated Calf Raise', 'Calf Raise Seated', '시티드 카프 레이즈', '앉아서 카프', 'Elevación de gemelos sentado', 'Gemelos sentado', '坐姿提踵', '坐姿小腿提踵'),
+    loc('Machine Seated Calf Raise', 'Seated Calf Raise', '머신 시티드 카프 레이즈', '앉아서 카프', 'Elevación de gemelos sentado en máquina', 'Gemelos sentado', '器械坐姿提踵', '坐姿小腿提踵'),
     'strength', false, ['calf_raise_machine'], [], 'ankle_plantar_flexion', 'beginner', ['calves'], [], reps(3, 10, 15),
   ),
   row(
     'dead_bug',
     loc('Dead Bug', 'Alternating Dead Bug', '데드버그', '교차 데드버그', 'Dead bug', 'Bicho muerto', '死虫式', '交替死虫'),
-    'strength', true, ['bodyweight_space'], ['mat'], 'trunk_anti_extension', 'beginner', ['core'], [], reps(3, 8, 12),
+    'strength', true, ['bodyweight_space'], ['mat'], 'trunk_anti_extension', 'beginner', ['core'], [], reps(3, 8, 12, 'per_side'),
   ),
   row(
-    'side_plank',
-    loc('Side Plank', 'Lateral Plank', '사이드 플랭크', '옆 플랭크', 'Plancha lateral', 'Plancha de lado', '侧平板支撑', '侧桥'),
-    'strength', true, ['bodyweight_space'], ['mat'], 'trunk_anti_lateral_flexion', 'beginner', ['core'], ['shoulders'], { sets: 3, trackingMode: 'duration', target: { unit: 'seconds', low: 20, high: 45 } },
+    'side_plank_hip_lift',
+    loc('Side-Plank Hip Lift', 'Lateral Plank Hip Raise', '사이드 플랭크 힙 리프트', '옆 플랭크 골반 들기', 'Elevación de cadera en plancha lateral', 'Plancha lateral con elevación', '侧平板提髋', '侧桥抬髋'),
+    'strength', true, ['bodyweight_space'], ['mat'], 'trunk_anti_lateral_flexion', 'beginner', ['core'], [], reps(3, 8, 12, 'per_side'),
   ),
   row(
-    'pallof_press',
-    loc('Pallof Press', 'Cable Anti-Rotation Press', '팔로프 프레스', '안티 로테이션 프레스', 'Press Pallof', 'Press antirotación', '帕洛夫推举', '抗旋转推举'),
-    'strength', false, ['cable_machine'], [], 'trunk_anti_rotation', 'beginner', ['core'], ['shoulders'], reps(3, 8, 12),
+    'cable_anti_rotation_press',
+    loc('Cable Anti-Rotation Press', 'Anti-Rotation Cable Press', '케이블 안티로테이션 프레스', '항회전 케이블 프레스', 'Press antirotación en polea', 'Empuje antirotación', '绳索抗旋转推举', '抗旋转绳索推'),
+    'strength', false, ['cable_machine'], [], 'trunk_anti_rotation', 'beginner', ['core'], [], reps(3, 8, 12, 'per_side'),
   ),
   row(
-    'russian_twist',
-    loc('Russian Twist', 'Seated Twist', '러시안 트위스트', '시티드 트위스트', 'Giro ruso', 'Torsión rusa', '俄罗斯转体', '坐姿转体'),
+    'seated_trunk_rotation',
+    loc('Seated Plate Trunk Rotation', 'Plate Seated Twist', '플레이트 시티드 몸통 회전', '앉아서 몸통 회전', 'Rotación de tronco sentado con disco', 'Giro sentado con disco', '坐姿杠片转体', '坐姿躯干旋转'),
     'strength', false, ['weight_plate'], ['mat'], 'trunk_rotation', 'beginner', ['core'], [], reps(3, 10, 20),
   ),
   row(
-    'farmer_carry',
-    loc('Farmer Carry', 'Farmer Walk', '파머스 캐리', '농부 걷기', 'Paseo del granjero', 'Caminata del granjero', '农夫行走', '农夫走'),
-    'strength', false, ['dumbbell'], ['kettlebell', 'trap_bar'], 'loaded_carry', 'beginner', ['core'], ['shoulders', 'back', 'calves'], { sets: 3, trackingMode: 'distance', target: { unit: 'meters', low: 20, high: 40 } },
+    'dumbbell_suitcase_march',
+    loc('Dumbbell Suitcase March', 'One-Side Loaded March', '덤벨 수트케이스 마치', '한쪽 덤벨 제자리 걷기', 'Marcha unilateral con mancuerna', 'Marcha con carga a un lado', '单侧哑铃原地行走', '哑铃手提踏步'),
+    'strength', false, ['dumbbell'], [], 'loaded_carry', 'beginner', ['core'], ['shoulders'], reps(3, 10, 20, 'per_side'),
   ),
   row(
     'stair_climber',
@@ -412,9 +420,9 @@ const ROWS = [
     'cardio', true, ['pool'], [], 'locomotion_swim', 'beginner', [], [], durationDistance(),
   ),
   row(
-    'single_leg_romanian_deadlift',
-    loc('Single-Leg Romanian Deadlift', 'Single-Leg RDL', '싱글 레그 루마니안 데드리프트', '원레그 RDL', 'Peso muerto rumano a una pierna', 'RDL unilateral', '单腿罗马尼亚硬拉', '单腿 RDL'),
-    'strength', false, ['dumbbell'], [], 'hinge', 'intermediate', ['hamstrings', 'glutes'], ['core', 'back'], reps(3, 8, 12),
+    'dumbbell_single_leg_hip_hinge',
+    loc('Dumbbell Single-Leg Hip Hinge', 'Single-Leg Dumbbell Hinge', '덤벨 싱글 레그 힙 힌지', '한발 덤벨 힙 힌지', 'Bisagra de cadera a una pierna con mancuerna', 'Bisagra unilateral con mancuerna', '哑铃单腿髋铰链', '单腿哑铃俯身'),
+    'strength', false, ['dumbbell'], [], 'hinge', 'intermediate', ['hamstrings', 'glutes'], [], reps(3, 8, 12, 'per_side'),
   ),
 ];
 
@@ -448,16 +456,13 @@ export function buildCatalogSnapshot() {
       defaultPrescription: source.defaultPrescription,
       provenance: {
         classification: 'original_editorial',
-        reviewStatus: 'source_checked',
-        reviewMethod: 'source_comparison',
-        reviewedByRole: 'catalog-source-check-agent',
-        reviewEvidence: EVIDENCE_ID,
-        reviewedAt: EFFECTIVE_AT,
+        reviewStatus: 'unreviewed',
+        reviewMethod: 'none',
+        reviewedByRole: null,
+        reviewEvidence: null,
+        reviewedAt: null,
         containsThirdPartyCopy: false,
-        sources: (source.exerciseType === 'strength'
-          ? STRENGTH_SOURCE_REFS
-          : CARDIO_SOURCE_REFS
-        ).map((sourceRef) => ({ ...sourceRef })),
+        sources: [],
       },
     })),
   };

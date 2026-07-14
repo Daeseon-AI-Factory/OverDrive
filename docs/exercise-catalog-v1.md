@@ -8,6 +8,12 @@ Baseline: repository commit `d59f07904176c30b614676a72ba0964ca140c34f`
 
 Frozen: `2026-07-14T19:37:51Z`
 
+Pre-release amendment: `2026-07-14` — provenance now distinguishes genuinely
+unreviewed rows from source-checked rows; equipment alternatives may not be
+encoded as optional supplements; and prescriptions carry an explicit counting
+convention. No catalog v1 release had been published before this amendment, so
+the schema remains `1.0.0`.
+
 This document is the normative boundary shared by catalog curation, the catalog
 Worker/D1 service, and app-side cache/search work. The JSON Schema at
 [`docs/contracts/exercise-catalog-v1.schema.json`](contracts/exercise-catalog-v1.schema.json)
@@ -96,25 +102,18 @@ it is not a publishable exercise row and is not user data.
       "defaultPrescription": {
         "sets": 3,
         "trackingMode": "reps",
+        "countingConvention": "total",
         "target": {"unit": "reps", "low": 8, "high": 12}
       },
       "provenance": {
         "classification": "original_editorial",
-        "reviewStatus": "source_checked",
-        "reviewMethod": "source_comparison",
-        "reviewedByRole": "catalog-source-check-agent",
-        "reviewEvidence": "<source-check artifact reference>",
-        "reviewedAt": "2026-07-14T00:00:00Z",
+        "reviewStatus": "unreviewed",
+        "reviewMethod": "none",
+        "reviewedByRole": null,
+        "reviewEvidence": null,
+        "reviewedAt": null,
         "containsThirdPartyCopy": false,
-        "sources": [
-          {
-            "sourceType": "internal_editorial",
-            "label": "<internal review reference>",
-            "url": null,
-            "license": null,
-            "accessedAt": null
-          }
-        ]
+        "sources": []
       }
     }
   ]
@@ -138,10 +137,10 @@ validate against the machine-readable schema and every invariant in section 10.
 
 ### 3.2 Locale, alias, taxonomy, and prescription vocabularies
 
-Every public row supplies independently authored and explicitly source-checked
-or human-reviewed `displayName` and gym-language `aliases` for `en`, `ko`, `es`,
-and `zh-Hans`. Aliases are ordered from most to least common. The app's current
-`zh` resource maps to contract locale `zh-Hans`.
+Every public row supplies independently authored `displayName` and gym-language
+`aliases` for `en`, `ko`, `es`, and `zh-Hans`, and exposes its actual review
+status. Aliases are ordered from most to least common. The app's current `zh`
+resource maps to contract locale `zh-Hans`.
 
 The frozen body-region vocabulary matches the tappable hit map:
 `chest`, `shoulders`, `back`, `biceps`, `triceps`, `core`, `glutes`, `quads`,
@@ -154,10 +153,31 @@ tracking-mode, and target-unit enums are in the JSON Schema. `isBodyweight` is
 orthogonal to `exerciseType` and does not mean that no equipment is required
 (for example, a pull-up bar can still be required).
 
+Every entry in `equipment.required` is conjunctive: all listed items are needed
+for that canonical exercise identity. `equipment.optional` contains only
+supplemental items that can be added without changing the identity (for example,
+a mat or external load). It must never encode mutually exclusive substitutes
+such as outdoor route versus treadmill, dumbbell versus kettlebell, or free bar
+versus guided-bar machine. Those are distinct implementations and need distinct
+canonical rows.
+
+Primary regions are the intended targets or prime movers. Secondary regions are
+limited to direct, meaningful training targets, not incidental stabilization or
+mere load transfer, and are capped at three. When uncertain, omit a secondary
+tag rather than overstate it.
+
 `defaultPrescription` is a neutral logging default, not a medical or personalized
 recommendation. A target is required for `reps` and `intervals`, may be null for
 open-ended cardio, and must have `low <= high` with a unit compatible with the
 tracking mode.
+
+`countingConvention` is mandatory. `total` means the target applies to the whole
+set. `per_side` means the target applies separately to each side and the
+set is complete only after both sides are recorded. `not_applicable` is reserved
+for non-repetition modalities such as open-ended cardio. The catalog must not
+publish a new strength duration/distance prescription until the app's strength
+log can persist that measure honestly; the frozen legacy `plank` row remains the
+only v1 exception.
 
 ## 4. Deterministic ordering and search
 
@@ -279,20 +299,28 @@ CREATE TABLE catalog_exercise (
   difficulty TEXT NOT NULL CHECK (difficulty IN ('beginner', 'intermediate', 'advanced')),
   default_sets INTEGER NOT NULL,
   tracking_mode TEXT NOT NULL,
+  counting_convention TEXT NOT NULL
+    CHECK (counting_convention IN ('total', 'per_side', 'not_applicable')),
   target_unit TEXT,
   target_low REAL,
   target_high REAL,
   provenance_classification TEXT NOT NULL
     CHECK (provenance_classification IN ('original_editorial', 'public_facts', 'licensed')),
-  review_status TEXT NOT NULL CHECK (review_status IN ('source_checked', 'human_reviewed')),
-  review_method TEXT NOT NULL CHECK (review_method IN ('source_comparison', 'human_editorial_review')),
-  reviewed_by_role TEXT NOT NULL,
-  review_evidence TEXT NOT NULL,
-  reviewed_at_ms INTEGER NOT NULL,
+  review_status TEXT NOT NULL CHECK (review_status IN ('unreviewed', 'source_checked', 'human_reviewed')),
+  review_method TEXT NOT NULL CHECK (review_method IN ('none', 'source_comparison', 'human_editorial_review')),
+  reviewed_by_role TEXT,
+  review_evidence TEXT,
+  reviewed_at_ms INTEGER,
   contains_third_party_copy INTEGER NOT NULL CHECK (contains_third_party_copy = 0),
   CHECK (
+    (review_status = 'unreviewed' AND review_method = 'none' AND
+      reviewed_by_role IS NULL AND review_evidence IS NULL AND reviewed_at_ms IS NULL) OR
     (review_status = 'source_checked' AND review_method = 'source_comparison') OR
     (review_status = 'human_reviewed' AND review_method = 'human_editorial_review')
+  ),
+  CHECK (
+    review_status = 'unreviewed' OR
+    (reviewed_by_role IS NOT NULL AND review_evidence IS NOT NULL AND reviewed_at_ms IS NOT NULL)
   ),
   CHECK (provenance_classification <> 'licensed' OR review_status = 'human_reviewed'),
   PRIMARY KEY (version, id),
@@ -408,13 +436,18 @@ not copy third-party descriptions, instructions, programming text, images, or
 videos. A citation is evidence for a classification; it is not permission to
 copy expressive content.
 
-Every exercise has at least one ordered source record, an explicit
-`classification`, and an evidence-bearing review status:
+Every exercise has an explicit `classification` and an honest review status.
+Only a row that was actually compared against exercise-specific sources has
+ordered source records and evidence:
 
 - `original_editorial`: internally authored factual classification/name/alias;
 - `public_facts`: classifications checked against public scientific or official guidance; or
 - `licensed`: imported factual fields with the exact per-row license recorded.
 
+- `unreviewed` + `none` means no exercise-specific comparison or human editorial
+  review has occurred. Reviewer, evidence, timestamp, and sources are all null or
+  empty. This is the required state for the initial independently authored
+  snapshot.
 - `source_checked` + `source_comparison` means a named process/agent role compared
   neutral factual fields against the recorded sources. It does **not** mean a
   person reviewed, approved, or endorsed the row.
@@ -422,8 +455,11 @@ Every exercise has at least one ordered source record, an explicit
   role and a `reviewEvidence` reference to the approval artifact.
 
 Neutral names, aliases, taxonomy, equipment, and logging defaults may publish as
-`source_checked`. Every public row sets `containsThirdPartyCopy: false` and records
-`reviewedByRole`, `reviewEvidence`, and `reviewedAt`. Licensed rows require
+`unreviewed` when that status is exposed honestly, or as `source_checked` only
+after an exercise-specific comparison. Every public row sets
+`containsThirdPartyCopy: false`. Reviewed rows record `reviewedByRole`,
+`reviewEvidence`, and `reviewedAt`; unreviewed rows keep those fields null.
+Licensed rows require
 `human_reviewed`, a non-null commercially compatible license, documented
 field-level scope, and human approval evidence. Unknown, non-commercial,
 share-alike-incompatible, or mixed per-entry licensing fails publication.
@@ -435,13 +471,15 @@ alone is insufficient.
 Specifically, v1 must not import OpenStax Anatomy & Physiology 2e content because
 its CC BY-NC-SA terms are not a safe commercial-product default. It also must not
 bulk-import wger rows: exercise records can have per-entry licenses and each row
-would need individual compatibility review. ACSM 2026 general prescription
-guidance and the AHA 2023 scientific statement/figure on major/accessory muscle
-taxonomy may be recorded as factual review sources, but their prose/figures are
-not copied and internal classifications remain explicitly labeled.
+would need individual compatibility review. ACSM resistance-training guidance,
+the AHA 2023 scientific statement, and the HHS Physical Activity Guidelines may
+be recorded only in the separate program-and-safety reference-context artifact
+unless a row-specific comparison is performed. They are not per-exercise
+citations, do not make a row `source_checked`, and their prose/figures are not
+copied.
 
 Names and gym colloquialisms must be written independently and carry their actual
-`source_checked` or `human_reviewed` status in each locale. Translating
+`unreviewed`, `source_checked`, or `human_reviewed` status in each locale. Translating
 proprietary wording does not make it original.
 
 ## 9. Privacy-minimal search telemetry
@@ -482,11 +520,15 @@ A release is rejected unless all checks pass:
 11. Equipment, movement, difficulty, type, tracking, target, and region values use frozen enums.
 12. Prescription ranges are finite/non-negative, `low <= high`, and mode/unit compatible.
 13. Replacement IDs exist, are not retired, do not self-reference, and form no cycle.
-14. Every row has an honest status/method/role/evidence record; source-checking never claims human approval.
+14. Every row has an honest status/method/role/evidence record; unreviewed rows have no row sources or review identity, and source-checking never claims human approval.
 15. Licensed imports have a compatible explicit license and `human_reviewed` evidence.
 16. No description/media/proprietary copy or fabricated user/seed/test record is represented as factual production data.
 17. The deterministic AI candidate projection stays within 64 rows, four names per row, and 60 characters per name.
 18. Normalization and bounded-typo conformance vectors agree in ingestion, Worker, app, and tests.
+19. Required equipment is conjunctive; optional equipment is supplemental and never a substitute implementation.
+20. Counting convention is explicit; per-side targets are identified consistently and unsupported strength duration/distance rows are rejected.
+21. Secondary regions follow the direct-training rubric and never exceed three.
+22. All timestamps use timezone-qualified RFC 3339 syntax and represent real calendar instants.
 
 Release tooling must fail closed and print stable ID plus field path for every
 error. Validation occurs before any channel-pointer update.

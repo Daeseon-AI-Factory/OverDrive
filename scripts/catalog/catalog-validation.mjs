@@ -44,6 +44,7 @@ const BODY_REGIONS = [
 const EXERCISE_TYPES = ['strength', 'cardio'];
 const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'];
 const TRACKING_MODES = ['reps', 'duration', 'distance', 'duration_distance', 'intervals'];
+const COUNTING_CONVENTIONS = ['total', 'per_side', 'not_applicable'];
 const TARGET_UNITS = ['reps', 'seconds', 'minutes', 'meters', 'kilometers', 'rounds'];
 const STRENGTH_SOURCE_URLS = [
   'https://pmc.ncbi.nlm.nih.gov/articles/PMC12965823/',
@@ -51,6 +52,35 @@ const STRENGTH_SOURCE_URLS = [
 ];
 const CARDIO_SOURCE_URLS = [
   'https://odphp.health.gov/paguidelines/second-edition/pdf/Physical_Activity_Guidelines_2nd_edition.pdf',
+];
+const PER_SIDE_IDS = new Set([
+  'db_curl',
+  'bulgarian_split_squat',
+  'single_arm_db_row',
+  'walking_lunge',
+  'step_platform_step_up',
+  'dead_bug',
+  'side_plank_hip_lift',
+  'cable_anti_rotation_press',
+  'dumbbell_suitcase_march',
+  'dumbbell_single_leg_hip_hinge',
+]);
+const NON_FROZEN_FORBIDDEN_TOKENS = [
+  'Arnold',
+  'Pallof',
+  'Russian',
+  'Farmer',
+  'StepMill',
+  'OpenStax',
+  'wger',
+  'Pec Deck',
+  'Hack Squat',
+  'EZ-Bar',
+  'Smith Machine',
+  'Romanian',
+  'rumano',
+  '루마니안',
+  '罗马尼亚',
 ];
 
 export class CatalogValidationError extends Error {
@@ -99,7 +129,13 @@ function timestamp(value, path, nullable = false) {
   if (nullable && value === null) return;
   check(typeof value === 'string', path, 'must be an RFC 3339 timestamp string');
   check(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(value), path, 'must use UTC second precision');
-  check(Number.isFinite(Date.parse(value)), path, 'must be a valid timestamp');
+  const parsed = Date.parse(value);
+  check(Number.isFinite(parsed), path, 'must be a valid timestamp');
+  check(
+    new Date(parsed).toISOString() === `${value.slice(0, -1)}.000Z`,
+    path,
+    'must represent a real calendar instant without date normalization',
+  );
 }
 
 export function normalizeSearchV1(value) {
@@ -175,13 +211,44 @@ export function buildCoverageMatrix(snapshot, schema) {
       movementPatterns,
       (exercise, value) => exercise.movementPattern === value,
     ),
+    countingConventions: mapWithIds(
+      COUNTING_CONVENTIONS,
+      (exercise, value) => exercise.defaultPrescription.countingConvention === value,
+    ),
   };
 }
 
 function validatePrescription(prescription, exercise, path) {
-  exactKeys(prescription, ['sets', 'trackingMode', 'target'], path);
+  exactKeys(prescription, ['sets', 'trackingMode', 'countingConvention', 'target'], path);
   check(Number.isInteger(prescription.sets) && prescription.sets >= 1 && prescription.sets <= 20, `${path}.sets`, 'must be an integer from 1 to 20');
   enumValue(prescription.trackingMode, TRACKING_MODES, `${path}.trackingMode`);
+  enumValue(prescription.countingConvention, COUNTING_CONVENTIONS, `${path}.countingConvention`);
+  if (exercise.exerciseType === 'cardio') {
+    check(
+      prescription.countingConvention === 'not_applicable',
+      `${path}.countingConvention`,
+      'cardio prescriptions must use not_applicable',
+    );
+  } else {
+    check(
+      (exercise.id === 'plank' && prescription.trackingMode === 'duration') ||
+        (exercise.id !== 'plank' && prescription.trackingMode === 'reps'),
+      `${path}.trackingMode`,
+      'new strength rows must use the current rep-loggable workflow; only frozen plank may use duration',
+    );
+    check(
+      prescription.countingConvention !== 'not_applicable',
+      `${path}.countingConvention`,
+      'strength prescriptions must declare total or per_side',
+    );
+  }
+  check(
+    (prescription.countingConvention === 'per_side') === PER_SIDE_IDS.has(exercise.id),
+    `${path}.countingConvention`,
+    PER_SIDE_IDS.has(exercise.id)
+      ? 'this unilateral row must use per_side'
+      : 'this row is not in the canonical per-side set',
+  );
   if (prescription.target === null) {
     check(!['reps', 'intervals'].includes(prescription.trackingMode), `${path}.target`, 'reps/intervals require a target');
     check(exercise.exerciseType === 'cardio', `${path}.target`, 'open-ended null target is cardio-only');
@@ -204,7 +271,7 @@ function validatePrescription(prescription, exercise, path) {
   enumValue(prescription.target.unit, compatibleUnits[prescription.trackingMode], `${path}.target.unit`);
 }
 
-function validateProvenance(provenance, evidence, exerciseType, path) {
+function validateProvenance(provenance, path) {
   exactKeys(
     provenance,
     [
@@ -220,33 +287,73 @@ function validateProvenance(provenance, evidence, exerciseType, path) {
     path,
   );
   check(provenance.classification === 'original_editorial', `${path}.classification`, 'bundled v1 metadata must be original_editorial');
-  check(provenance.reviewStatus === 'source_checked', `${path}.reviewStatus`, 'must not claim human_reviewed');
-  check(provenance.reviewMethod === 'source_comparison', `${path}.reviewMethod`, 'must use source_comparison');
-  check(provenance.reviewedByRole === evidence.reviewedByRole, `${path}.reviewedByRole`, 'must match evidence role');
-  check(provenance.reviewEvidence === evidence.evidenceId, `${path}.reviewEvidence`, 'must reference the source-check evidence artifact');
-  check(provenance.reviewedAt === evidence.reviewedAt, `${path}.reviewedAt`, 'must match evidence timestamp');
+  check(provenance.reviewStatus === 'unreviewed', `${path}.reviewStatus`, 'must remain unreviewed until exercise-specific review exists');
+  check(provenance.reviewMethod === 'none', `${path}.reviewMethod`, 'unreviewed rows must use none');
+  check(provenance.reviewedByRole === null, `${path}.reviewedByRole`, 'unreviewed rows must not name a reviewer');
+  check(provenance.reviewEvidence === null, `${path}.reviewEvidence`, 'unreviewed rows must not claim review evidence');
+  check(provenance.reviewedAt === null, `${path}.reviewedAt`, 'unreviewed rows must not claim a review timestamp');
   check(provenance.containsThirdPartyCopy === false, `${path}.containsThirdPartyCopy`, 'must be false');
-  check(evidence.humanReviewed === false, 'evidence.humanReviewed', 'must stay false without human evidence');
-  const expectedSources = evidence.sources[exerciseType];
-  const expectedUrls = exerciseType === 'strength' ? STRENGTH_SOURCE_URLS : CARDIO_SOURCE_URLS;
-  uniqueArray(provenance.sources.map((source) => source.url), `${path}.sources.urls`);
-  check(
-    JSON.stringify(provenance.sources) === JSON.stringify(expectedSources),
-    `${path}.sources`,
-    `must exactly match the ${exerciseType} source-check references`,
+  check(Array.isArray(provenance.sources) && provenance.sources.length === 0, `${path}.sources`, 'unreviewed rows must have no row citations');
+}
+
+function validateReferenceContext(referenceContext) {
+  exactKeys(
+    referenceContext,
+    [
+      'contextId',
+      'purpose',
+      'exerciseSpecificReview',
+      'humanReviewed',
+      'uses',
+      'limitations',
+      'sources',
+    ],
+    'referenceContext',
   );
-  for (const [sourceIndex, source] of provenance.sources.entries()) {
-    const sourcePath = `${path}.sources[${sourceIndex}]`;
-    exactKeys(source, ['sourceType', 'label', 'url', 'license', 'accessedAt'], sourcePath);
+  check(
+    referenceContext.contextId === 'catalog-v1-program-safety-context-2026-07-14',
+    'referenceContext.contextId',
+    'must use the frozen context identity',
+  );
+  check(
+    referenceContext.purpose === 'program_and_safety_context_only',
+    'referenceContext.purpose',
+    'must not represent row-level evidence',
+  );
+  check(referenceContext.exerciseSpecificReview === false, 'referenceContext.exerciseSpecificReview', 'must be false');
+  check(referenceContext.humanReviewed === false, 'referenceContext.humanReviewed', 'must be false');
+  uniqueArray(referenceContext.uses, 'referenceContext.uses');
+  uniqueArray(referenceContext.limitations, 'referenceContext.limitations');
+  check(referenceContext.uses.length >= 1, 'referenceContext.uses', 'must explain its limited use');
+  check(referenceContext.limitations.length >= 1, 'referenceContext.limitations', 'must state limitations');
+  for (const [index, value] of referenceContext.uses.entries()) {
+    nonEmptyString(value, `referenceContext.uses[${index}]`, 240);
+  }
+  for (const [index, value] of referenceContext.limitations.entries()) {
+    nonEmptyString(value, `referenceContext.limitations[${index}]`, 240);
+  }
+  exactKeys(referenceContext.sources, ['strength', 'cardio'], 'referenceContext.sources');
+  const expectedByType = {
+    strength: { urls: STRENGTH_SOURCE_URLS, sourceType: 'peer_reviewed' },
+    cardio: { urls: CARDIO_SOURCE_URLS, sourceType: 'official_guideline' },
+  };
+  for (const [type, expected] of Object.entries(expectedByType)) {
+    const sources = referenceContext.sources[type];
+    check(Array.isArray(sources), `referenceContext.sources.${type}`, 'must be an array');
     check(
-      source.sourceType === (exerciseType === 'strength' ? 'peer_reviewed' : 'official_guideline'),
-      `${sourcePath}.sourceType`,
-      `must use the ${exerciseType} source type`,
+      JSON.stringify(sources.map((source) => source.url)) === JSON.stringify(expected.urls),
+      `referenceContext.sources.${type}`,
+      'must contain only the frozen general-context references',
     );
-    nonEmptyString(source.label, `${sourcePath}.label`, 200);
-    enumValue(source.url, expectedUrls, `${sourcePath}.url`);
-    check(source.license === null, `${sourcePath}.license`, 'citation is not a licensed import');
-    timestamp(source.accessedAt, `${sourcePath}.accessedAt`);
+    for (const [sourceIndex, source] of sources.entries()) {
+      const path = `referenceContext.sources.${type}[${sourceIndex}]`;
+      exactKeys(source, ['sourceType', 'label', 'url', 'license', 'accessedAt'], path);
+      check(source.sourceType === expected.sourceType, `${path}.sourceType`, `must be ${expected.sourceType}`);
+      nonEmptyString(source.label, `${path}.label`, 200);
+      check(expected.urls.includes(source.url), `${path}.url`, 'must be an approved general-context URL');
+      check(source.license === null, `${path}.license`, 'reference context is not a licensed import');
+      timestamp(source.accessedAt, `${path}.accessedAt`);
+    }
   }
 }
 
@@ -267,7 +374,7 @@ function validateLocalization(localization, path) {
   return normalized;
 }
 
-function validateExercise(exercise, index, schema, evidence, searchTermsByLocale) {
+function validateExercise(exercise, index, schema, searchTermsByLocale) {
   const path = `exercises[${index}]`;
   exactKeys(exercise, EXERCISE_KEYS, path);
   check(/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/.test(exercise.id), `${path}.id`, 'must be lowercase snake-case');
@@ -308,7 +415,8 @@ function validateExercise(exercise, index, schema, evidence, searchTermsByLocale
 
   for (const role of ['primaryBodyRegions', 'secondaryBodyRegions']) {
     uniqueArray(exercise[role], `${path}.${role}`);
-    check(exercise[role].length <= 10, `${path}.${role}`, 'must have at most 10 regions');
+    const maximum = role === 'secondaryBodyRegions' ? 3 : 10;
+    check(exercise[role].length <= maximum, `${path}.${role}`, `must have at most ${maximum} regions`);
     for (const [regionIndex, region] of exercise[role].entries()) {
       enumValue(region, BODY_REGIONS, `${path}.${role}[${regionIndex}]`);
     }
@@ -322,7 +430,7 @@ function validateExercise(exercise, index, schema, evidence, searchTermsByLocale
     check(exercise.primaryBodyRegions.length >= 1, `${path}.primaryBodyRegions`, 'strength requires a primary region');
   }
   validatePrescription(exercise.defaultPrescription, exercise, `${path}.defaultPrescription`);
-  validateProvenance(exercise.provenance, evidence, exercise.exerciseType, `${path}.provenance`);
+  validateProvenance(exercise.provenance, `${path}.provenance`);
 }
 
 function typoResults(snapshot, query, locale) {
@@ -374,6 +482,134 @@ function validateConformanceVectors(snapshot) {
   check(typoResults(snapshot, 'rnu', 'en').length === 0, 'typo-v1.snapshot.rnu', 'must reject typo matching for short queries');
 }
 
+function validateCanonicalEditorialDecisions(snapshot) {
+  const byId = new Map(snapshot.exercises.map((exercise) => [exercise.id, exercise]));
+  const requireRow = (id) => {
+    const exercise = byId.get(id);
+    check(exercise, `catalog.exercise.${id}`, 'required canonical row is missing');
+    return exercise;
+  };
+  const exactEquipment = (id, required, optional = []) => {
+    const exercise = requireRow(id);
+    check(
+      JSON.stringify(exercise.equipment.required) === JSON.stringify(required),
+      `catalog.exercise.${id}.equipment.required`,
+      `must be ${required.join(', ') || 'empty'} for this exact implementation`,
+    );
+    check(
+      JSON.stringify(exercise.equipment.optional) === JSON.stringify(optional),
+      `catalog.exercise.${id}.equipment.optional`,
+      `must contain only supplemental equipment: ${optional.join(', ') || 'empty'}`,
+    );
+  };
+
+  check(requireRow('leg_press').movementPattern === 'squat', 'catalog.exercise.leg_press.movementPattern', 'must be squat');
+  check(requireRow('dips').movementPattern === 'vertical_push', 'catalog.exercise.dips.movementPattern', 'must be vertical_push');
+
+  exactEquipment('barbell_bench_press', ['barbell', 'bench', 'rack']);
+  exactEquipment('barbell_back_squat', ['barbell', 'rack']);
+  exactEquipment('standing_calf_raise', ['calf_raise_machine']);
+  exactEquipment('hip_thrust', ['barbell', 'bench']);
+  exactEquipment('zone2_run', []);
+  exactEquipment('hiit_intervals', ['bodyweight_space']);
+  exactEquipment('kettlebell_goblet_squat', ['kettlebell']);
+  exactEquipment('machine_chest_fly', ['chest_fly_machine']);
+  exactEquipment('machine_rear_delt_fly', ['chest_fly_machine']);
+  exactEquipment('rotating_dumbbell_press', ['dumbbell']);
+  exactEquipment('angled_bar_curl', ['angled_curl_bar']);
+  exactEquipment('sled_squat_machine', ['sled_squat_machine']);
+  exactEquipment('step_platform_step_up', ['step_platform'], ['dumbbell']);
+  exactEquipment('dumbbell_suitcase_march', ['dumbbell']);
+  exactEquipment('dumbbell_single_leg_hip_hinge', ['dumbbell']);
+
+  const expectedEnglishDisplayNames = {
+    leg_curl: 'Machine Leg Curl',
+    bulgarian_split_squat: 'Dumbbell Rear-Foot-Elevated Split Squat',
+    standing_calf_raise: 'Machine Standing Calf Raise',
+    hip_thrust: 'Barbell Hip Thrust',
+    zone2_run: 'Outdoor Zone 2 Run',
+    hiit_intervals: 'Bodyweight HIIT Session',
+    machine_chest_fly: 'Machine Chest Fly',
+    rotating_dumbbell_press: 'Standing Rotating Dumbbell Press',
+    machine_rear_delt_fly: 'Machine Rear Delt Fly',
+    kettlebell_goblet_squat: 'Kettlebell Goblet Squat',
+    sled_squat_machine: 'Sled Squat Machine',
+    step_platform_step_up: 'Step-Platform Step-Up',
+    seated_calf_raise: 'Machine Seated Calf Raise',
+    side_plank_hip_lift: 'Side-Plank Hip Lift',
+    cable_anti_rotation_press: 'Cable Anti-Rotation Press',
+    seated_trunk_rotation: 'Seated Plate Trunk Rotation',
+    dumbbell_suitcase_march: 'Dumbbell Suitcase March',
+    dumbbell_single_leg_hip_hinge: 'Dumbbell Single-Leg Hip Hinge',
+  };
+  for (const [id, expectedName] of Object.entries(expectedEnglishDisplayNames)) {
+    check(
+      requireRow(id).localizations.en.displayName === expectedName,
+      `catalog.exercise.${id}.localizations.en.displayName`,
+      `must name the exact implementation as ${expectedName}`,
+    );
+  }
+
+  const hiit = requireRow('hiit_intervals');
+  check(hiit.exerciseType === 'cardio', 'catalog.exercise.hiit_intervals.exerciseType', 'must be cardio');
+  check(hiit.isBodyweight === true, 'catalog.exercise.hiit_intervals.isBodyweight', 'must identify the bodyweight modality');
+  check(hiit.movementPattern === 'interval_mixed', 'catalog.exercise.hiit_intervals.movementPattern', 'must be interval_mixed');
+  check(hiit.defaultPrescription.trackingMode === 'duration', 'catalog.exercise.hiit_intervals.defaultPrescription.trackingMode', 'must match the current cardio logger');
+
+  check(
+    requireRow('hanging_leg_raise').localizations.es.aliases.includes('Elevación colgada de piernas'),
+    'catalog.exercise.hanging_leg_raise.localizations.es.aliases',
+    'must retain the corrected Spanish alias',
+  );
+  check(
+    requireRow('dips').localizations['zh-Hans'].aliases.includes('双杠撑体'),
+    'catalog.exercise.dips.localizations.zh-Hans.aliases',
+    'must retain the corrected Chinese alias',
+  );
+  check(
+    requireRow('seated_calf_raise').localizations.en.aliases.includes('Seated Calf Raise'),
+    'catalog.exercise.seated_calf_raise.localizations.en.aliases',
+    'must retain the natural English alias',
+  );
+
+  const rowsWithNoSecondaryClaim = [
+    'barbell_back_squat',
+    'romanian_deadlift',
+    'leg_press',
+    'leg_curl',
+    'bulgarian_split_squat',
+    'hanging_leg_raise',
+    'plank',
+    'face_pull',
+    'front_squat',
+    'kettlebell_goblet_squat',
+    'sled_squat_machine',
+    'walking_lunge',
+    'step_platform_step_up',
+    'trap_bar_deadlift',
+    'kettlebell_swing',
+    'dead_bug',
+    'side_plank_hip_lift',
+    'cable_anti_rotation_press',
+    'dumbbell_single_leg_hip_hinge',
+  ];
+  for (const id of rowsWithNoSecondaryClaim) {
+    check(
+      requireRow(id).secondaryBodyRegions.length === 0,
+      `catalog.exercise.${id}.secondaryBodyRegions`,
+      'incidental stabilization must not be labeled as a direct secondary target',
+    );
+  }
+
+  for (const legacyId of ['arnold_press', 'pec_deck_fly', 'rear_delt_fly', 'ez_bar_curl', 'goblet_squat', 'hack_squat', 'step_up', 'side_plank', 'pallof_press', 'russian_twist', 'farmer_carry', 'single_leg_romanian_deadlift']) {
+    check(!byId.has(legacyId), `catalog.exercise.${legacyId}`, 'non-frozen identity must use its neutral exact-implementation replacement');
+  }
+  const nonFrozenText = JSON.stringify(snapshot.exercises.slice(32));
+  for (const token of NON_FROZEN_FORBIDDEN_TOKENS) {
+    check(!nonFrozenText.includes(token), 'catalog.exercises[32..]', `must not contain non-neutral token ${token}`);
+  }
+}
+
 function validateCoverage(snapshot, schema) {
   const coverage = buildCoverageMatrix(snapshot, schema);
   for (const region of BODY_REGIONS) {
@@ -410,7 +646,7 @@ export function validateCatalog({
   snapshot,
   schema,
   compatibility,
-  evidence,
+  referenceContext,
   seedIds,
   raw,
   sidecar,
@@ -426,27 +662,13 @@ export function validateCatalog({
   check(snapshot.exercises.length >= 32 && snapshot.exercises.length <= 512, 'catalog.exercises', 'must contain 32 to 512 rows');
   check(snapshot.exercises.length <= 64, 'catalog.exercises', 'v1 bundled snapshot must fit the deterministic AI projection bound');
 
-  check(evidence.reviewStatus === 'source_checked', 'evidence.reviewStatus', 'must be source_checked');
-  check(evidence.reviewMethod === 'source_comparison', 'evidence.reviewMethod', 'must be source_comparison');
-  check(evidence.humanReviewed === false, 'evidence.humanReviewed', 'must not claim human review');
-  check(
-    JSON.stringify(evidence.sources.strength.map((source) => source.url)) ===
-      JSON.stringify(STRENGTH_SOURCE_URLS),
-    'evidence.sources.strength',
-    'must use only the frozen ACSM/AHA strength references',
-  );
-  check(
-    JSON.stringify(evidence.sources.cardio.map((source) => source.url)) ===
-      JSON.stringify(CARDIO_SOURCE_URLS),
-    'evidence.sources.cardio',
-    'must use only the frozen HHS cardio reference',
-  );
+  validateReferenceContext(referenceContext);
 
   const searchTermsByLocale = Object.fromEntries(LOCALES.map((locale) => [locale, new Map()]));
   const ids = [];
   const displayOrders = [];
   for (const [index, exercise] of snapshot.exercises.entries()) {
-    validateExercise(exercise, index, schema, evidence, searchTermsByLocale);
+    validateExercise(exercise, index, schema, searchTermsByLocale);
     ids.push(exercise.id);
     displayOrders.push(exercise.displayOrder);
   }
@@ -469,6 +691,7 @@ export function validateCatalog({
   }
 
   validateConformanceVectors(snapshot);
+  validateCanonicalEditorialDecisions(snapshot);
   const coverage = validateCoverage(snapshot, schema);
   const canonicalRaw = Buffer.from(JSON.stringify(snapshot), 'utf8');
   check(canonicalRaw.byteLength <= 524_288, 'catalog.payloadBytes', 'must be at most 512 KiB');

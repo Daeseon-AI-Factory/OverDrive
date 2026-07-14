@@ -85,7 +85,7 @@
         "dumbbell",
         "kettlebell",
         "trap_bar",
-        "ez_curl_bar",
+        "angled_curl_bar",
         "bench",
         "rack",
         "pull_up_bar",
@@ -95,12 +95,12 @@
         "leg_press_machine",
         "leg_curl_machine",
         "leg_extension_machine",
-        "hack_squat_machine",
+        "sled_squat_machine",
         "chest_press_machine",
         "shoulder_press_machine",
-        "pec_deck_machine",
+        "chest_fly_machine",
         "calf_raise_machine",
-        "smith_machine",
+        "step_platform",
         "treadmill",
         "elliptical_machine",
         "stair_climber",
@@ -203,10 +203,11 @@
     "defaultPrescription": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["sets", "trackingMode", "target"],
+      "required": ["sets", "trackingMode", "countingConvention", "target"],
       "properties": {
         "sets": {"type": "integer", "minimum": 1, "maximum": 20},
         "trackingMode": {"enum": ["reps", "duration", "distance", "duration_distance", "intervals"]},
+        "countingConvention": {"enum": ["total", "per_side", "not_applicable"]},
         "target": {
           "oneOf": [
             {"$ref": "#/$defs/target"},
@@ -254,27 +255,64 @@
       ],
       "properties": {
         "classification": {"enum": ["original_editorial", "public_facts", "licensed"]},
-        "reviewStatus": {"enum": ["source_checked", "human_reviewed"]},
-        "reviewMethod": {"enum": ["source_comparison", "human_editorial_review"]},
-        "reviewedByRole": {"type": "string", "minLength": 1, "maxLength": 80},
-        "reviewEvidence": {"type": "string", "minLength": 1, "maxLength": 200},
-        "reviewedAt": {"type": "string", "format": "date-time"},
+        "reviewStatus": {"enum": ["unreviewed", "source_checked", "human_reviewed"]},
+        "reviewMethod": {"enum": ["none", "source_comparison", "human_editorial_review"]},
+        "reviewedByRole": {
+          "oneOf": [
+            {"type": "string", "minLength": 1, "maxLength": 80},
+            {"type": "null"}
+          ]
+        },
+        "reviewEvidence": {
+          "oneOf": [
+            {"type": "string", "minLength": 1, "maxLength": 200},
+            {"type": "null"}
+          ]
+        },
+        "reviewedAt": {"$ref": "#/$defs/timestampOrNull"},
         "containsThirdPartyCopy": {"const": false},
         "sources": {
           "type": "array",
-          "minItems": 1,
           "maxItems": 8,
           "items": {"$ref": "#/$defs/source"}
         }
       },
       "allOf": [
         {
+          "if": {"properties": {"reviewStatus": {"const": "unreviewed"}}, "required": ["reviewStatus"]},
+          "then": {
+            "properties": {
+              "reviewMethod": {"const": "none"},
+              "reviewedByRole": {"type": "null"},
+              "reviewEvidence": {"type": "null"},
+              "reviewedAt": {"type": "null"},
+              "sources": {"maxItems": 0}
+            }
+          }
+        },
+        {
           "if": {"properties": {"reviewStatus": {"const": "source_checked"}}, "required": ["reviewStatus"]},
-          "then": {"properties": {"reviewMethod": {"const": "source_comparison"}}}
+          "then": {
+            "properties": {
+              "reviewMethod": {"const": "source_comparison"},
+              "reviewedByRole": {"type": "string", "minLength": 1},
+              "reviewEvidence": {"type": "string", "minLength": 1},
+              "reviewedAt": {"type": "string", "format": "date-time"},
+              "sources": {"minItems": 1}
+            }
+          }
         },
         {
           "if": {"properties": {"reviewStatus": {"const": "human_reviewed"}}, "required": ["reviewStatus"]},
-          "then": {"properties": {"reviewMethod": {"const": "human_editorial_review"}}}
+          "then": {
+            "properties": {
+              "reviewMethod": {"const": "human_editorial_review"},
+              "reviewedByRole": {"type": "string", "minLength": 1},
+              "reviewEvidence": {"type": "string", "minLength": 1},
+              "reviewedAt": {"type": "string", "format": "date-time"},
+              "sources": {"minItems": 1}
+            }
+          }
         },
         {
           "if": {"properties": {"classification": {"const": "licensed"}}, "required": ["classification"]},
@@ -333,7 +371,12 @@
         "movementPattern": {"$ref": "#/$defs/movementPattern"},
         "difficulty": {"enum": ["beginner", "intermediate", "advanced"]},
         "primaryBodyRegions": {"$ref": "#/$defs/bodyRegions"},
-        "secondaryBodyRegions": {"$ref": "#/$defs/bodyRegions"},
+        "secondaryBodyRegions": {
+          "allOf": [
+            {"$ref": "#/$defs/bodyRegions"},
+            {"maxItems": 3}
+          ]
+        },
         "defaultPrescription": {"$ref": "#/$defs/defaultPrescription"},
         "provenance": {"$ref": "#/$defs/provenance"}
       }

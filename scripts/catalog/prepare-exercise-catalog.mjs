@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { buildCatalogSnapshot, SOURCE_CHECK_EVIDENCE } from './catalog-source.mjs';
+import { buildCatalogSnapshot, REFERENCE_CONTEXT } from './catalog-source.mjs';
 import {
   buildCoverageMatrix,
   checksumForRaw,
@@ -15,7 +15,7 @@ const PATHS = {
   json: `${CATALOG_DIR}/exercise-catalog-v1.json`,
   checksum: `${CATALOG_DIR}/exercise-catalog-v1.sha256`,
   generatedTs: `${CATALOG_DIR}/exercise-catalog-v1.generated.ts`,
-  evidence: `${CATALOG_DIR}/exercise-catalog-v1.evidence.json`,
+  referenceContext: `${CATALOG_DIR}/exercise-catalog-v1.reference-context.json`,
   coverage: `${CATALOG_DIR}/exercise-catalog-v1.coverage.json`,
   d1Sql: `${CATALOG_DIR}/exercise-catalog-v1.d1.sql`,
   schema: `${ROOT}docs/contracts/exercise-catalog-v1.schema.json`,
@@ -44,7 +44,7 @@ function buildD1DraftSql(snapshot, raw, checksum) {
   for (const exercise of snapshot.exercises) {
     const target = exercise.defaultPrescription.target;
     lines.push(
-      `INSERT INTO catalog_exercise (version, id, record_revision, status, effective_from_ms, effective_to_ms, replacement_id, display_order, exercise_type, is_bodyweight, movement_pattern, difficulty, default_sets, tracking_mode, target_unit, target_low, target_high, provenance_classification, review_status, review_method, reviewed_by_role, review_evidence, reviewed_at_ms, contains_third_party_copy) VALUES (${[
+      `INSERT INTO catalog_exercise (version, id, record_revision, status, effective_from_ms, effective_to_ms, replacement_id, display_order, exercise_type, is_bodyweight, movement_pattern, difficulty, default_sets, tracking_mode, counting_convention, target_unit, target_low, target_high, provenance_classification, review_status, review_method, reviewed_by_role, review_evidence, reviewed_at_ms, contains_third_party_copy) VALUES (${[
         version,
         exercise.id,
         exercise.recordRevision,
@@ -59,6 +59,7 @@ function buildD1DraftSql(snapshot, raw, checksum) {
         exercise.difficulty,
         exercise.defaultPrescription.sets,
         exercise.defaultPrescription.trackingMode,
+        exercise.defaultPrescription.countingConvention,
         target?.unit,
         target?.low,
         target?.high,
@@ -67,7 +68,7 @@ function buildD1DraftSql(snapshot, raw, checksum) {
         exercise.provenance.reviewMethod,
         exercise.provenance.reviewedByRole,
         exercise.provenance.reviewEvidence,
-        Date.parse(exercise.provenance.reviewedAt),
+        exercise.provenance.reviewedAt === null ? null : Date.parse(exercise.provenance.reviewedAt),
         0,
       ].map(sqlValue).join(', ')});`,
     );
@@ -145,7 +146,7 @@ async function expectedArtifacts() {
     snapshot,
     schema,
     compatibility,
-    evidence: SOURCE_CHECK_EVIDENCE,
+    referenceContext: REFERENCE_CONTEXT,
     seedIds,
     raw,
     sidecar,
@@ -164,7 +165,7 @@ async function expectedArtifacts() {
       [PATHS.json, raw],
       [PATHS.checksum, sidecar],
       [PATHS.generatedTs, buildGeneratedTs(raw, checksum)],
-      [PATHS.evidence, `${JSON.stringify(SOURCE_CHECK_EVIDENCE, null, 2)}\n`],
+      [PATHS.referenceContext, `${JSON.stringify(REFERENCE_CONTEXT, null, 2)}\n`],
       [PATHS.coverage, `${JSON.stringify(coverage, null, 2)}\n`],
       [PATHS.d1Sql, buildD1DraftSql(snapshot, raw, checksum)],
     ]),

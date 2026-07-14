@@ -1,17 +1,15 @@
 {
-  "evidenceId": "catalog-v1-source-check-2026-07-14",
-  "reviewStatus": "source_checked",
-  "reviewMethod": "source_comparison",
-  "reviewedByRole": "catalog-source-check-agent",
-  "reviewedAt": "2026-07-14T00:00:00Z",
+  "contextId": "catalog-v1-program-safety-context-2026-07-14",
+  "purpose": "program_and_safety_context_only",
+  "exerciseSpecificReview": false,
   "humanReviewed": false,
-  "scope": [
-    "Neutral exercise identity, body-region taxonomy, equipment class, movement pattern, difficulty label, and logging defaults.",
-    "ACSM/AHA are used only for strength rows and general resistance-training taxonomy and neutral prescription ranges.",
-    "HHS Physical Activity Guidelines are used only for cardio activity classification; modality names and aliases remain original metadata.",
-    "Names and aliases are independently authored catalog metadata and are not copied from the cited papers."
+  "uses": [
+    "General resistance-training program and safety context.",
+    "General physical-activity and cardio program context."
   ],
-  "exclusions": [
+  "limitations": [
+    "These references were not compared exercise by exercise and are not row citations.",
+    "They do not establish exercise-specific taxonomy, equipment, aliases, or prescriptions.",
     "Descriptions, instructions, coaching text, medical or diagnostic claims, images, and video.",
     "OpenStax content, wger bulk imports, and any proprietary exercise copy.",
     "Human editorial approval or endorsement."
