@@ -1,0 +1,20 @@
+---
+title: "AI 없이도 새 식사를 기록하는 로컬 원장을 열었다"
+date: "2026-07-14"
+project: "OverDrive"
+kind: "ux-retro"
+visibility: "public"
+language: "ko"
+summary: "직접 입력·최근 식사 배율 재기록·편집·되돌리기를 구독과 네트워크에서 분리하고 기존 식사 DB를 보존했다."
+tags: ["phase-1", "food", "offline", "sqlite", "usability"]
+---
+
+기존 Fuel 카드는 새 식사를 만들 때 텍스트나 사진을 Worker로 보내 AI가 kcal와 단백질을 추정해야 했다. AI 동의를 끄거나 구독·quota를 사용할 수 없으면 새 식사는 만들 수 없고, 로컬 폴백은 이미 저장된 마지막 식사 반복뿐이었다. AI 추정의 편의와 사용자가 직접 아는 값을 저장할 권한이 같은 gate에 묶인 상태였다.
+
+`eec4c3b`는 이름·kcal·단백질 직접 입력을 카드의 첫 기록 경로로 추가했다. 입력값은 추정하지 않고 그대로 `source=manual`로 기기 SQLite에 저장한다. 화면에는 이 값이 사용자가 입력한 값이며 Reploom이 영양 정확도를 검증하지 않는다고 네 locale로 표시한다. 선택형 Pro 텍스트·사진 추정은 아래에 남지만 수동 저장은 AI consent, entitlement, quota, endpoint를 전혀 조회하지 않는다.
+
+최근 식사는 최대 세 가지 distinct batch를 로컬에서 불러온다. 0.5×, 1×, 1.5× 중 하나를 고르면 버튼의 kcal·단백질 숫자도 먼저 바뀌고, 한 번의 탭으로 계산된 값을 새 manual batch로 저장한다. 방금 만든 단일 수동 식사는 exact ID로 편집할 수 있고, 편집 후에도 같은 batch identity를 유지한다. 즉시 Undo는 exact IDs, 원래 user/date 범위, 해당 기록이 자동 완료한 단백질 discipline 상태를 함께 되돌린다.
+
+SQLite v7은 `food_log` CHECK를 `manual|text|voice|photo`로 넓히고 `batch_id`를 추가한다. SQLite가 CHECK를 제자리에서 바꾸지 못하므로 exclusive transaction 안에서 새 테이블로 복사하고 교체한다. 기존 데이터에는 `user_id:logged_at`을 결정적 batch ID로 부여하며, 새 저장은 UUID batch ID를 사용한다. 스키마가 이미 v7인지 읽은 뒤에만 재구축하므로 user version만 먼저 올라간 중단 상태도 다음 부팅에서 복구한다.
+
+기능 검증은 수동 저장이 AI access 함수를 호출하지 않는 UI 테스트, 최근 식사 0.5× 재기록, repository batch/edit/undo, migration self-heal을 포함한 focused 18 tests와 전체 363 tests까지다. 품질 검증은 strict TypeScript, lint, diff check와 실제 SQLite CLI에서 기존 1행 보존·manual 행 삽입·합계 2행 / 430 kcal / 22g / integrity `ok`까지다. 제품·워크플로 검증은 아직 완료되지 않았다. Release simulator의 realistic food history seed에서 키보드, 한손 탭 수, 긴 번역 잘림, 편집·Undo 터치, 원본 스크린샷 육안 검증은 통합 출고 단계가 맡는다.

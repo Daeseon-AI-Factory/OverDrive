@@ -592,3 +592,15 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: `b0ead93` (반증된 가설), `7f4560d` (실제 수정), `da28116` (release-state 정합화)
 - **Verification**: local runner와 remote import가 성공했고 remote는 14 queries / 24 rows written을 반환했다. readback은 pending migration 0, `ai_*` object 11개(table 5, index 4, trigger 2), 기존 `rank_entry` 4행, `quick_check=ok`, `foreign_key_check` 오류 0이었다. Worker 44/44와 `git diff --check`를 통과했다. Build 14는 별도 Apple validation/upload 뒤 `VALID` / `APP_STORE_ELIGIBLE`이며 one-tester `Internal` group에서 `IN_BETA_TESTING`으로 읽혔지만 production Worker와 실제 결제 entitlement는 미검증이다.
 - **Pattern**: trigger가 있는 D1 migration은 local 성공만으로 remote 적용 가능성을 추론하지 않는다. canonical SQL과 migration ledger를 보존한 file-ingestion 경로를 쓰고, 기존 데이터 수·schema object·무결성·pending migration을 함께 읽는다.
+
+## AI를 쓸 수 없으면 새 식사를 로컬에 기록할 수 없었다
+
+- **Symptom**: 신규 식사 이름을 입력해도 Remote AI가 꺼진 상태에서는 저장 대신 다음 문구가 표시됐고, 무료 로컬 경로는 이미 저장된 마지막 식사 반복만 제공했다.
+  ```text
+  Remote AI is off — enable it in Settings before estimating a meal.
+  ```
+- **Cause**: `src/features/food/FoodCard.tsx`의 신규 식사 입력과 사진 버튼이 모두 consent·구독·quota를 거쳐 Worker 추정을 호출했고, `food_log.source` CHECK도 `text|voice|photo`만 허용했다. 최근 식사의 경계는 별도 ID가 아니라 같은 `logged_at` 값에 의존했다.
+- **Fix**: `src/features/food/FoodCard.tsx`에 이름·kcal·단백질 직접 입력을 항상 노출하고 `src/features/food/manualMeal.ts`에서 입력·0.5×/1×/1.5× 재기록을 순수 계산한다. `src/db/schema.ts`의 v7 migration은 기존 행을 보존하며 `batch_id`와 `manual` source를 추가하고, `src/db/repos/foodRepo.ts`는 exact batch undo·단일 manual row edit·최근 distinct meal 조회를 제공한다. 네 locale 모두 사용자 입력값이며 영양 정확도를 검증하지 않는다고 명시했다.
+- **Commit**: eec4c3b
+- **Verification**: focused 4 suites / 18 tests와 전체 Jest 52 suites / 363 tests, strict TypeScript, lint, `git diff --check` 통과. 실제 SQLite v6형 테이블 1행에 v7 SQL을 적용해 원본 `old-1` 행·source를 보존하고 manual 행 삽입 뒤 2행 / 430 kcal / 22g / `integrity_check=ok`를 확인했다. Release simulator 실사용 상태의 터치·레이아웃·원본 스크린샷 검증은 통합 단계에 남겼다.
+- **Pattern**: 유료 AI 추정은 값 생성 보조일 뿐 로컬 원장을 여는 권한이 아니다. 사용자가 직접 아는 값은 계정·네트워크·quota와 무관하게 먼저 저장돼야 한다.
