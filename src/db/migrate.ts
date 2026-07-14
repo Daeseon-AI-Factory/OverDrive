@@ -7,6 +7,7 @@ import {
   MIGRATION_004,
   MIGRATION_005,
   MIGRATION_006,
+  MIGRATION_007,
   SCHEMA_V1,
 } from './schema';
 import { seedExercises } from './seed';
@@ -55,9 +56,26 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase): Promise<void> {
   await db.execAsync(MIGRATION_004);
   await db.execAsync(MIGRATION_005);
   await db.execAsync(MIGRATION_006);
+  await ensureFoodLogV7(db);
   // Seed runs every boot (INSERT OR IGNORE, idempotent) so new catalog exercises land in
   // already-migrated databases.
   await seedExercises(db);
+}
+
+/**
+ * Widen food_log.source and add a real meal-batch key once. The schema read makes the otherwise
+ * destructive SQLite table rebuild idempotent, including a DB whose user_version was bumped just
+ * before an interrupted migration attempt.
+ */
+async function ensureFoodLogV7(db: SQLiteDatabase): Promise<void> {
+  const row = await db.getFirstAsync<{ sql: string | null }>(
+    `SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'food_log'`,
+  );
+  const sql = row?.sql ?? '';
+  if (sql.includes('batch_id') && sql.includes("'manual'")) return;
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    await tx.execAsync(MIGRATION_007);
+  });
 }
 
 /** Single local user for Phase 1. Idempotent. */

@@ -5,7 +5,13 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
 import { getDisciplineToday, setDisciplineToday } from '@/db/repos/disciplineRepo';
-import { addFoodItems, getFoodToday, getLatestFoodBatch, undoFoodBatch } from '@/db/repos/foodRepo';
+import {
+  addFoodItems,
+  getFoodToday,
+  getRecentFoodBatches,
+  undoFoodBatch,
+  updateManualFoodItem,
+} from '@/db/repos/foodRepo';
 import type { FoodItemInput, FoodMealBatch, FoodSource } from '@/db/repos/foodRepo';
 import { classifyEvent } from '@/features/juice/classifyEvent';
 import { useJuice } from '@/features/juice/JuiceProvider';
@@ -23,16 +29,22 @@ import { deleteAppCacheFile } from '@/lib/temporaryFiles';
 import { hasCurrentRemoteAiConsent } from '@/lib/settings';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { Button, Card, IconSquare, Input, Metric, Muted, SectionTitle, useAccent } from '@/ui/primitives';
+import { Button, Card, IconSquare, Input, Metric, Muted, Pill, SectionTitle, useAccent } from '@/ui/primitives';
 import { RingGauge } from '@/ui/RingGauge';
 import { colors, hangulSafeLetterSpacing, numType, space, tracking, typeScale } from '@/ui/theme/tokens';
 import * as ImagePicker from 'expo-image-picker';
+import {
+  parseManualFoodDraft,
+  PORTION_MULTIPLIERS,
+  scaleFoodItems,
+  type PortionMultiplier,
+} from './manualMeal';
 import { parseFoodPhoto, parseFoodText } from './parseFoodAI';
 
 /**
- * 식단 — one line, AI does the rest: type what you ate ("닭가슴살 300그램이랑 밥") → Groq estimates
- * kcal+protein → logged. Hitting your protein target auto-completes the discipline protein check
- * (→ real Combat Power) with a JUICE pop. Photo mode rides the same /food endpoint (native batch).
+ * 식단 — free/offline manual values and local recent-meal repeats are the primary hot path. Optional
+ * Pro text/photo AI estimates converge on the same durable ledger. Hitting the protein target can
+ * auto-complete the discipline check (→ real Combat Power) with a JUICE pop.
  *
  * DE-TEXTED instrument tile: the protein reading is a STATIC Skia ring gauge (g / target, accent →
  * positive at target) with the digits in the center — no prose readout line. kcal is a Metric.
@@ -48,13 +60,21 @@ export function FoodCard() {
   const remoteAiAllowed = useSettingsStore((s) => hasCurrentRemoteAiConsent(s.remoteAiConsent));
   const { requestAiAccess, showAiAccessError } = useSubscription();
   const [today, setToday] = useState({ kcal: 0, proteinG: 0, entries: 0 });
-  const [latestMeal, setLatestMeal] = useState<FoodMealBatch | null>(null);
+  const [recentMeals, setRecentMeals] = useState<FoodMealBatch[]>([]);
   const [text, setText] = useState('');
+  const [manualName, setManualName] = useState('');
+  const [manualKcal, setManualKcal] = useState('');
+  const [manualProtein, setManualProtein] = useState('');
+  const [portion, setPortion] = useState<PortionMultiplier>(1);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [hint, setHint] = useState<string | null>(null); // failure hints (warning text)
-  const [confirm, setConfirm] = useState<string | null>(null); // "what the AI logged" echo (positive text)
+  const [confirm, setConfirm] = useState<string | null>(null); // exact durable values (positive text)
   const [undoMeal, setUndoMeal] = useState<{ batch: FoodMealBatch; autoCompletedProtein: boolean } | null>(null);
+  const [editingMeal, setEditingMeal] = useState<{
+    batch: FoodMealBatch;
+    autoCompletedProtein: boolean;
+  } | null>(null);
 
   // New copy not yet in the locale catalogs (owned elsewhere) — per-locale defaults until translated.
   const ko = i18n.language.startsWith('ko');
@@ -111,9 +131,9 @@ export function FoodCard() {
   };
 
   const reload = useCallback(async () => {
-    const [nextToday, nextLatestMeal] = await Promise.all([getFoodToday(db), getLatestFoodBatch(db)]);
+    const [nextToday, nextRecentMeals] = await Promise.all([getFoodToday(db), getRecentFoodBatches(db)]);
     setToday(nextToday);
-    setLatestMeal(nextLatestMeal);
+    setRecentMeals(nextRecentMeals);
     return nextToday;
   }, [db]);
 
@@ -123,7 +143,40 @@ export function FoodCard() {
     }, [reload]),
   );
 
-  /** Shared tail for text + photo logging: persist, refresh, protein-target → discipline + pop. */
+  /** Derived protein credit follows durable food rows and never blocks their local save. */
+  const reconcileProteinCredit = async (
+    beforeProteinG: number,
+    afterProteinG: number,
+    previouslyAutoCompleted: boolean = false,
+  ): Promise<boolean> => {
+    if (!proteinTargetG) return previouslyAutoCompleted;
+    try {
+      const disc = await getDisciplineToday(db);
+      if (previouslyAutoCompleted && afterProteinG < proteinTargetG) {
+        if (disc.protein) {
+          await setDisciplineToday(db, { ...disc, protein: false });
+          const result = await recomputeAndStore(db);
+          useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+        }
+        return false;
+      }
+      if (beforeProteinG < proteinTargetG && afterProteinG >= proteinTargetG && !disc.protein) {
+        const prev = useCombatPowerStore.getState().score;
+        await setDisciplineToday(db, { ...disc, protein: true });
+        const result = await recomputeAndStore(db);
+        useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+        juice.fire(
+          classifyEvent({ kind: 'set', isPr: false, rir: 2, hitTargetReps: true, deltaCp: result.score - prev }),
+        );
+        return true;
+      }
+    } catch {
+      // Food is already durable. Keep the prior ownership flag so undo can retry reconciliation.
+    }
+    return previouslyAutoCompleted;
+  };
+
+  /** Shared tail for manual, recent, text, and photo logging: persist first, then derived metrics. */
   const logItems = async (items: FoodItemInput[], source: FoodSource) => {
     if (!items || items.length === 0) {
       setHint(t('food.fail')); // the AI answered but estimated nothing → genuinely a wording problem
@@ -133,34 +186,53 @@ export function FoodCard() {
     const batch = await addFoodItems(db, items, source);
     if (!batch) return;
     setText('');
-    // Echo WHAT the AI logged — a wild estimate should be visible, not silent.
+    // Echo exactly what was stored. AI estimates stay visible; manual values remain user-authored.
     const kcal = Math.round(items.reduce((a, i) => a + i.kcal, 0));
     const prot = Math.round(items.reduce((a, i) => a + i.proteinG, 0));
     setConfirm(`✓ ${items.map((i) => i.name).join(' + ')} · ${kcal}kcal · ${prot}g`);
     const after = await reload();
-    let autoCompletedProtein = false;
-
-    // Crossing the protein target auto-completes the discipline check → real CP + a pop.
-    if (proteinTargetG && before < proteinTargetG && after.proteinG >= proteinTargetG) {
-      // Food is already durable at this point. Derived discipline/CP work must never turn a
-      // successful meal save into a failure message or block the logging hot path.
-      try {
-        const disc = await getDisciplineToday(db);
-        if (!disc.protein) {
-          const prev = useCombatPowerStore.getState().score;
-          await setDisciplineToday(db, { ...disc, protein: true });
-          autoCompletedProtein = true;
-          const result = await recomputeAndStore(db);
-          useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
-          juice.fire(
-            classifyEvent({ kind: 'set', isPr: false, rir: 2, hitTargetReps: true, deltaCp: result.score - prev }),
-          );
-        }
-      } catch {
-        // Non-blocking derived metric: the meal itself remains saved and truthfully confirmed.
-      }
-    }
+    const autoCompletedProtein = await reconcileProteinCredit(before, after.proteinG);
     setUndoMeal({ batch, autoCompletedProtein });
+  };
+
+  /** Always-local form. It never checks consent, entitlement, quota, or a network endpoint. */
+  const saveManual = async () => {
+    if (busyRef.current) return;
+    const item = parseManualFoodDraft(manualName, manualKcal, manualProtein);
+    if (!item) {
+      setHint(t('food.manual.invalid'));
+      return;
+    }
+    busyRef.current = true;
+    setBusy(true);
+    setHint(null);
+    setConfirm(null);
+    try {
+      if (editingMeal) {
+        const before = today.proteinG;
+        const updated = await updateManualFoodItem(db, editingMeal.batch, item);
+        if (!updated) throw new Error('manual meal no longer editable');
+        const after = await reload();
+        const autoCompletedProtein = await reconcileProteinCredit(
+          before,
+          after.proteinG,
+          editingMeal.autoCompletedProtein,
+        );
+        setUndoMeal({ batch: updated, autoCompletedProtein });
+        setConfirm(`✓ ${item.name} · ${item.kcal}kcal · ${item.proteinG}g`);
+      } else {
+        await logItems([item], 'manual');
+      }
+      setManualName('');
+      setManualKcal('');
+      setManualProtein('');
+      setEditingMeal(null);
+    } catch {
+      setHint(saveFailed());
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
   };
 
   const submit = async () => {
@@ -259,22 +331,33 @@ export function FoodCard() {
     }
   };
 
-  /** Latest meal repeat — entirely local and routed through the same save/refresh/discipline tail. */
-  const repeatLatest = async () => {
-    if (!latestMeal || busyRef.current) return;
+  /** Recent meal repeat — selected portion, local DB only, and truthfully marked manual. */
+  const repeatRecent = async (meal: FoodMealBatch) => {
+    if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
     setHint(null);
     setConfirm(null);
     setUndoMeal(null);
     try {
-      await logItems(latestMeal.items, latestMeal.source);
+      await logItems(scaleFoodItems(meal.items, portion), 'manual');
     } catch {
       setHint(saveFailed());
     } finally {
       busyRef.current = false;
       setBusy(false);
     }
+  };
+
+  const beginManualEdit = () => {
+    if (!undoMeal || undoMeal.batch.source !== 'manual' || undoMeal.batch.items.length !== 1) return;
+    const item = undoMeal.batch.items[0];
+    setManualName(item.name);
+    setManualKcal(String(item.kcal));
+    setManualProtein(String(item.proteinG));
+    setEditingMeal(undoMeal);
+    setHint(null);
+    setConfirm(t('food.manual.editing'));
   };
 
   /** Undo only the batch written by the latest successful action; derived protein state follows. */
@@ -296,6 +379,10 @@ export function FoodCard() {
         useCombatPowerStore.getState().setSnapshot(power.score, power.grade.key);
       }
       setUndoMeal(null);
+      setEditingMeal(null);
+      setManualName('');
+      setManualKcal('');
+      setManualProtein('');
       setConfirm(t('food.cancelled'));
     } catch {
       setHint(t('food.undoFailed'));
@@ -309,6 +396,9 @@ export function FoodCard() {
     defaultValue: dv('단백질 목표 설정 →', 'Set protein target →'),
   });
   const proteinLabel = t('food.protein', { defaultValue: dv('단백질', 'Protein') });
+  const manualTitle = t('food.manual.title');
+  const aiTitle = t('food.aiTitle');
+  const manualReady = parseManualFoodDraft(manualName, manualKcal, manualProtein) !== null;
 
   return (
     <View style={styles.wrap}>
@@ -352,16 +442,109 @@ export function FoodCard() {
           </View>
         </View>
 
-        {latestMeal ? (
-          <Button
-            label={t('food.repeatLast')}
-            onPress={() => void repeatLatest()}
-            variant="ghost"
-            compact
-            disabled={busy}
-            style={styles.repeatButton}
+        <View style={styles.manualBlock}>
+          <Text
+            style={[
+              styles.subsectionTitle,
+              { letterSpacing: hangulSafeLetterSpacing(manualTitle, tracking.overline) },
+            ]}
+          >
+            {manualTitle}
+          </Text>
+          <Muted style={styles.manualDisclaimer}>{t('food.manual.disclaimer')}</Muted>
+          <Input
+            value={manualName}
+            onChangeText={(value) => {
+              setManualName(value);
+              if (hint) setHint(null);
+            }}
+            placeholder={t('food.manual.name')}
+            accessibilityLabel={t('food.manual.name')}
+            autoCapitalize="sentences"
+            editable={!busy}
           />
+          <View style={styles.manualNumbersRow}>
+            <Input
+              value={manualKcal}
+              onChangeText={(value) => {
+                setManualKcal(value);
+                if (hint) setHint(null);
+              }}
+              placeholder={t('food.manual.kcal')}
+              accessibilityLabel={t('food.manual.kcal')}
+              keyboardType="decimal-pad"
+              maxLength={7}
+              editable={!busy}
+              style={styles.manualNumberInput}
+            />
+            <Input
+              value={manualProtein}
+              onChangeText={(value) => {
+                setManualProtein(value);
+                if (hint) setHint(null);
+              }}
+              placeholder={t('food.manual.protein')}
+              accessibilityLabel={t('food.manual.protein')}
+              keyboardType="decimal-pad"
+              maxLength={6}
+              returnKeyType="done"
+              onSubmitEditing={() => void saveManual()}
+              editable={!busy}
+              style={styles.manualNumberInput}
+            />
+            <Button
+              label={busy ? '…' : t(editingMeal ? 'food.manual.update' : 'food.manual.save')}
+              onPress={() => void saveManual()}
+              variant="secondary"
+              compact
+              disabled={!manualReady || busy}
+            />
+          </View>
+        </View>
+
+        {recentMeals.length > 0 ? (
+          <View style={styles.recentBlock}>
+            <View style={styles.recentHeader}>
+              <Muted>{t('food.recent.title')}</Muted>
+              <View style={styles.portionRow}>
+                {PORTION_MULTIPLIERS.map((value) => (
+                  <Pill
+                    key={value}
+                    label={`${value}×`}
+                    active={portion === value}
+                    onPress={() => setPortion(value)}
+                  />
+                ))}
+              </View>
+            </View>
+            <View style={styles.recentList}>
+              {recentMeals.map((meal) => {
+                const scaled = scaleFoodItems(meal.items, portion);
+                const fullName = scaled.map((item) => item.name).join(' + ');
+                const displayName = fullName.length > 26 ? `${fullName.slice(0, 25)}…` : fullName;
+                const kcal = Math.round(scaled.reduce((sum, item) => sum + item.kcal, 0));
+                const protein = Math.round(scaled.reduce((sum, item) => sum + item.proteinG, 0));
+                return (
+                  <Button
+                    key={meal.batchId}
+                    label={t('food.recent.item', { name: displayName, kcal, protein })}
+                    onPress={() => void repeatRecent(meal)}
+                    variant="ghost"
+                    compact
+                    disabled={busy}
+                    style={styles.recentButton}
+                  />
+                );
+              })}
+            </View>
+          </View>
         ) : null}
+
+        <Text
+          style={[styles.subsectionTitle, styles.aiTitle, { letterSpacing: hangulSafeLetterSpacing(aiTitle, tracking.overline) }]}
+        >
+          {aiTitle}
+        </Text>
 
         {!remoteAiAllowed ? (
           <View style={styles.aiConsentRow}>
@@ -408,13 +591,24 @@ export function FoodCard() {
           <View style={styles.confirmRow}>
             <Muted style={hint ? styles.hintText : styles.confirmText}>{hint ?? confirm}</Muted>
             {undoMeal ? (
-              <Button
-                label={t('food.undo')}
-                onPress={() => void undoLatestSave()}
-                variant="ghost"
-                compact
-                disabled={busy}
-              />
+              <View style={styles.confirmActions}>
+                {undoMeal.batch.source === 'manual' && undoMeal.batch.items.length === 1 ? (
+                  <Button
+                    label={t('food.manual.edit')}
+                    onPress={beginManualEdit}
+                    variant="ghost"
+                    compact
+                    disabled={busy}
+                  />
+                ) : null}
+                <Button
+                  label={t('food.undo')}
+                  onPress={() => void undoLatestSave()}
+                  variant="ghost"
+                  compact
+                  disabled={busy}
+                />
+              </View>
             ) : null}
           </View>
         ) : null}
@@ -434,11 +628,22 @@ const styles = StyleSheet.create({
   proteinTarget: { ...typeScale.caption, color: colors.text3 },
   setTarget: { ...typeScale.caption },
   kcal: { marginTop: space.xs },
-  repeatButton: { marginTop: space.md },
+  subsectionTitle: { ...typeScale.overline, color: colors.text3 },
+  manualBlock: { gap: space.sm, marginTop: space.lg },
+  manualDisclaimer: { color: colors.text3 },
+  manualNumbersRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  manualNumberInput: { flex: 1, minWidth: 0 },
+  recentBlock: { gap: space.sm, marginTop: space.md },
+  recentHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
+  portionRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  recentList: { gap: space.xs },
+  recentButton: { width: '100%' },
+  aiTitle: { marginTop: space.lg },
   aiConsentRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.md },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.md },
   input: { flex: 1 },
   hintText: { flex: 1, color: colors.warning },
   confirmRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.xs },
+  confirmActions: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   confirmText: { flex: 1, color: colors.positive },
 });

@@ -508,6 +508,23 @@
   },
   "food": {
     "title": "식단",
+    "aiTitle": "선택형 AI 추정 · PRO",
+    "manual": {
+      "title": "빠른 수동 기록",
+      "disclaimer": "직접 입력한 값이며 영양 정확도를 검증하지 않아.",
+      "name": "식사 이름",
+      "kcal": "kcal",
+      "protein": "단백질 g",
+      "save": "저장",
+      "update": "수정",
+      "edit": "편집",
+      "editing": "이 로컬 식사를 편집 중",
+      "invalid": "식사 이름과 올바른 kcal·단백질 값을 입력해줘."
+    },
+    "recent": {
+      "title": "최근 · 섭취량",
+      "item": "{name} · {kcal} kcal · {protein}g"
+    },
     "placeholder": "예:  닭가슴살 300g + 밥",
     "photo": "사진으로 식단 추정",
     "log": "기록",

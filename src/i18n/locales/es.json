@@ -508,6 +508,23 @@
   },
   "food": {
     "title": "Comida",
+    "aiTitle": "ESTIMACIÓN IA OPCIONAL · PRO",
+    "manual": {
+      "title": "REGISTRO MANUAL RÁPIDO",
+      "disclaimer": "Los valores los introduces tú; no se verifica su precisión nutricional.",
+      "name": "Nombre de la comida",
+      "kcal": "kcal",
+      "protein": "proteína g",
+      "save": "GUARDAR",
+      "update": "ACTUALIZAR",
+      "edit": "Editar",
+      "editing": "Editando esta comida local",
+      "invalid": "Introduce el nombre y valores válidos de kcal y proteína."
+    },
+    "recent": {
+      "title": "RECIENTES · PORCIÓN",
+      "item": "{name} · {kcal} kcal · {protein}g"
+    },
     "placeholder": "ej.  pechuga 300g + arroz",
     "photo": "Estimar comida desde una foto",
     "log": "REGISTRAR",
