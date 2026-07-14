@@ -619,3 +619,15 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 750f674
 - **Verification**: focused 4 suites / 18 tests와 전체 Jest 52 suites / 363 tests, strict TypeScript, lint, `git diff --check` 통과. 실제 SQLite v6형 테이블 1행에 v7 SQL을 적용해 원본 `old-1` 행·source를 보존하고 manual 행 삽입 뒤 2행 / 430 kcal / 22g / `integrity_check=ok`를 확인했다. Release simulator 실사용 상태의 터치·레이아웃·원본 스크린샷 검증은 통합 단계에 남겼다.
 - **Pattern**: 유료 AI 추정은 값 생성 보조일 뿐 로컬 원장을 여는 권한이 아니다. 사용자가 직접 아는 값은 계정·네트워크·quota와 무관하게 먼저 저장돼야 한다.
+
+## D1 카탈로그 payload가 TEXT이거나 published release를 수정하면 게시 작업이 거부된다
+
+- **Symptom**:
+  ```text
+  Error: stepping, CHECK constraint failed: typeof(payload_json) = 'blob' AND length(payload_json) = payload_bytes (19)
+  Error: stepping, published_catalog_release_is_immutable (19)
+  ```
+- **Cause**: `worker/catalog/migrations/0001_catalog.sql`은 응답 원문과 checksum의 바이트 계약을 보존하기 위해 `payload_json`의 SQLite storage class를 BLOB으로 제한하고, `published` 또는 `withdrawn` release의 payload·metadata 변경을 trigger로 거부한다. 위 출력은 production incident가 아니라 잘못된 게시 입력을 in-memory SQLite에 주입해 확인한 의도된 fail-closed 경계다.
+- **Fix**: publisher는 compact UTF-8 JSON을 한 번만 직렬화해 byte binding으로 draft에 저장하고, 검증 후 새 version을 `published`로 전환한 다음 `catalog_channel('v1')` 포인터를 갱신해야 한다. 이미 게시한 payload를 고치지 말고 새 version을 발행한다. `worker/catalog/src/index.js`는 D1 BLOB의 ArrayBuffer·typed-array·byte-array readback만 허용하고 TEXT, checksum 불일치, unpublished row는 `Cache-Control: no-store` 503으로 닫는다.
+- **Commit**: 7509fe884f6b06f50b89f2c5512ee896242d9dc6
+- **Verification**: migration을 in-memory SQLite에 적용해 8 tables / 25 triggers / foreign-key 오류 0을 확인했다. v1 포인터를 `1.0.1`에서 `1.0.0`으로 되돌린 뒤 bad release를 `withdrawn`으로 전환하면 `v1|1.0.0`, `1.0.0|published`, `1.0.1|withdrawn`이 출력됐다. Worker 전체 테스트는 60/60, Wrangler local dry-run은 `CATALOG_DB` 하나만 포함해 통과했다. 실제 D1 생성·게시·배포는 하지 않았다.

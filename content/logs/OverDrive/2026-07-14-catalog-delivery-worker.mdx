@@ -1,0 +1,26 @@
+---
+title: "운동 카탈로그를 읽기 전용 Worker로 격리했다"
+date: "2026-07-14"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "compact JSON 원문 바이트를 검증해 그대로 전달하는 catalog 전용 Worker와 immutable D1 release·channel rollback schema를 구현했다."
+tags: ["exercise-catalog", "cloudflare-worker", "d1", "etag", "rollback", "privacy"]
+---
+
+카탈로그 v1 계약을 실제 서비스 경계로 옮겼다. 새 코드는 `worker/catalog/` 아래에만 두고 기존 `worker/src/index.js`, Quick Log binding, Apple entitlement와 Groq secret은 수정하지 않았다. 공개 인터페이스는 인증·cookie·request body가 없는 `GET /catalog/v1` 하나다. 알려지지 않은 경로는 404, 같은 경로의 GET 이외 method는 `Allow: GET`을 포함한 405를 반환하며, public publish/write route는 없다.
+
+서빙 원본은 `catalog_channel('v1')`이 가리키는 published release의 `payload_json` BLOB이다. Worker는 D1에서 반환될 수 있는 ArrayBuffer, typed array, byte number array를 원문 바이트로 읽고 TEXT는 거부한다. schema와 catalog version, published timestamp, 32–512 item bound, 512 KiB bound, envelope, exact byte length를 확인한 뒤 raw bytes의 SHA-256을 저장 checksum과 대조한다. 성공하면 같은 바이트를 재직렬화 없이 응답하고 강한 ETag, version, checksum, 5분 cache와 24시간 stale-while-revalidate를 붙인다. 일치하는 `If-None-Match`는 같은 metadata의 bodyless 304다. DB binding·query·row·상태·크기·checksum 중 하나라도 유효하지 않으면 `Cache-Control: no-store` 503으로 닫힌다.
+
+`worker/catalog/migrations/0001_catalog.sql`은 release payload와 inspectable projection을 분리해 저장한다. release는 draft로만 시작하고 published 이후 payload와 projection을 변경·삭제할 수 없다. `catalog_channel`은 published version만 가리킬 수 있다. 잘못된 release는 수정하지 않고 포인터를 이전 published version으로 돌린 뒤 withdrawal한다. 공개 HTTP writer가 없으므로 향후 publisher는 별도 검토된 transaction tooling으로만 이 경계를 통과해야 한다.
+
+배포 설정도 기존 Worker와 분리했다. `worker/catalog/wrangler.template.toml`은 `CATALOG_DB` 하나만 선언하고 observability와 `workers_dev`를 끈다. D1 id는 all-zero sentinel이라 그대로는 release할 수 없고, route나 custom domain도 선언하지 않았다. 실제 infrastructure 변경에서는 dedicated D1 생성, sentinel 교체, migration 적용, reviewed hostname 설정이 별도 승인을 받아야 한다.
+
+검증 수준은 다음과 같다.
+
+- 기능 검증: Worker 전체 60/60 tests가 통과했다. 여기에는 기존 44개 회귀와 exact bytes, 세 가지 D1 BLOB readback, checksum/ETag/cache, 304, 405, 404, DB·metadata·TEXT·UTF-8 failure, Quick Log·secret·telemetry 격리 검사가 포함된다. In-memory SQLite에서 8 tables, 25 triggers, foreign-key 오류 0을 확인했고 pointer rollback과 TEXT/published mutation 거부를 실제 실행했다.
+- 품질 검증: `node --check` 세 파일과 `git diff --check`가 통과했다. Wrangler 4.110.0 local dry-run은 6.01 KiB / gzip 2.12 KiB bundle과 `CATALOG_DB` 단일 binding만 보고했다. 새 dependency와 network request는 추가하지 않았고 deploy·push도 실행하지 않았다.
+- 제품/워크플로 검증: 미검증이다. Dedicated D1과 hostname을 만들지 않았고 factual catalog payload를 게시하지 않았으며 앱 cache/search client도 아직 이 endpoint를 사용하지 않는다. 따라서 실제 헬스장 검색이 빨라졌거나 안정됐다고 판단할 근거는 없다.
+
+구현 커밋은 `7509fe884f6b06f50b89f2c5512ee896242d9dc6`이다. 코드만 되돌리려면 이 커밋과 기록 커밋을 revert한다. 향후 data release만 되돌릴 때는 immutable row를 보존하고 `catalog_channel('v1')`을 직전 published version으로 이동한다.
