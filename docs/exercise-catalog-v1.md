@@ -25,7 +25,7 @@ Goals, in order:
 1. Keep exercise identity stable across releases, locales, caches, logs, and AI.
 2. Make catalog publication deterministic, bounded, reversible, and independently deployable.
 3. Preserve all existing logs/programs and locally created exercises.
-4. Let independently authored factual metadata be reviewed without importing proprietary copy.
+4. Let independently authored factual metadata be source-checked without implying human approval or importing proprietary copy.
 5. Keep search useful while collecting the minimum possible telemetry.
 
 Non-goals for v1:
@@ -100,8 +100,10 @@ it is not a publishable exercise row and is not user data.
       },
       "provenance": {
         "classification": "original_editorial",
-        "reviewStatus": "reviewed",
-        "reviewedByRole": "catalog-editorial",
+        "reviewStatus": "source_checked",
+        "reviewMethod": "source_comparison",
+        "reviewedByRole": "catalog-source-check-agent",
+        "reviewEvidence": "<source-check artifact reference>",
         "reviewedAt": "2026-07-14T00:00:00Z",
         "containsThirdPartyCopy": false,
         "sources": [
@@ -136,9 +138,10 @@ validate against the machine-readable schema and every invariant in section 10.
 
 ### 3.2 Locale, alias, taxonomy, and prescription vocabularies
 
-Every public row supplies independently reviewed `displayName` and gym-language
-`aliases` for `en`, `ko`, `es`, and `zh-Hans`. Aliases are ordered from most to
-least common. The app's current `zh` resource maps to contract locale `zh-Hans`.
+Every public row supplies independently authored and explicitly source-checked
+or human-reviewed `displayName` and gym-language `aliases` for `en`, `ko`, `es`,
+and `zh-Hans`. Aliases are ordered from most to least common. The app's current
+`zh` resource maps to contract locale `zh-Hans`.
 
 The frozen body-region vocabulary matches the tappable hit map:
 `chest`, `shoulders`, `back`, `biceps`, `triceps`, `core`, `glutes`, `quads`,
@@ -279,10 +282,19 @@ CREATE TABLE catalog_exercise (
   target_unit TEXT,
   target_low REAL,
   target_high REAL,
-  provenance_classification TEXT NOT NULL,
+  provenance_classification TEXT NOT NULL
+    CHECK (provenance_classification IN ('original_editorial', 'public_facts', 'licensed')),
+  review_status TEXT NOT NULL CHECK (review_status IN ('source_checked', 'human_reviewed')),
+  review_method TEXT NOT NULL CHECK (review_method IN ('source_comparison', 'human_editorial_review')),
   reviewed_by_role TEXT NOT NULL,
+  review_evidence TEXT NOT NULL,
   reviewed_at_ms INTEGER NOT NULL,
   contains_third_party_copy INTEGER NOT NULL CHECK (contains_third_party_copy = 0),
+  CHECK (
+    (review_status = 'source_checked' AND review_method = 'source_comparison') OR
+    (review_status = 'human_reviewed' AND review_method = 'human_editorial_review')
+  ),
+  CHECK (provenance_classification <> 'licensed' OR review_status = 'human_reviewed'),
   PRIMARY KEY (version, id),
   UNIQUE (version, display_order)
 );
@@ -396,17 +408,29 @@ not copy third-party descriptions, instructions, programming text, images, or
 videos. A citation is evidence for a classification; it is not permission to
 copy expressive content.
 
-Every exercise has at least one ordered source record and an explicit
-`classification`:
+Every exercise has at least one ordered source record, an explicit
+`classification`, and an evidence-bearing review status:
 
 - `original_editorial`: internally authored factual classification/name/alias;
 - `public_facts`: classifications checked against public scientific or official guidance; or
 - `licensed`: imported factual fields with the exact per-row license recorded.
 
-All public rows must be reviewed and set `containsThirdPartyCopy: false`.
-Licensed rows require a non-null, commercially compatible license and documented
-field-level scope. Unknown, non-commercial, share-alike-incompatible, or mixed
-per-entry licensing fails publication.
+- `source_checked` + `source_comparison` means a named process/agent role compared
+  neutral factual fields against the recorded sources. It does **not** mean a
+  person reviewed, approved, or endorsed the row.
+- `human_reviewed` + `human_editorial_review` requires an actual human editorial
+  role and a `reviewEvidence` reference to the approval artifact.
+
+Neutral names, aliases, taxonomy, equipment, and logging defaults may publish as
+`source_checked`. Every public row sets `containsThirdPartyCopy: false` and records
+`reviewedByRole`, `reviewEvidence`, and `reviewedAt`. Licensed rows require
+`human_reviewed`, a non-null commercially compatible license, documented
+field-level scope, and human approval evidence. Unknown, non-commercial,
+share-alike-incompatible, or mixed per-entry licensing fails publication.
+
+Instructional, medical, diagnostic, or higher-risk content remains outside v1.
+Any future contract that adds it must require `human_reviewed`; source checking
+alone is insufficient.
 
 Specifically, v1 must not import OpenStax Anatomy & Physiology 2e content because
 its CC BY-NC-SA terms are not a safe commercial-product default. It also must not
@@ -416,8 +440,9 @@ guidance and the AHA 2023 scientific statement/figure on major/accessory muscle
 taxonomy may be recorded as factual review sources, but their prose/figures are
 not copied and internal classifications remain explicitly labeled.
 
-Names and gym colloquialisms must be written/reviewed independently in each
-locale. Translating proprietary wording does not make it original.
+Names and gym colloquialisms must be written independently and carry their actual
+`source_checked` or `human_reviewed` status in each locale. Translating
+proprietary wording does not make it original.
 
 ## 9. Privacy-minimal search telemetry
 
@@ -457,10 +482,11 @@ A release is rejected unless all checks pass:
 11. Equipment, movement, difficulty, type, tracking, target, and region values use frozen enums.
 12. Prescription ranges are finite/non-negative, `low <= high`, and mode/unit compatible.
 13. Replacement IDs exist, are not retired, do not self-reference, and form no cycle.
-14. Every row has reviewed provenance; licensed sources have a compatible explicit license.
-15. No description/media/proprietary copy or fabricated user/seed/test record is represented as factual production data.
-16. The deterministic AI candidate projection stays within 64 rows, four names per row, and 60 characters per name.
-17. Normalization and bounded-typo conformance vectors agree in ingestion, Worker, app, and tests.
+14. Every row has an honest status/method/role/evidence record; source-checking never claims human approval.
+15. Licensed imports have a compatible explicit license and `human_reviewed` evidence.
+16. No description/media/proprietary copy or fabricated user/seed/test record is represented as factual production data.
+17. The deterministic AI candidate projection stays within 64 rows, four names per row, and 60 characters per name.
+18. Normalization and bounded-typo conformance vectors agree in ingestion, Worker, app, and tests.
 
 Release tooling must fail closed and print stable ID plus field path for every
 error. Validation occurs before any channel-pointer update.
@@ -469,14 +495,14 @@ error. Validation occurs before any channel-pointer update.
 
 ### Alternatives considered
 
-1. **Do nothing; keep the 32 client seeds.** Lowest deployment cost, but cannot provide reviewed updates, shared aliases, version visibility, or deterministic cache refresh.
+1. **Do nothing; keep the 32 client seeds.** Lowest deployment cost, but cannot provide traceable updates, shared aliases, version visibility, or deterministic cache refresh.
 2. **Add `/catalog/v1` to `overdrive-quicklog` and reuse its D1.** Fewer resources, but an unrelated catalog release could promote AI/subscription code, needs five Apple entitlement secrets, and expands the live incident blast radius. Rejected.
 3. **Bundle/static-file only.** Safest immediate fallback and remains the offline baseline, but factual corrections require an app release and there is no atomic D1 publication trail.
 4. **Dedicated catalog Worker plus dedicated D1.** Chosen: clean deploy/secret boundary, atomic versioning, independent rollback, and reversible client adoption.
 
 ### Pre-mortem
 
-- **Bad taxonomy ships.** Signal: collision/region review failures or support reports. Mitigation: fail-closed ingestion, reviewed provenance, immutable releases, pointer rollback.
+- **Bad taxonomy ships.** Signal: collision/region check failures or support reports. Mitigation: fail-closed ingestion, explicit evidence status, immutable releases, pointer rollback.
 - **Remote catalog breaks logging/search.** Signal: checksum failures, empty-result spike, cache activation errors. Mitigation: inactive validation, previous-cache retention, bundled/seed fallback.
 - **Catalog work disrupts subscriptions/AI.** Signal: quick-log deployment, secret request, or shared-table migration in a catalog change. Mitigation: dedicated Worker+D1 and CI rejection of cross-service paths.
 - **Local exercises are overwritten.** Signal: bridge collision or changed historic labels. Mitigation: identity mapping for only the frozen 32, opaque bridge rows for new canonicals, no automatic merge.
