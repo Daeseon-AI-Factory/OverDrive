@@ -1,0 +1,26 @@
+---
+title: "운동 카탈로그의 과장된 근거와 모호한 기록 규칙을 걷어냈다"
+date: "2026-07-14"
+project: "OverDrive"
+kind: "tech-retro"
+visibility: "public"
+language: "ko"
+summary: "64개 운동 카탈로그를 unreviewed 상태로 정직하게 낮추고 장비, 동작, 좌우 반복, 번역과 현재 로거 호환 규칙을 fail-closed 검증으로 고정했다."
+tags: ["exercise-catalog", "data-quality", "provenance", "validation"]
+---
+
+출고 전 적대적 검토에서 잡힌 blocker를 정본 계약, 원본 데이터, 생성기와 validator에 함께 반영했다. ACSM/AHA/HHS 일반 문헌을 모든 운동의 행별 검토 근거처럼 복제하던 구조를 제거하고, 64개 행을 모두 `original_editorial` + `unreviewed`로 낮췄다. Reviewer, evidence와 review timestamp는 null이고 행별 source는 0개다. 일반 문헌은 `exerciseSpecificReview: false`, `humanReviewed: false`인 program/safety reference-context로만 남겼다.
+
+`required` 장비는 모두 필요한 conjunctive 집합, `optional`은 운동 정체성을 바꾸지 않는 보조 장비로 고정했다. HIIT는 bodyweight session, Zone 2는 outdoor run, machine fly·calf raise·leg curl과 barbell hip thrust는 실제 required 장비가 드러나는 이름으로 좁혔다. 원본 32 ID와 순서는 유지하면서 새 eponym/mark ID는 neutral identity로 바꿨다. Leg press는 `squat`, dips는 `vertical_push`로 바로잡았고, incidental stabilization을 secondary body region에서 제거했다.
+
+처방에는 `total`, `per_side`, `not_applicable` counting convention을 추가했다. 알려진 unilateral 10개 행은 `per_side`, cardio 11개 행은 `not_applicable`, 나머지는 `total`이다. 현재 strength logger가 정직하게 저장할 수 없는 새 duration/distance 행은 거부하며, 비레거시 근력 32개는 모두 rep-loggable하다. Timestamp 검증은 `Date.parse` 성공만 믿지 않고 UTC second precision과 실제 달력 round-trip을 확인해 date-only, timezone 누락과 2월 30일 정규화를 차단한다.
+
+기능 검증: deterministic prepare/check와 Draft 2020-12 schema validation이 통과했고, foreign key를 켠 메모리 SQLite에 D1 draft를 적용해 release 1개, exercise 64개, row source 0개를 확인했다. 생성 checksum은 `sha256:3414648579b1d751d29167fbf1932110cd1dbbb1ef0e1be2136c62d1d79052a0`이다.
+
+품질 검증: provenance 과장, 장비 대체재, generic display, HIIT ambiguity, movement 회귀, laterality, unsupported strength mode, alias/eponym 회귀, secondary over-tagging과 invalid timestamp를 넣은 20개 corruption test가 모두 실패-차단됐고, TypeScript strict, lint와 전체 Jest 55 suite/369 test가 통과했다. 네 언어 문구의 사람 편집 검토는 수행되지 않았으므로 품질 완료로 주장하지 않는다.
+
+제품/워크플로 검증: 이 커밋은 data-only라 실제 앱의 검색·선택·기록 속도나 헬스장 실사용은 검증하지 않았다. 다음 client integration에서 seeded DB와 simulator로 검색 결과, per-side 표시, 저장 가능 mode와 offline fallback을 확인해야 한다.
+
+구현 커밋: `bffdd1e26f0138c062689484e68921b5cc6cdb70`.
+
+되돌릴 때는 이 구현 커밋과 생성 산출물을 함께 revert한다. 이 catalog version은 아직 publish하지 않았고 channel pointer도 변경하지 않았으므로 production rollback은 필요하지 않다.
