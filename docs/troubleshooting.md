@@ -583,3 +583,12 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 2929f54
 - **Verification**: Worker 테스트 14/14와 두 dry-run 통과. normal deployment `9c686a48-0b0f-4c52-b7cc-a3fac00c9c8f` 100% readback, live `/parse` 200, markerless 요청 403, legacy delete invalid input 400, normal/safe의 네 퇴역 경로 410을 확인했다. Cloudflare settings는 `logpush=false`, `observability=null`, tail consumer 없음이었다. Pages 5개 extensionless 경로는 HTTPS 200·redirect 없음·로컬 HTML과 SHA-256 일치했고 iPhone Safari에서 production Privacy를 육안 확인했다. ASC URL 네 개도 readback됐지만 Review item POST는 계속 409, item 0, submitted date null이므로 App Review는 제출되지 않았다.
 - **Pattern**: 출시 서비스는 “배포했다”가 아니라 source hash, immutable normal/safe ID, traffic 비율, live 응답, rollback 명령, 스토어 readback을 함께 기록해야 한다. 공개 URL 완료가 private 법적 설문 완료를 대신하지 않는다.
+
+## Wrangler remote D1 migration이 trigger 본문에서 `incomplete input`으로 중단됐다
+
+- **Symptom**: `npx wrangler d1 migrations apply overdrive-rank --remote`가 두 번 모두 `incomplete input: SQLITE_ERROR [code: 7500]`으로 실패했다. 두 시도는 atomic rollback됐고 기존 ranking 4행은 유지됐다.
+- **Cause**: Wrangler 4.110의 remote migration 경로는 trigger를 포함한 migration 전체를 query endpoint로 보내고, trigger 내부 세미콜론이 있는 유효한 SQLite batch를 거부했다. SQL 주석을 제거한 `b0ead93` 뒤에도 같은 오류가 재현돼 주석 가설은 반증됐다.
+- **Fix**: `7f4560d`에서 주석을 복원하고 `worker/scripts/apply-d1-migration.mjs`를 추가했다. runner는 canonical migration을 임시 atomic import로 감싸 같은 파일명을 `d1_migrations`에 기록하고 repository-pinned Wrangler의 file-ingestion 경로로 실행한 뒤 임시 파일을 지운다. Node 표준 라이브러리만 사용하고 macOS/Windows의 Wrangler 실행 파일 경로를 모두 처리한다.
+- **Commit**: `b0ead93` (반증된 가설), `7f4560d` (실제 수정), `da28116` (release-state 정합화)
+- **Verification**: local runner와 remote import가 성공했고 remote는 14 queries / 24 rows written을 반환했다. readback은 pending migration 0, `ai_*` object 11개(table 5, index 4, trigger 2), 기존 `rank_entry` 4행, `quick_check=ok`, `foreign_key_check` 오류 0이었다. Worker 44/44와 `git diff --check`를 통과했다. Build 14는 별도 Apple validation/upload 뒤 `VALID` / `APP_STORE_ELIGIBLE`로 읽혔지만 production Worker와 실제 결제 entitlement는 미검증이다.
+- **Pattern**: trigger가 있는 D1 migration은 local 성공만으로 remote 적용 가능성을 추론하지 않는다. canonical SQL과 migration ledger를 보존한 file-ingestion 경로를 쓰고, 기존 데이터 수·schema object·무결성·pending migration을 함께 읽는다.
