@@ -592,3 +592,18 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: `b0ead93` (반증된 가설), `7f4560d` (실제 수정), `da28116` (release-state 정합화)
 - **Verification**: local runner와 remote import가 성공했고 remote는 14 queries / 24 rows written을 반환했다. readback은 pending migration 0, `ai_*` object 11개(table 5, index 4, trigger 2), 기존 `rank_entry` 4행, `quick_check=ok`, `foreign_key_check` 오류 0이었다. Worker 44/44와 `git diff --check`를 통과했다. Build 14는 별도 Apple validation/upload 뒤 `VALID` / `APP_STORE_ELIGIBLE`이며 one-tester `Internal` group에서 `IN_BETA_TESTING`으로 읽혔지만 production Worker와 실제 결제 entitlement는 미검증이다.
 - **Pattern**: trigger가 있는 D1 migration은 local 성공만으로 remote 적용 가능성을 추론하지 않는다. canonical SQL과 migration ledger를 보존한 file-ingestion 경로를 쓰고, 기존 데이터 수·schema object·무결성·pending migration을 함께 읽는다.
+
+## 앱 재실행이 열린 운동 시간을 초기화하고 다른 세션의 세트를 이어갈 수 있었다
+
+- **Symptom**: 열린 운동 복원과 코치 CTA의 기존 코드는 문자 그대로 다음 경계를 가지고 있었다.
+  ```text
+  startedAt: Date.now(),
+  else if (canOneTap) void onDidIt();
+  dv('이어서', 'Continue')
+  ```
+  같은 날짜에 완료 세션과 열린 세션이 함께 있으면 코치의 마지막 운동·휴식 기준도 `session_id`가 아니라 당일 전체 `set_log` 중 최신 행에서 선택됐다.
+- **Cause**: `sessionStore.resume()`이 DB의 `workout_session.started_at`을 입력받지 않았고, `useCoachPlan.ts`가 일일 프로그램 집계와 현재 세션 연속성 데이터를 하나의 스냅샷으로 취급했다. `CoachCard.tsx`는 `session_idle`의 `Continue` 라벨을 실제 one-tap INSERT handler와 연결했다.
+- **Fix**: `src/db/repos/sessionRepo.ts`, `src/features/forge/sessionStore.ts`, `src/features/boot/Boot.tsx`, `src/features/forge/useForge.ts`에서 원래 `started_at`을 epoch로 복원해 전달했다. `src/features/coach/coachSnapshot.ts`와 `useCoachPlan.ts`는 일일 세트 합계는 유지하되 현재 열린 `session_id`의 마지막 세트·운동·휴식 anchor를 별도로 계산한다. `nextAction.ts`는 idle episode의 안정된 anchor를 노출하고, `CoachCard.tsx`는 첫 `Continue`를 무기록 상태 전환으로 만든 뒤 `82.5kg × 7 기록`처럼 payload가 보이는 CTA에서만 저장한다.
+- **Commit**: 4e511a4
+- **Verification**: 집중 6 suites / 36 tests와 전체 Jest 53 suites / 357 tests, strict TypeScript, lint, `git diff --check`를 통과했다. 회귀 fixture는 같은 날 완료 세션과 25분 된 열린 세션, 열린 세션의 12분 된 다른 운동 세트를 분리했고 `Continue` 뒤 행 수 불변, 명시 세트 CTA 뒤 +1을 확인했다. Release simulator의 실사용 seed·원본 screenshot 육안 검증은 통합 브랜치에서 아직 실행하지 않았다.
+- **Pattern**: 당일 목표 집계와 현재 세션의 타이머·직전 운동은 같은 날짜를 공유해도 identity 경계가 다르다. 재개 UI의 동사는 쓰기 여부를 숨기지 않아야 한다.

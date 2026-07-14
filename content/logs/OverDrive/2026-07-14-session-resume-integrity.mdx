@@ -1,0 +1,20 @@
+---
+title: "열린 운동의 시간과 직전 세트를 세션 경계로 복원했다"
+date: "2026-07-14"
+project: "OverDrive"
+kind: "troubleshoot"
+visibility: "public"
+language: "ko"
+summary: "앱 재실행 뒤에도 원래 운동 시간과 현재 세션의 직전 세트를 유지하고, Continue의 암묵적 저장을 제거했다."
+tags: ["phase-1", "session", "coach", "sqlite", "usability"]
+---
+
+열린 운동을 복원하는 경로는 DB 행을 다시 찾았지만 타이머에는 그 행의 `started_at` 대신 `Date.now()`를 넣었다. 25분 전에 시작한 운동도 앱을 다시 열면 0분부터 보일 수 있는 구조였다. 코치 카드가 조회한 세트도 `session_id`를 구분하지 않은 당일 전체 목록이었다. 같은 날 끝낸 운동과 다시 이어가는 운동이 함께 있으면 더 최근에 기록된 완료 세션의 운동이 열린 세션의 휴식 기준과 다음 추천을 바꿀 수 있었다.
+
+`4e511a4`는 resume 호출에 DB의 원래 시작 시각을 전달한다. 일일 프로그램 진도는 기존처럼 같은 날짜의 모든 세트와 유산소를 합산하지만, 휴식 anchor·직전 운동·같은 운동 반복 중량은 현재 열린 세션의 세트만 사용한다. 비동기 스냅샷이 세션 교체 뒤 늦게 도착하는 경우에는 스냅샷을 만든 session ID가 현재 ID와 같은지도 확인한다.
+
+긴 idle 뒤의 `Continue`도 저장과 분리했다. 첫 탭은 안정된 idle anchor에 대해 "이 운동을 계속한다"는 로컬 UI 상태만 바꾸며 DB 쓰기를 호출하지 않는다. 그 다음 버튼은 `82.5kg × 7 기록`처럼 실제 저장 payload를 드러내고, 그 버튼을 눌렀을 때만 기존 durable quick-log 경로가 실행된다. 새 세트가 생기면 idle anchor가 달라져 다음 idle episode에는 같은 확인 경계가 다시 생긴다.
+
+회귀 fixture에는 같은 날의 완료 세션과 25분 전에 시작한 열린 세션, 열린 세션에서 12분 전에 기록한 다른 운동을 넣었다. 당일 집계에는 두 세션이 모두 남고 현재 추천과 휴식 시간에는 열린 세션만 남는 것을 확인했다. UI 테스트에서는 `Continue` 뒤 row count가 유지되고 명시 세트 CTA 뒤에만 1 증가했다.
+
+기능 검증은 집중 6 suites / 36 tests와 전체 Jest 53 suites / 357 tests, strict TypeScript, lint, diff 검사까지다. 품질 검증은 세션 ID 분리 fixture와 암묵적 쓰기 방지 UI 회귀까지다. 제품·워크플로 검증은 아직 완료되지 않았다. 통합 브랜치의 Release simulator에 실사용 DB를 시드하고 강제 종료·재실행 뒤 약 25분 타이머, 현재 세션 추천, 두 CTA의 실제 행 수, 원본 screenshot을 육안 확인해야 출고할 수 있다.
