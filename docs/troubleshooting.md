@@ -558,6 +558,14 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Verification**: strict TypeScript, lint, Jest 45 suites / 294 tests, Worker 14 tests, `git diff --check`, EAS metadata lint 통과. SQLite `foreign_key_check`는 빈 결과, `integrity_check`는 `ok`. Maestro에서 Chest 추천과 `bench` 검색을 실제 입력해 확인했고 Apple은 스크린샷 5장을 모두 `COMPLETE`로 반환했다. Browser 런타임 부재로 공개 페이지 모바일/데스크톱 시각 렌더는 미검증이다. App Privacy·DSA·Regulated Medical Device·Mac/Vision 토글, Worker/Pages 배포, App Review 제출은 아직 완료되지 않았다.
 - **Pattern**: 출시 체크리스트는 계획·공개 API readback·private UI·실배포를 한 완료 표시로 합치지 않는다. 스크린샷과 정책 문구도 실제 제출 빌드와 운영 버전의 증거가 있을 때만 완료로 기록한다.
 
+## 구독 해제 뒤 늦은 응답이 권한을 되살리고 빈 AI 결과가 사용량을 소진할 수 있었다
+
+- **Symptom**: 미배포 결제 기반을 적대 검토하면서 세 가지 회귀 경로가 확인됐다. 진행 중 entitlement 교환 뒤 로컬 세션을 지워도 늦은 성공 응답이 다시 active로 만들 수 있었고, 구매 검증 중 paywall 닫기가 시작한 AI gate를 `cancelled`로 정리할 수 있었다. Worker는 구조상 JSON이지만 usable set/item이 없는 provider 응답도 완료 처리할 수 있었다. production incident는 관찰되지 않았으며 source는 배포 전이었다.
+- **Cause**: `src/features/subscription/workerClient.ts`의 비동기 교환에는 clear 이후 결과를 폐기할 generation identity가 없었고, `SubscriptionProvider.tsx`의 close 경계가 busy 작업과 pending gate 소유권을 구분하지 않았다. `worker/src/index.js`의 성공 판정은 normalized collection의 실제 usable row 수를 요구하지 않았다.
+- **Fix**: `workerClient.ts`에 session generation과 same-transaction coalescing을 추가해 stale success/error/null 결과를 모두 폐기했다. `SubscriptionProvider.tsx`는 busy 동안 close를 무시하고 구매 전에 현재 18+ remote-AI 동의를 검사한다. `worker/src/index.js`는 usable workout/meal row가 없으면 502로 실패시키고 고객 표시 quota를 환급하되 provider-attempt cap은 유지한다. custom StoreKit bridge, 월 1,000-credit/60-photo 계약, simulator-only active/quota fixture, 정책 문구와 회귀 테스트를 같은 변경 단위에 포함했다.
+- **Commit**: b5c170a
+- **Verification**: 앱 Jest 50 suites / 351 tests, Worker 42 tests, strict TypeScript, lint, `git diff --check` 통과. 최종 Swift를 포함한 Build 14 Release simulator build가 성공했고, schema 6 seed가 5 sessions / open 1 / 20 sets / 1 cardio / 3 foods, integrity `ok`로 보존됐다. free paywall, active 412/1000·18/60, exhausted 1000/1000·60/60 화면을 원본 캡처로 육안 확인했다. 실제 Apple 결제, 별도 결제 backend, Cloudflare migration/deploy, TestFlight, 재심사는 범위 밖이며 미검증이다.
+
 ## 세션 핸드오프가 Build 12를 현재 출시 후보로 가리켰다
 
 - **Symptom**: `docs/HANDOFF-codex.md`가 2026-07-09의 Build 12와 `6c30d3b`를 최신 상태로 기록해, 새 세션이 이미 검증된 Build 13과 App Store Review draft를 무시하고 오래된 파이프라인을 재실행할 수 있었다.

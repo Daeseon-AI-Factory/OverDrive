@@ -1,0 +1,22 @@
+---
+title: "Reploom Pro 결제 연동 기반과 AI 사용량 경계를 준비했다"
+date: "2026-07-13"
+project: "OverDrive"
+kind: "monetization"
+visibility: "private"
+language: "ko"
+summary: "실결제 플랫폼은 건드리지 않고 StoreKit 연결점, 월 AI·사진 한도, 서버 원장과 실패 경계를 로컬 후보로 준비했다."
+tags: ["subscription", "storekit", "quota", "build-14"]
+---
+
+무료 Build 13은 App Review 대기열에 들어간 뒤 Reploom Pro를 준비하기 위해 철회됐다. 이번 변경은 그 다음 심사를 요청하거나 결제를 실제로 받는 작업이 아니다. 별도 결제 백엔드가 연결될 수 있도록 앱과 Worker source의 경계를 먼저 만든 작업이다.
+
+iOS에는 `ai.daeseon.reploom.pro.monthly.v1`만 허용하는 custom StoreKit 2 adapter를 추가했다. 앱 provider는 product 조회, purchase, current entitlement, restore, manage-subscription을 한 경계로 감싸며, 구매 직전 현재 18+ remote-AI 동의가 없으면 StoreKit을 호출하지 않는다. paywall은 월 1,000 AI credits, 최대 60 meal photos, workout text 1, meal text 2, transcription 3, photo 8, flexible voice parse 추가 1의 비용과 무료로 남는 manual/local 기능을 표시한다.
+
+Worker source에는 Apple server readback 뒤 발급되는 15분 session, billing-period quota, request-id idempotency, provider 실패 환급, 별도 attempt cap, privacy deletion/tombstone, stale reservation과 만료 detail cleanup을 추가했다. provider가 정상 JSON을 반환해도 usable workout set 또는 meal item이 없으면 502와 quota refund로 처리한다. 비동기 session 교환은 generation을 사용해 clear 뒤 도착한 success/error/null 결과가 권한 상태를 되살리거나 새 session을 지우지 못하게 했다.
+
+기능 검증은 앱 50 suites / 351 tests와 Worker 42 tests, strict TypeScript, lint로 했다. 품질 검증은 최종 Swift를 포함한 Build 14 Release simulator build와 현실적 schema 6 seed로 했다. 설치 전후 데이터는 5 sessions, open 1, 20 sets, 1 cardio, 3 foods였고 SQLite integrity는 `ok`였다. free paywall, active usage `412/1000`·`18/60`, exhausted quota `1000/1000`·`60/60`을 캡처해 문구와 배치를 육안 확인했다.
+
+실제 Apple purchase, renewal, refund, Ask to Buy, physical-device Sandbox, 별도 결제 backend, Apple credentials, remote D1 migration, Worker/Cron/Pages 배포, TestFlight Build 14, App Review 재요청은 하지 않았다. 기존 Build 13 production 외부 상태도 변경하지 않았다. 코드 롤백 단위는 구현 커밋 `b5c170a`다.
+
+구현 커밋: `b5c170a`.
