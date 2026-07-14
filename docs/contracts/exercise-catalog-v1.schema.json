@@ -1,0 +1,293 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:overdrive:exercise-catalog:v1",
+  "title": "OverDrive Exercise Catalog v1 Snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "catalogVersion",
+    "effectiveAt",
+    "defaultLocale",
+    "supportedLocales",
+    "searchNormalization",
+    "exercises"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "1.0.0"},
+    "catalogVersion": {"type": "string", "pattern": "^1\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
+    "effectiveAt": {"type": "string", "format": "date-time"},
+    "defaultLocale": {"const": "en"},
+    "supportedLocales": {
+      "const": ["en", "ko", "es", "zh-Hans"]
+    },
+    "searchNormalization": {"const": "search-v1"},
+    "exercises": {
+      "type": "array",
+      "minItems": 32,
+      "maxItems": 512,
+      "items": {"$ref": "#/$defs/exercise"}
+    }
+  },
+  "$defs": {
+    "timestampOrNull": {
+      "oneOf": [
+        {"type": "string", "format": "date-time"},
+        {"type": "null"}
+      ]
+    },
+    "idOrNull": {
+      "oneOf": [
+        {"$ref": "#/$defs/exerciseId"},
+        {"type": "null"}
+      ]
+    },
+    "exerciseId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+    },
+    "localizedText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "localization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["displayName", "aliases"],
+      "properties": {
+        "displayName": {"$ref": "#/$defs/localizedText"},
+        "aliases": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/localizedText"}
+        }
+      }
+    },
+    "localizations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["en", "ko", "es", "zh-Hans"],
+      "properties": {
+        "en": {"$ref": "#/$defs/localization"},
+        "ko": {"$ref": "#/$defs/localization"},
+        "es": {"$ref": "#/$defs/localization"},
+        "zh-Hans": {"$ref": "#/$defs/localization"}
+      }
+    },
+    "equipmentId": {
+      "enum": [
+        "barbell",
+        "dumbbell",
+        "bench",
+        "rack",
+        "pull_up_bar",
+        "dip_bars",
+        "cable_machine",
+        "lat_pulldown_machine",
+        "leg_press_machine",
+        "leg_curl_machine",
+        "calf_raise_machine",
+        "smith_machine",
+        "treadmill",
+        "bicycle",
+        "rowing_machine",
+        "jump_rope",
+        "mat",
+        "weight_plate",
+        "resistance_band",
+        "bodyweight_space",
+        "other"
+      ]
+    },
+    "equipment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "optional"],
+      "properties": {
+        "required": {
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/equipmentId"}
+        },
+        "optional": {
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/equipmentId"}
+        }
+      }
+    },
+    "movementPattern": {
+      "enum": [
+        "horizontal_push",
+        "vertical_push",
+        "horizontal_pull",
+        "vertical_pull",
+        "squat",
+        "hinge",
+        "lunge",
+        "hip_extension",
+        "hip_flexion",
+        "knee_flexion",
+        "knee_extension",
+        "ankle_plantar_flexion",
+        "elbow_flexion",
+        "elbow_extension",
+        "shoulder_abduction",
+        "shoulder_horizontal_adduction",
+        "shoulder_external_rotation",
+        "trunk_flexion",
+        "trunk_anti_extension",
+        "locomotion_run",
+        "locomotion_walk",
+        "cycle",
+        "row_erg",
+        "jump",
+        "interval_mixed",
+        "other"
+      ]
+    },
+    "bodyRegion": {
+      "enum": [
+        "chest",
+        "shoulders",
+        "back",
+        "biceps",
+        "triceps",
+        "core",
+        "glutes",
+        "quads",
+        "hamstrings",
+        "calves"
+      ]
+    },
+    "bodyRegions": {
+      "type": "array",
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/bodyRegion"}
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit", "low", "high"],
+      "properties": {
+        "unit": {"enum": ["reps", "seconds", "minutes", "meters", "kilometers", "rounds"]},
+        "low": {"type": "number", "minimum": 0},
+        "high": {"type": "number", "minimum": 0}
+      }
+    },
+    "defaultPrescription": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sets", "trackingMode", "target"],
+      "properties": {
+        "sets": {"type": "integer", "minimum": 1, "maximum": 20},
+        "trackingMode": {"enum": ["reps", "duration", "distance", "duration_distance", "intervals"]},
+        "target": {
+          "oneOf": [
+            {"$ref": "#/$defs/target"},
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceType", "label", "url", "license", "accessedAt"],
+      "properties": {
+        "sourceType": {
+          "enum": ["internal_editorial", "official_guideline", "peer_reviewed", "public_domain", "licensed_dataset"]
+        },
+        "label": {"type": "string", "minLength": 1, "maxLength": 200},
+        "url": {
+          "oneOf": [
+            {"type": "string", "format": "uri", "maxLength": 500},
+            {"type": "null"}
+          ]
+        },
+        "license": {
+          "oneOf": [
+            {"type": "string", "minLength": 1, "maxLength": 100},
+            {"type": "null"}
+          ]
+        },
+        "accessedAt": {"$ref": "#/$defs/timestampOrNull"}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classification",
+        "reviewStatus",
+        "reviewedByRole",
+        "reviewedAt",
+        "containsThirdPartyCopy",
+        "sources"
+      ],
+      "properties": {
+        "classification": {"enum": ["original_editorial", "public_facts", "licensed"]},
+        "reviewStatus": {"const": "reviewed"},
+        "reviewedByRole": {"type": "string", "minLength": 1, "maxLength": 80},
+        "reviewedAt": {"type": "string", "format": "date-time"},
+        "containsThirdPartyCopy": {"const": false},
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {"$ref": "#/$defs/source"}
+        }
+      }
+    },
+    "exercise": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "recordRevision",
+        "status",
+        "effectiveFrom",
+        "effectiveTo",
+        "replacementId",
+        "displayOrder",
+        "localizations",
+        "exerciseType",
+        "isBodyweight",
+        "equipment",
+        "movementPattern",
+        "difficulty",
+        "primaryBodyRegions",
+        "secondaryBodyRegions",
+        "defaultPrescription",
+        "provenance"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/exerciseId"},
+        "recordRevision": {"type": "integer", "minimum": 1},
+        "status": {"enum": ["active", "deprecated", "retired"]},
+        "effectiveFrom": {"type": "string", "format": "date-time"},
+        "effectiveTo": {"$ref": "#/$defs/timestampOrNull"},
+        "replacementId": {"$ref": "#/$defs/idOrNull"},
+        "displayOrder": {"type": "integer", "minimum": 1},
+        "localizations": {"$ref": "#/$defs/localizations"},
+        "exerciseType": {"enum": ["strength", "cardio"]},
+        "isBodyweight": {"type": "boolean"},
+        "equipment": {"$ref": "#/$defs/equipment"},
+        "movementPattern": {"$ref": "#/$defs/movementPattern"},
+        "difficulty": {"enum": ["beginner", "intermediate", "advanced"]},
+        "primaryBodyRegions": {"$ref": "#/$defs/bodyRegions"},
+        "secondaryBodyRegions": {"$ref": "#/$defs/bodyRegions"},
+        "defaultPrescription": {"$ref": "#/$defs/defaultPrescription"},
+        "provenance": {"$ref": "#/$defs/provenance"}
+      }
+    }
+  }
+}
