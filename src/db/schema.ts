@@ -5,7 +5,7 @@
 // Deferred to later phases: FitnessTest (Phase 5), League/Friendship/AuraCard (Phase 3-4).
 // Program is a code constant (defaultProgram.ts), not a table. Streak is computed, not stored.
 
-export const DATABASE_VERSION = 6;
+export const DATABASE_VERSION = 7;
 
 export const SCHEMA_V1 = `
 CREATE TABLE IF NOT EXISTS user (
@@ -221,4 +221,30 @@ CREATE TABLE IF NOT EXISTS body_composition_log (
   measured_at       TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_bodycomp_user_measured ON body_composition_log(user_id, measured_at);
+`;
+
+// v6 → v7: manual/offline meal entry + durable meal batch ids. SQLite cannot widen a CHECK
+// constraint in place, so rebuild the table atomically and preserve every existing row. Historic
+// rows used logged_at as their implicit batch boundary; carry that forward as a deterministic id.
+// migrate.ts only executes this script when the live table does not already expose both v7 traits.
+export const MIGRATION_007 = `
+DROP TABLE IF EXISTS food_log_v7;
+CREATE TABLE food_log_v7 (
+  id         TEXT PRIMARY KEY NOT NULL,
+  batch_id   TEXT NOT NULL,
+  user_id    TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+  date       TEXT NOT NULL,
+  name       TEXT NOT NULL,
+  kcal       REAL NOT NULL DEFAULT 0,
+  protein_g  REAL NOT NULL DEFAULT 0,
+  source     TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual','text','voice','photo')),
+  logged_at  TEXT NOT NULL
+);
+INSERT INTO food_log_v7 (id, batch_id, user_id, date, name, kcal, protein_g, source, logged_at)
+SELECT id, user_id || ':' || logged_at, user_id, date, name, kcal, protein_g, source, logged_at
+FROM food_log;
+DROP TABLE food_log;
+ALTER TABLE food_log_v7 RENAME TO food_log;
+CREATE INDEX IF NOT EXISTS idx_food_user_date ON food_log(user_id, date);
+CREATE INDEX IF NOT EXISTS idx_food_user_batch ON food_log(user_id, batch_id);
 `;

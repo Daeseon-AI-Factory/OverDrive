@@ -508,6 +508,23 @@
   },
   "food": {
     "title": "饮食",
+    "aiTitle": "可选 AI 估算 · PRO",
+    "manual": {
+      "title": "快速手动记录",
+      "disclaimer": "数值由你输入，应用不会验证其营养准确性。",
+      "name": "餐食名称",
+      "kcal": "千卡",
+      "protein": "蛋白质克数",
+      "save": "保存",
+      "update": "更新",
+      "edit": "编辑",
+      "editing": "正在编辑这条本地餐食",
+      "invalid": "请输入餐食名称以及有效的热量和蛋白质数值。"
+    },
+    "recent": {
+      "title": "最近 · 份量",
+      "item": "{name} · {kcal} 千卡 · {protein}克"
+    },
     "placeholder": "例如  鸡胸肉300克 + 米饭",
     "photo": "通过照片估算饮食",
     "log": "记录",
