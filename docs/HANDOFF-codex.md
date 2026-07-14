@@ -53,6 +53,10 @@
 - Build 13: `VALID`, `APP_STORE_ELIGIBLE`, min iOS 16.4, non-exempt encryption false
 - Build 14: archive/export·Apple validation·upload 성공. `VALID`, `APP_STORE_ELIGIBLE`, min iOS
   16.4, non-exempt encryption false. version 1.0 연결/submission은 없음.
+- Build 14는 `Internal` group `0b3e2175-6e44-4667-b777-0331dd34fae1`에 포함돼
+  `internalBuildState=IN_BETA_TESTING`이다. group은 `hasAccessToAllBuilds=true`, tester 1명이다.
+  `externalBuildState=READY_FOR_BETA_SUBMISSION`, beta App Review `data:null`, external group 0개로
+  외부 TestFlight 배포는 아니다. tester의 일반 state `INSTALLED`는 Build 14 실행·결제 증거가 아니다.
 - Version 1.0은 `DEVELOPER_REJECTED`, manual release, `usesIdfa=false`, copyright
   `2026 Daeseon Yoo`며 Build 13이 아직 연결돼 있다. Build 14의 `/appStoreVersion`과
   relationship은 둘 다 `data:null`이다. 재제출 전 Build 14와 첫 subscription을 선택해야 한다.

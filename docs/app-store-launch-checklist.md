@@ -202,6 +202,10 @@ at the evidence levels named below.
   `ai.daeseon.reploom`, version `1.0`, build `14`, arm64, minimum iOS 16.4, and encryption false.
 - [x] Apple validation and TestFlight upload succeeded; Build 14 resource
   `ad2c1d7a-74f9-4516-94be-0c3a226e15d6` reads `VALID` / `APP_STORE_ELIGIBLE`.
+- [x] Build 14 is available to the one-tester `Internal` group and reads
+  `internalBuildState=IN_BETA_TESTING`; no external group or beta App Review submission exists.
+- [ ] Install and launch Build 14 itself on the internal tester's physical iPhone before treating
+  the tester account's general `INSTALLED` state as evidence for this build.
 - [ ] Replace the current Build 13 association with Build 14 on version 1.0 and select the first
   subscription with that version before creating a new review submission.
 - [ ] New submission and version both read back `WAITING_FOR_REVIEW`; never infer success from the
