@@ -1,19 +1,20 @@
 # Reploom App Store Launch Checklist
 
-Updated: 2026-07-13. App Store Connect app `6786831176`, bundle `ai.daeseon.reploom`.
+Updated: 2026-07-14. App Store Connect app `6786831176`, bundle `ai.daeseon.reploom`.
 
 The original free Build 13 submission was accepted into the review queue and then deliberately
 withdrawn on 2026-07-13 after the decision to prepare Reploom Pro and server-enforced AI limits.
 Review submission `72f01614-39bb-4b0e-95e7-a3810e5fbb97` read back `COMPLETE`, its item `REMOVED`,
 and version 1.0 `DEVELOPER_REJECTED`. Build 13 remains valid as a binary rollback artifact but must
-not be resubmitted as the subscription release. The current Build 14 work is repository/local
-integration groundwork only; no replacement binary has been uploaded, attached, or submitted.
+not be resubmitted as the subscription release. Build 14 is now uploaded and reads `VALID` /
+`APP_STORE_ELIGIBLE`, but it is not attached to version 1.0 and no replacement submission exists.
 
 ## Verified before this release candidate
 
-- App Store version `1.0` exists in `PREPARE_FOR_SUBMISSION`.
+- App Store version `1.0` reads `DEVELOPER_REJECTED` after the deliberate withdrawal.
 - TestFlight build 12 is `VALID`, but it predates this compliance/usability release candidate and
   must not be selected for App Review.
+- TestFlight build 14 is `VALID` / `APP_STORE_ELIGIBLE`; version 1.0 still points to Build 13.
 - Store-facing brand is Reploom; OverDrive remains only an internal repository/concept name.
 - Public ranking and remote photo-avatar entry points are removed from v1 UI.
 - Worker candidate source uses Groq only for optional workout text, audio, meal text, and selected meal photos.
@@ -58,6 +59,11 @@ integration groundwork only; no replacement binary has been uploaded, attached, 
   `1798ec5a-4134-4b02-b553-b00f6ea7e720` is branch `main`, source `b9ddda1`.
 - [x] Verify `/`, `/privacy`, `/support`, `/terms`, `/data` return HTTPS 200 without redirects,
   contain the intended title/contact, and are byte-identical to the tracked HTML.
+- [x] Deploy the subscription website source to noindex preview
+  `14bd35fa-5d7b-41ce-aedc-65fb8baa5cc9`; both `https://14bd35fa.reploom.pages.dev` and the
+  branch alias return 200, and the five routes plus CSS match the tracked files by SHA-256.
+- [ ] Promote the subscription website to Pages production only after the matching entitlement
+  Worker is live; production currently remains `1798ec5a-4134-4b02-b553-b00f6ea7e720`.
 - [x] Deploy the Worker with `logpush=false`; the Cloudflare script-settings readback returned
   `observability=null` and no tail consumer, so Worker observability is not enabled.
 - [ ] Independently verify `/parse`, `/transcribe`, and `/food` success/error/size contracts; consent remains a client-side gate.
@@ -77,6 +83,9 @@ integration groundwork only; no replacement binary has been uploaded, attached, 
   period/orphan-principal cleanup. Persistent
   actor/period/request HMACs use a separately backed-up identity secret that must never rotate;
   session signing uses an independently rotatable secret. This source has not been deployed.
+- [x] Apply `0001_ai_subscription_quota.sql` remotely through the atomic file-ingestion runner.
+  Readback found no pending migration, 11 `ai_*` objects, `quick_check=ok`, zero foreign-key errors,
+  and all 4 existing `rank_entry` rows preserved.
 - [ ] Deferred to the separate payment-platform integration: deploy and read back the subscription
   Worker only after its Apple In-App Purchase credentials are installed. Record new immutable normal
   and safe rollback IDs before changing production traffic.
@@ -89,8 +98,8 @@ integration groundwork only; no replacement binary has been uploaded, attached, 
   cleanup continues. Do not claim fresh in-app subscription-data deletion during a rollback.
 - [x] Record normal Worker `dee65f64-88ee-491f-962f-f9b686bfd561`, safe Worker
   `33abed25-1f2e-497f-8580-72b29e267840`, Pages production
-  `1798ec5a-4134-4b02-b553-b00f6ea7e720`, and preview
-  `21bfe398-a8f2-4461-90c0-24fd1eeec7f7`. The first Pages production has no earlier rollback target.
+  `1798ec5a-4134-4b02-b553-b00f6ea7e720`, and latest preview
+  `14bd35fa-5d7b-41ce-aedc-65fb8baa5cc9`. The first Pages production has no earlier rollback target.
 - [x] Ensure the rollback target also keeps rank/evolve/body-avatar retired; never roll back to a
   version that reactivates the removed Gemini or leaderboard paths.
 
@@ -143,9 +152,10 @@ integration groundwork only; no replacement binary has been uploaded, attached, 
 
 Scope fence: completed items below mean only the evidence named on that line (repository tests,
 local Release simulator, or an earlier App Store Connect readback). The separate payment platform,
-Apple server credentials, remote D1 migration, cleanup cron deployment, production Worker traffic,
-real purchase/entitlement exchange, TestFlight upload, and App Review resubmission are deferred and
-remain unchecked.
+Apple server credentials, cleanup cron deployment, production Worker traffic, real
+purchase/entitlement exchange, Build/version/subscription association, and App Review resubmission
+are deferred and remain unchecked. Remote D1 and the Build 14 TestFlight upload are completed only
+at the evidence levels named below.
 
 - [ ] Paid Applications Agreement, tax, and banking status are active and read back. Korea
   e-Commerce `Active` is not evidence for this separate gate.
@@ -164,6 +174,8 @@ remain unchecked.
   remaining disabled.
 - [ ] App Store Server API In-App Purchase key is generated once, stored only as Worker secrets, and
   its Key ID/Issuer/bundle/product environment is verified without printing the private key.
+  Current Worker secret readback is missing all five required Apple IAP/entitlement names; only
+  the older `GROQ_API_KEY` and unused `GEMINI_API_KEY` names exist.
 - [ ] App Store Connect App Privacy answers include linked Product Interaction for successful-use,
   provider-attempt, request-state, period-reset, and Apple-test daily safety aggregates.
 - [ ] StoreKit 2 product loading, purchase success, user cancellation, pending approval, renewal,
@@ -183,12 +195,15 @@ remain unchecked.
   restore across reinstall. Simulator-only StoreKit Test is not a substitute for this gate.
 - [ ] Upload a truthful paywall review screenshot and set/read back both subscription-group and
   product localizations, product review note, availability, price, tax category, and state
-  `READY_TO_SUBMIT`.
+  `READY_TO_SUBMIT`. The live screenshot relationship is `data:null`; the simulator capture that
+  says `Loading the App Store price…` / `Subscription unavailable` must not be submitted.
 - [x] Tracked Expo build number, generated Debug/Release Xcode build settings, and the local Release
-  simulator app all read `14`; the final device archive and exported app still require an independent
-  `CFBundleVersion=14` scan.
-- [ ] Build 14 or later is `VALID` / `APP_STORE_ELIGIBLE`, attached to version 1.0, and the first
-  subscription is selected with that version before submitting a new review submission.
+  simulator app all read `14`; the final device archive and exported IPA independently read bundle
+  `ai.daeseon.reploom`, version `1.0`, build `14`, arm64, minimum iOS 16.4, and encryption false.
+- [x] Apple validation and TestFlight upload succeeded; Build 14 resource
+  `ad2c1d7a-74f9-4516-94be-0c3a226e15d6` reads `VALID` / `APP_STORE_ELIGIBLE`.
+- [ ] Replace the current Build 13 association with Build 14 on version 1.0 and select the first
+  subscription with that version before creating a new review submission.
 - [ ] New submission and version both read back `WAITING_FOR_REVIEW`; never infer success from the
   submit click alone.
 
@@ -199,8 +214,8 @@ Future payment-platform gaps, not completion work for this change:
 - [ ] Exercise Ask to Buy from pending through later approval without leaving a stale cancellation
   message or losing the initiating AI action.
 - [ ] Verify signed-out/offline purchase and restore behavior on a physical device.
-- [ ] Install Apple credentials, apply the remote D1 migration, deploy/read back normal + safe
-  versions and the cleanup cron, and verify the live entitlement session.
+- [ ] Install Apple credentials, deploy/read back normal + safe versions and the cleanup cron, and
+  verify the live entitlement session against the already-applied D1 schema.
 - [ ] Confirm App Privacy Product Interaction answers, the Groq account spend cap, and unit economics
   before treating the allowance as a profitability guarantee.
 
