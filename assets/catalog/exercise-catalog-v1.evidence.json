@@ -1,0 +1,46 @@
+{
+  "evidenceId": "catalog-v1-source-check-2026-07-14",
+  "reviewStatus": "source_checked",
+  "reviewMethod": "source_comparison",
+  "reviewedByRole": "catalog-source-check-agent",
+  "reviewedAt": "2026-07-14T00:00:00Z",
+  "humanReviewed": false,
+  "scope": [
+    "Neutral exercise identity, body-region taxonomy, equipment class, movement pattern, difficulty label, and logging defaults.",
+    "ACSM/AHA are used only for strength rows and general resistance-training taxonomy and neutral prescription ranges.",
+    "HHS Physical Activity Guidelines are used only for cardio activity classification; modality names and aliases remain original metadata.",
+    "Names and aliases are independently authored catalog metadata and are not copied from the cited papers."
+  ],
+  "exclusions": [
+    "Descriptions, instructions, coaching text, medical or diagnostic claims, images, and video.",
+    "OpenStax content, wger bulk imports, and any proprietary exercise copy.",
+    "Human editorial approval or endorsement."
+  ],
+  "sources": {
+    "strength": [
+      {
+        "sourceType": "peer_reviewed",
+        "label": "American College of Sports Medicine Position Stand. Resistance Training Prescription for Muscle Function, Hypertrophy, and Physical Performance in Healthy Adults: An Overview of Reviews",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12965823/",
+        "license": null,
+        "accessedAt": "2026-07-14T00:00:00Z"
+      },
+      {
+        "sourceType": "peer_reviewed",
+        "label": "Resistance Exercise Training in Individuals With and Without Cardiovascular Disease: 2023 Update",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11209834/",
+        "license": null,
+        "accessedAt": "2026-07-14T00:00:00Z"
+      }
+    ],
+    "cardio": [
+      {
+        "sourceType": "official_guideline",
+        "label": "HHS Physical Activity Guidelines for Americans, 2nd Edition",
+        "url": "https://odphp.health.gov/paguidelines/second-edition/pdf/Physical_Activity_Guidelines_2nd_edition.pdf",
+        "license": null,
+        "accessedAt": "2026-07-14T00:00:00Z"
+      }
+    ]
+  }
+}
