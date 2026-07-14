@@ -2,7 +2,14 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
 import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
 import { appendPowerEvent } from '@/db/repos/powerEventRepo';
-import { completeSession, getCompletedSessionDates, getOpenSessionForDate, getSessionActivitySummary, startSession } from '@/db/repos/sessionRepo';
+import {
+  completeSession,
+  getCompletedSessionDates,
+  getOpenSessionForDate,
+  getSessionActivitySummary,
+  sessionStartedAtMs,
+  startSession,
+} from '@/db/repos/sessionRepo';
 import { computeStreak } from '@/features/combat-power/aggregate';
 import { playNamed } from '@/features/juice/audio/engine';
 import { classifyEvent } from '@/features/juice/classifyEvent';
@@ -41,7 +48,9 @@ export function useForge() {
             const summary = await getSessionActivitySummary(db, open.id);
             const activeAfterSummary = useSessionStore.getState().activeSessionId;
             if (activeAfterSummary) return activeAfterSummary;
-            useSessionStore.getState().resume(open.id, cpAtStart, summary.itemCount, summary.volumeKg);
+            useSessionStore
+              .getState()
+              .resume(open.id, cpAtStart, sessionStartedAtMs(open), summary.itemCount, summary.volumeKg);
             return open.id;
           }
           const dayType = resolveProgramDay(useSettingsStore.getState().customProgram, new Date().getDay()).dayType;
@@ -70,7 +79,15 @@ export function useForge() {
         const open = await getOpenSessionForDate(db, todayLocal());
         if (!open) return false;
         const summary = await getSessionActivitySummary(db, open.id);
-        useSessionStore.getState().resume(open.id, useCombatPowerStore.getState().score, summary.itemCount, summary.volumeKg);
+        useSessionStore
+          .getState()
+          .resume(
+            open.id,
+            useCombatPowerStore.getState().score,
+            sessionStartedAtMs(open),
+            summary.itemCount,
+            summary.volumeKg,
+          );
         st = useSessionStore.getState();
         sid = open.id;
       }

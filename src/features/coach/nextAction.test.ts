@@ -226,7 +226,12 @@ describe('computeNextAction — session_idle', () => {
     const action = computeNextAction(
       input({ session: activeSession(null), day: { isRestDay: false, slots: [] } }),
     );
-    expect(action).toEqual({ kind: 'session_idle', suggestion: null, idleSec: 3600 });
+    expect(action).toEqual({
+      kind: 'session_idle',
+      suggestion: null,
+      idleSec: 3600,
+      idleAnchorAt: NOW - 3600 * SEC,
+    });
   });
 });
 

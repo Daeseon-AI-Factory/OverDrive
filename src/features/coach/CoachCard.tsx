@@ -22,8 +22,9 @@ const POSE_SIZE = 128;
 
 /**
  * The Today hero surface — the app decides, the user confirms ("손 치는 걸 최소화"). One glance:
- * a big animated pose + giant suggested-set digits + ONE mega button per state ('시작'/'했어'/
- * '이어서'/'수련 완료'). The '했어' one-tap goes through useQuickLog.repeat → the UNCHANGED
+ * a big animated pose + giant suggested-set digits + ONE mega button per state. A live-set save CTA
+ * names the exact payload; after a long idle, 'Continue' first acknowledges the session WITHOUT a
+ * write, then exposes that explicit save. The save goes through useQuickLog.repeat → the UNCHANGED
  * useLogSet hot path (save → CP → JUICE, §6: nothing runs before the durable write) and raises the
  * same ConfirmUndoCard certainty loop as the quicklog bar. The rest countdown is derived from the
  * last save timestamp (purely visual, §6); an overrun rest just reads '준비됨' — never a scold (§9).
@@ -49,7 +50,8 @@ export function CoachCard({
   const unitSystem = useSettingsStore((s) => s.unitSystem);
   const { loaded, dayTitle, exerciseById, compute } = useCoachPlan();
   const { repeat, undoSave } = useQuickLog(); // THE quicklog save/undo paths — JUICE + recents refresh
-  const sessionActive = useSessionStore((s) => s.activeSessionId != null);
+  const activeSessionId = useSessionStore((s) => s.activeSessionId);
+  const sessionActive = activeSessionId != null;
   const sessionMutationBlocked = useSessionStore((s) => s.finishing || s.pendingLogWrites > 0);
 
   const [now, setNow] = useState(() => Date.now());
@@ -58,6 +60,7 @@ export function CoachCard({
   // Confirm-as-undo card for the JUST-saved coach set — same contract as the quicklog bar host.
   const [card, setCard] = useState<{ nonce: number; saved: SavedQuickSet } | null>(null);
   const [undoingNonce, setUndoingNonce] = useState<number | null>(null);
+  const [continuedIdleKey, setContinuedIdleKey] = useState<string | null>(null);
   const cardNonce = useRef(0);
 
   const ko = i18n.language.startsWith('ko');
@@ -74,6 +77,8 @@ export function CoachCard({
   }, [sessionActive]);
 
   const action: NextAction = compute(now);
+  const idleKey = action.kind === 'session_idle' ? `${activeSessionId ?? 'none'}:${action.idleAnchorAt}` : null;
+  const idleContinued = idleKey != null && continuedIdleKey === idleKey;
   const suggestion: SetSuggestion | null =
     action.kind === 'start_program_day' || action.kind === 'resting' || action.kind === 'session_idle'
       ? action.suggestion
@@ -160,9 +165,14 @@ export function CoachCard({
   const onPrimary = useCallback(() => {
     if (action.kind === 'start_program_day' || action.kind === 'start_free') void onStart();
     else if (action.kind === 'wrap_up') onFinishWorkout();
+    else if (action.kind === 'session_idle' && !idleContinued) {
+      // Deliberately no DB write: the first tap after a long gap only confirms that this workout is
+      // still active. The next CTA names the exact set before any one-tap save can happen.
+      if (idleKey != null) setContinuedIdleKey(idleKey);
+    }
     else if (canOneTap) void onDidIt();
     else if (sugRow != null) openLogger(sugRow);
-  }, [action.kind, canOneTap, sugRow, onStart, onDidIt, onFinishWorkout, openLogger]);
+  }, [action.kind, idleKey, idleContinued, canOneTap, sugRow, onStart, onDidIt, onFinishWorkout, openLogger]);
 
   const onAlt = useCallback(() => {
     if (sugRow != null) openLogger(sugRow);
@@ -224,6 +234,15 @@ export function CoachCard({
     }
   }
 
+  const explicitSetLabel = (() => {
+    if (!canOneTap || suggestion == null || suggestion.reps == null) return null;
+    if (isBodyweight) return dv(`${suggestion.reps}회 기록`, `Log ${suggestion.reps} reps`);
+    if (suggestion.weightKg == null) return null;
+    const weight = compact(kgToDisplay(suggestion.weightKg, unitSystem));
+    const unit = weightUnit(unitSystem);
+    return dv(`${weight}${unit} × ${suggestion.reps} 기록`, `Log ${weight}${unit} × ${suggestion.reps}`);
+  })();
+
   const remainLabel =
     action.kind === 'resting' && action.restStartedAt != null
       ? action.restRemainSec > 0
@@ -237,11 +256,11 @@ export function CoachCard({
       ? dv('시작', 'Start')
       : action.kind === 'wrap_up' && action.sessionActive
         ? t('forge.finish')
-        : (action.kind === 'resting' || action.kind === 'session_idle') && canOneTap
-          ? action.kind === 'resting'
-            ? dv('했어', 'Did it')
-            : dv('이어서', 'Continue')
-          : (action.kind === 'resting' || action.kind === 'session_idle') && sugRow != null
+        : action.kind === 'session_idle' && !idleContinued && sugRow != null
+          ? dv('이어서', 'Continue')
+          : (action.kind === 'resting' || (action.kind === 'session_idle' && idleContinued)) && canOneTap
+            ? explicitSetLabel
+            : (action.kind === 'resting' || (action.kind === 'session_idle' && idleContinued)) && sugRow != null
             ? dv('기록', 'Log')
             : null;
 

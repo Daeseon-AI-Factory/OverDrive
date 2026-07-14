@@ -50,8 +50,25 @@ describe('sessionStore set correction', () => {
 
     useSessionStore.getState().endLogWrite();
     useSessionStore.setState({ finishing: true });
-    useSessionStore.getState().resume('session-2', 100, 2, 900);
+    useSessionStore.getState().resume('session-2', 100, 1_700_000_000_000, 2, 900);
     expect(useSessionStore.getState()).toMatchObject({ activeSessionId: 'session-2', finishing: true });
+  });
+
+  it('preserves the durable start time when an open session is resumed after relaunch', () => {
+    const now = 1_750_000_000_000;
+    const startedAt = now - 25 * 60 * 1000;
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(now);
+
+    useSessionStore.getState().resume('session-open', 100, startedAt, 1, 500);
+
+    expect(useSessionStore.getState()).toMatchObject({
+      activeSessionId: 'session-open',
+      startedAt,
+      setCount: 1,
+      volumeKg: 500,
+    });
+    expect(Math.floor((Date.now() - useSessionStore.getState().startedAt!) / 60_000)).toBe(25);
+    nowSpy.mockRestore();
   });
 
   it('replaces volume without changing the set count or last-set anchor', () => {

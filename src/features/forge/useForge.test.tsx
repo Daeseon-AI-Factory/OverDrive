@@ -17,6 +17,7 @@ jest.mock('@/db/repos/sessionRepo', () => ({
   getCompletedSessionDates: (...args: unknown[]) => mockGetCompletedDates(...args),
   getOpenSessionForDate: (...args: unknown[]) => mockGetOpenSession(...args),
   getSessionActivitySummary: (...args: unknown[]) => mockGetSessionSummary(...args),
+  sessionStartedAtMs: (session: { started_at: string }) => Date.parse(session.started_at),
   startSession: jest.fn(),
 }));
 jest.mock('@/db/repos/combatPowerRepo', () => ({
@@ -108,7 +109,7 @@ describe('useForge completion durability', () => {
 
   it('keeps its finish lease while hydrating an open DB session', async () => {
     useSessionStore.setState({ activeSessionId: null, finishing: false, pendingLogWrites: 0 });
-    mockGetOpenSession.mockResolvedValue({ id: 'session-open' });
+    mockGetOpenSession.mockResolvedValue({ id: 'session-open', started_at: '2023-11-14T22:13:20.000Z' });
     mockRecompute.mockRejectedValue(new Error('cp unavailable'));
     const { result } = renderHook(() => useForge());
 
