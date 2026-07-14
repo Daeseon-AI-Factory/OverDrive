@@ -28,8 +28,9 @@
       <p class="updated">Support information last updated: July 13, 2026</p>
 
       <div class="lead">
-        Reploom is accountless: saved workouts, meals, goals, and app settings live in the app's
-        private storage on your iPhone. Start with the steps below; they do not require a login.
+        Reploom has no login account: saved workouts, meals, goals, and app settings live in the
+        app's private storage on your iPhone. Reploom Pro is purchased through your Apple Account.
+        Start with the steps below; they do not require a Reploom login.
       </div>
 
       <div class="notice">
@@ -41,6 +42,7 @@
         <a href="#quick-help">Quick help</a>
         <a href="#health">Apple Health</a>
         <a href="#ai-tools">AI-assisted tools</a>
+        <a href="#subscription">Reploom Pro</a>
         <a href="#data">Data and deletion</a>
         <a href="#faq">Product FAQ</a>
         <a href="#contact">Contact</a>
@@ -60,10 +62,11 @@
       <p>
         Remote AI is off by default. It may be enabled only by a user confirming they are 18 or
         older after reading the disclosure in Reploom Settings.
-        These optional tools also need an internet connection and the Reploom processing service.
-        Voice transcription, workout parsing, and meal analysis use Groq. A timeout or provider
-        outage does not remove your existing local logs. You can keep training with manual workout
-        logging. The v1 sportswear character is built in and does not upload a personal photo.
+        These optional tools also need an active Reploom Pro entitlement, remaining AI quota, an
+        internet connection, and the Reploom processing service. Voice transcription, workout
+        parsing, and meal analysis use Groq. A missing purchase, exhausted quota, timeout, or
+        provider outage does not remove your existing local logs. You can keep training with manual
+        workout logging. The v1 sportswear character is built in and does not upload a personal photo.
       </p>
 
       <h3>Undo or edit a recent entry</h3>
@@ -106,9 +109,44 @@
         <a href="privacy.html#ai">privacy policy's processing table</a> for exactly what is sent.
       </p>
 
+      <h2 id="subscription">Reploom Pro subscription and quota</h2>
+
+      <h3>Purchase, restore, or manage Reploom Pro</h3>
+      <p>
+        Open <strong>Settings → Reploom Pro</strong>. The purchase screen displays Apple's localized
+        monthly price, the 1,000-credit billing-period allowance, and the separate 60-photo limit.
+        Choose <strong>Restore Purchases</strong> if you already subscribed with the current Apple
+        Account. Use <strong>Manage Subscription</strong> to view renewal or cancellation options.
+        Deleting Reploom does not cancel the Apple subscription.
+      </p>
+
+      <h3>Understand AI credits</h3>
+      <p>
+        Flexible workout text uses 1 credit, typed meal estimation 2, voice transcription 3, and a
+        meal photo 8. If a voice transcript needs flexible workout parsing, that uses 1 more credit
+        (3–4 total), so voice recording requires at least 4 credits remaining. Credits and the photo
+        count reset when the current paid billing period ends;
+        unused amounts do not roll over. Devices using the same Apple subscription share the same
+        allowance. Manual logging and on-device quick parsing remain available after the limit.
+      </p>
+      <p>
+        Failed provider attempts are returned to the displayed allowance. Repeated failures can
+        still trigger a separate cost-safety pause until the reset time shown in Reploom; manual and
+        local logging remain available during that pause.
+      </p>
+
+      <h3>A purchase is pending or not appearing</h3>
+      <ol class="steps">
+        <li>Wait for Apple to finish any approval or billing step; do not purchase repeatedly.</li>
+        <li>Confirm the device is signed in to the Apple Account that made the purchase.</li>
+        <li>Use <strong>Restore Purchases</strong> once, then reopen Reploom if Apple reports success.</li>
+        <li>If StoreKit cannot load a localized price, try again later; Reploom does not substitute a hard-coded price.</li>
+      </ol>
+
       <h2 id="data">Data and deletion</h2>
       <ul>
         <li><strong>No account:</strong> there is no Reploom login or password to delete.</li>
+        <li><strong>Subscription and AI quota:</strong> delete the pseudonymous service ledger in Settings; this blocks Remote AI until the current period ends and does not cancel Apple's subscription or erase purchase history. For Apple test purchases only, a one-way daily cost-safety aggregate remains through the UTC day so deletion cannot reset provider attempts.</li>
         <li><strong>Local data:</strong> deleting Reploom from iOS removes its local app container.</li>
         <li><strong>Apple Health:</strong> disconnect in Reploom to clear its snapshot; separately revoke access or delete Health records in Apple's Health app.</li>
         <li><strong>Legacy leaderboard:</strong> v1 has no public leaderboard; prior TestFlight participants can remove the old row keyed by their random ID from Settings before deleting the app. A user-chosen handle in that row may itself be identifying.</li>
@@ -128,7 +166,8 @@
 
       <h3>Does Reploom require an account?</h3>
       <p>
-        No. The current app uses one local profile. V1 has no public leaderboard. An earlier
+        No Reploom login is required. The current app uses one local profile. Reploom Pro purchases
+        are associated with your Apple Account through StoreKit. V1 has no public leaderboard. An earlier
         TestFlight leaderboard used a public handle and random app-generated device ID, not an
         account credential; its legacy row is removable from Settings.
       </p>
@@ -143,8 +182,8 @@
       <h3>Can I use Reploom offline?</h3>
       <p>
         Local history and manual workout logging are designed to work on device. Voice transcription,
-        AI parsing, and meal analysis need Remote AI consent and a network
-        connection and may be unavailable during a provider outage.
+        AI parsing, and meal analysis need Remote AI consent, an active Reploom Pro entitlement,
+        remaining quota, and a network connection, and may be unavailable during a provider outage.
       </p>
 
       <h2 id="contact">Contact and a useful bug report</h2>

@@ -482,9 +482,12 @@
       "empty_voice": "没有听到内容 — 说话后点停止。",
       "mic_denied": "语音需要麦克风权限。",
       "ai_consent_required": "远程 AI 已关闭 — 请在设置中开启，或用“卧推 100 5”的格式在本地记录。",
-      "no_voice": "语音需要设置 AI 端点(.env)。"
+      "subscription_required": "远程 AI 需要 Reploom Pro；本地记录仍然免费。",
+      "ai_quota_exhausted": "本计费周期的 Pro AI 限额已用完；本地记录仍可使用。",
+      "no_voice": "语音记录目前不可用 — 请改用文字输入。"
     },
     "recording": "● 录音中… 点按停止",
+    "finishingRecording": "正在完成录音…",
     "transcribing": "转写中…",
     "startRecording": "开始语音记录",
     "stopRecording": "停止语音记录",
@@ -515,11 +518,89 @@
     "kcal": "{n} 千卡",
     "fail": "无法估算 — 试试更简单的描述。",
     "saveFailed": "这餐未能保存，也没有新增记录 — 请重试。",
-    "photoUnavailable": "照片估算需要设置 AI 端点(.env)。",
+    "photoPrepareFailed": "无法安全处理这张照片。请选择另一张照片后重试。",
+    "photoUnavailable": "照片估算目前不可用 — 请稍后重试。",
     "aiConsent": {
       "required": "远程 AI 已关闭 — 请先在设置中开启，再估算餐食。",
       "explainer": "餐食文字和所选照片需要可选的远程 AI 处理。重复已保存的餐食仍在本地完成。",
       "settings": "AI 设置"
+    },
+    "subscriptionRequired": "AI 餐食估算需要 Reploom Pro。重复已保存餐食仍然免费。",
+    "quotaReached": "本计费周期的 Pro AI 限额已用完。请在 Pro 面板查看重置时间。"
+  },
+  "subscription": {
+    "title": "更轻松地用 AI 记录",
+    "activeTitle": "你的 Reploom Pro 方案",
+    "unavailableTitle": "目前无法验证 Pro",
+    "priceMonthly": "每月 {price}",
+    "priceLoading": "正在载入 App Store 价格…",
+    "subscribe": "以 {price} 订阅",
+    "subscribeUnavailable": "订阅暂不可用",
+    "restore": "恢复购买",
+    "manage": "管理订阅",
+    "processing": "正在联系 App Store…",
+    "pending": "购买正在等待批准。Apple 确认后将启用 Pro。",
+    "renewal": "确认购买时将向你的 Apple 账户收费。除非在当前周期结束至少 24 小时前取消，否则订阅会自动续订。可在 App Store 订阅中管理或取消。",
+    "benefit": {
+      "credits": "每个计费周期提供 1,000 AI 点数，用于训练、语音和餐食记录",
+      "photos": "在点数限额内，每个计费周期最多识别 60 张餐食照片",
+      "freeCore": "手动记录、本地解析、重复记录、Apple 健康和动作推荐继续免费且不限量",
+      "costs": "每次：训练文本 1 · 餐食文本 2 · 语音训练 3–4 · 餐食照片 8 点",
+      "safety": "AI 服务商故障会退回包含用量。若服务商故障反复发生，远程 AI 可能暂停至重置；手动和本地记录仍可使用。",
+      "consent": "远程 AI 需要确认你已满 18 岁，并同意将所选文本、音频或餐食照片发送给 Groq。"
+    },
+    "usage": {
+      "title": "当前计费周期用量",
+      "credits": "AI 点数",
+      "photos": "餐食照片"
+    },
+    "quota": {
+      "title": "已达到 AI 限额",
+      "reached": "你的记录仍然安全",
+      "body": "只有远程 AI 暂停。手动/本地记录、重复记录、Apple 健康和推荐仍可使用。",
+      "reset": "{date} 重置"
+    },
+    "safety": {
+      "title": "远程 AI 已暂停",
+      "reached": "重复的服务商故障已触发安全上限",
+      "body": "失败尝试已退回到你的包含用量，但为保护服务成本，远程 AI 暂停。本地和手动记录仍可使用。"
+    },
+    "deleted": {
+      "title": "AI 数据已删除",
+      "blocked": "本计费周期内远程 AI 已暂停",
+      "body": "你的 Apple 订阅仍有效，但在重置前无法使用远程 AI。本地和手动功能继续工作。"
+    },
+    "settings": {
+      "section": "订阅",
+      "active": "服务器已验证 · 当前权限至 {date}",
+      "checking": "正在通过 Apple 和 Reploom 验证…",
+      "deleted": "AI 数据已删除 · 远程 AI 暂停至 {date}",
+      "unavailable": "订阅可在 iPhone 版本中使用",
+      "verifyError": "目前无法验证 Pro。请恢复购买或重试。",
+      "free": "核心功能免费 · Pro AI 未启用",
+      "pro": "PRO",
+      "freeBadge": "免费",
+      "freeCore": "手动/本地训练记录、重复餐食、Apple 健康和推荐没有付费墙。",
+      "viewPro": "查看 Pro"
+    },
+    "data": {
+      "currentPeriod": "当前计费周期结束时",
+      "deleteTitle": "删除 Pro 服务数据",
+      "deleteHint": "删除服务器端订阅和限额用量数据；不会取消 Apple 计费。",
+      "deleteConfirm": "这会删除 Reploom 服务器上的 Pro 限额和请求明细。用于防止重置的单向记录会保留至 {date}；Apple 测试购买的单向每日尝试总数也可能保留到当前 UTC 日结束。这不会取消订阅或删除 Apple 购买历史。手动和本地功能仍可用。",
+      "deleteAction": "删除数据",
+      "deleting": "正在删除 Pro 服务数据…",
+      "deletedTitle": "Pro 服务数据已删除",
+      "deletedBody": "远程 AI 已锁定至 {date}。Apple 测试购买的单向每日尝试总数可能保留到当前 UTC 日结束。你的订阅及本地、手动功能仍有效。",
+      "deleteFailed": "无法删除 Pro 服务数据。未进行任何更改，请重试。"
+    },
+    "error": {
+      "purchase": "无法完成或验证购买。重试前请先检查 App Store 购买状态。",
+      "restore": "无法恢复购买。请检查 App Store 账户后重试。",
+      "nothingToRestore": "此 App Store 账户中没有有效的 Reploom Pro 购买。",
+      "verify": "目前无法验证 Apple 购买。本地功能仍可使用，请稍后重试。",
+      "manage": "无法打开 App Store 订阅管理。",
+      "consentRequired": "订阅前，请在设置中启用“我已满 18 岁并允许远程 AI”。"
     }
   },
   "rest": {
@@ -527,6 +608,8 @@
   },
   "common": {
     "back": "返回",
+    "cancel": "取消",
+    "close": "关闭",
     "saveFailed": "保存失败 — 请重试。"
   },
   "onboarding": {

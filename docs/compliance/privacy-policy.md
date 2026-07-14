@@ -80,6 +80,29 @@ for reliability or suspected abuse for up to 30 days, and longer if legally requ
 not claim that Groq Zero Data Retention is enabled. AI results can be wrong and are not medical or
 dietary advice.
 
+## Subscription entitlement, quotas, and cost safety
+
+Reploom Pro purchase and renewal are handled by Apple. During session exchange, the app sends a
+StoreKit transaction identifier and deterministic app-account token to the Worker. The Worker uses
+an authenticated App Store Server API request and validates the transaction fields returned by
+Apple. It does not write the transaction identifier, token, signed transaction, product, or payment
+information to D1.
+
+D1 keeps a one-way HMAC subscriber key, one-way billing-period and request keys, billing dates,
+successful-use credit/photo totals, weighted provider-attempt/photo-attempt totals, request
+route/cost/state timestamps, and a random session epoch. Provider failures return the advertised
+successful-use allowance, but attempt totals are not refunded: production periods stop at 1,250
+weighted attempts or 75 photo attempts. Apple Sandbox/TestFlight also keeps a one-way actor/day
+aggregate capped at 200 weighted attempts and 12 photos per UTC day so accelerated test renewals
+cannot repeatedly reset provider-cost protection. No AI request content or result enters this
+ledger.
+
+Authenticated deletion immediately removes request, period, successful-use/attempt totals, and the
+service principal. A minimal one-way deletion tombstone remains through the current period end to
+prevent an allowance reset. For Apple test purchases only, the one-way actor/day aggregate remains
+through the current UTC day so deletion cannot reset the daily cost limit. Daily cleanup removes
+each safety record after its expiry. Apple purchase history remains under Apple's control.
+
 ## Legacy TestFlight leaderboard
 
 V1 does not expose a public leaderboard or submit new ranking data. `/rank/submit` and
@@ -102,6 +125,11 @@ The conservative store declaration is App Functionality / Not Linked / Not Used 
 - Audio Data — an on-demand voice clip; and
 - Other User Content — free-form workout/meal input.
 
+Purchase History, User ID, and Product Interaction are conservatively App Functionality / Linked /
+Not Used for Tracking. Their paths are Apple-returned subscription state and billing dates; the
+one-way subscriber key; and aggregate successful use, provider attempts, request type/cost/status,
+and reset time.
+
 HealthKit records read only on device are not collected by Reploom. V1 does not create or submit a
 ranking handle or identifier. A legacy TestFlight user may explicitly transmit the random deletion
 token already stored on their device solely to delete the matching D1 row; the v1 Worker does not
@@ -113,6 +141,8 @@ retain a new copy of that request token. There are no ads, cross-app tracking, o
 - Use Reploom's Disconnect Apple Health action to clear the local snapshot; separately revoke
   permissions in Apple Health/iOS Settings to stop future access.
 - Delete a legacy TestFlight ranking row from Reploom Settings before deleting the app.
+- Delete subscription/request details in Settings; the period tombstone and Apple-test daily safety
+  aggregate remain only through the expiries described above.
 - Delete—not offload—the app to remove its local container.
 - Remove any records Reploom wrote from within Apple Health if desired.
 

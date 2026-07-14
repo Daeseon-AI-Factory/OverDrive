@@ -9,6 +9,9 @@ import { useHealth } from '@/features/health/useHealth';
 import { Stepper } from '@/features/logging/Stepper';
 import { QUICKLOG_ENDPOINT } from '@/features/quicklog/config';
 import { deleteLegacyRank } from '@/features/rank/rankClient';
+import { SubscriptionSettingsCard } from '@/features/subscription/SubscriptionSettingsCard';
+import { useSubscriptionStore } from '@/features/subscription/subscriptionStore';
+import { deleteSubscriptionLedger } from '@/features/subscription/workerClient';
 import { THEME_IDS, THEMES, getTheme } from '@/features/theme/themes';
 import i18n, { LOCALE_LABEL, SUPPORTED_LOCALES, type AppLocale } from '@/i18n';
 import {
@@ -71,6 +74,9 @@ export default function SettingsScreen() {
   const [syncing, setSyncing] = useState(false);
   const [syncedFlash, setSyncedFlash] = useState(false); // brief ✓ so a successful sync is visible
   const [deletingLegacyRank, setDeletingLegacyRank] = useState(false);
+  const [deletingSubscriptionData, setDeletingSubscriptionData] = useState(false);
+  const subscriptionPhase = useSubscriptionStore((s) => s.phase);
+  const subscriptionUsage = useSubscriptionStore((s) => s.usage);
   const remoteAiAllowed = hasCurrentRemoteAiConsent(remoteAiConsent);
   const onSyncHealth = async () => {
     setSyncing(true);
@@ -181,6 +187,53 @@ export default function SettingsScreen() {
     ]);
   };
 
+  const subscriptionResetLabel = () => {
+    if (!subscriptionUsage?.resetAt) return t('subscription.data.currentPeriod');
+    try {
+      return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(
+        new Date(subscriptionUsage.resetAt),
+      );
+    } catch {
+      return subscriptionUsage.resetAt;
+    }
+  };
+
+  const deleteSubscriptionData = async () => {
+    if (deletingSubscriptionData) return;
+    setDeletingSubscriptionData(true);
+    try {
+      const blockedUntil = await deleteSubscriptionLedger(QUICKLOG_ENDPOINT);
+      let date = blockedUntil;
+      try {
+        date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(
+          new Date(blockedUntil),
+        );
+      } catch {
+        // ISO is an accurate fallback if the runtime locale formatter is unavailable.
+      }
+      Alert.alert(t('subscription.data.deletedTitle'), t('subscription.data.deletedBody', { date }));
+    } catch {
+      Alert.alert(t('subscription.data.deleteFailed'));
+    } finally {
+      setDeletingSubscriptionData(false);
+    }
+  };
+
+  const confirmSubscriptionDataDeletion = () => {
+    Alert.alert(
+      t('subscription.data.deleteTitle'),
+      t('subscription.data.deleteConfirm', { date: subscriptionResetLabel() }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('subscription.data.deleteAction'),
+          style: 'destructive',
+          onPress: () => void deleteSubscriptionData(),
+        },
+      ],
+    );
+  };
+
   return (
     <Screen>
       {/* keyboardShouldPersistTaps: don't eat the first tap on +/− / ✓ while the Stepper type-in keyboard is up. */}
@@ -260,6 +313,8 @@ export default function SettingsScreen() {
             <Text style={styles.chevron}>›</Text>
           </Pressable>
         </Card>
+
+        <SubscriptionSettingsCard />
 
         <SectionTitle>{t('settings.remoteAi.section')}</SectionTitle>
         <Card>
@@ -462,6 +517,24 @@ export default function SettingsScreen() {
                     : t('settings.legal.legacyRankDelete')}
                 </Text>
                 <Muted>{t('settings.legal.legacyRankHint')}</Muted>
+              </View>
+            </Pressable>
+          ) : null}
+          {subscriptionPhase === 'active' ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('subscription.data.deleteTitle')}
+              disabled={deletingSubscriptionData}
+              onPress={confirmSubscriptionDataDeletion}
+              style={({ pressed }) => [styles.navRow, styles.navRowDivided, pressed && { opacity: 0.7 }]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.deleteLabel}>
+                  {deletingSubscriptionData
+                    ? t('subscription.data.deleting')
+                    : t('subscription.data.deleteTitle')}
+                </Text>
+                <Muted>{t('subscription.data.deleteHint')}</Muted>
               </View>
             </Pressable>
           ) : null}

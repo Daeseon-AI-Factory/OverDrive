@@ -9,6 +9,14 @@ import type { ExerciseRow } from '@/db/types';
 import { useForge } from '@/features/forge/useForge';
 import { useSessionStore } from '@/features/forge/sessionStore';
 import { useLogSet, useLogSets } from '@/features/logging/useLogSet';
+import { useSubscription } from '@/features/subscription/SubscriptionProvider';
+import {
+  isAttemptLimitError,
+  isQuotaError,
+  isRemoteAiConsentError,
+  isSubscriptionRequiredError,
+  AiApiError,
+} from '@/features/subscription/workerClient';
 import { todayLocal } from '@/lib/date';
 import { hasCurrentRemoteAiConsent } from '@/lib/settings';
 import { formatWeight } from '@/lib/units';
@@ -51,7 +59,15 @@ export type QuickSubmitResult =
   | { ok: false; reason: 'ambiguous'; options: ParseCandidate[] }
   | {
       ok: false;
-      reason: 'empty' | 'no_exercise' | 'no_reps' | 'no_session' | 'ai_offline' | 'ai_consent_required';
+      reason:
+        | 'empty'
+        | 'no_exercise'
+        | 'no_reps'
+        | 'no_session'
+        | 'ai_offline'
+        | 'ai_consent_required'
+        | 'subscription_required'
+        | 'ai_quota_exhausted';
     };
 
 /**
@@ -66,6 +82,7 @@ export function useQuickLog() {
   const logSet = useLogSet();
   const logSets = useLogSets();
   const { enterSilently } = useForge();
+  const { requestAiAccess, showAiAccessError } = useSubscription();
   const unitSystem = useSettingsStore((s) => s.unitSystem);
   const remoteAiAllowed = useSettingsStore((s) => hasCurrentRemoteAiConsent(s.remoteAiConsent));
   const logRevision = useSessionStore((s) => s.logRevision);
@@ -204,22 +221,54 @@ export function useQuickLog() {
       // 2) AI fallback — only for what the rules couldn't read. Consent defaults OFF, and a
       // stale disclosure version is treated as withdrawn. The local parser above is unaffected.
       if (!remoteAiAllowed) return { ok: false, reason: 'ai_consent_required' };
+      if (!QUICKLOG_ENDPOINT) return { ok: false, reason: 'ai_offline' };
+
+      const access = await requestAiAccess('workout_text');
+      if (access === 'quota' || access === 'data_deleted') {
+        return { ok: false, reason: 'ai_quota_exhausted' };
+      }
+      if (access === 'unavailable') return { ok: false, reason: 'ai_offline' };
+      if (access !== 'allowed') return { ok: false, reason: 'subscription_required' };
 
       // Remote fallback is also build-config gated.
       if (QUICKLOG_ENDPOINT) {
         let sets: ParsedSet[];
-        try {
-          const ctrl = new AbortController();
-          const timer = setTimeout(() => ctrl.abort(), 3500); // never hang logging on a slow network
+        let retriedAccess = false;
+        for (;;) {
           try {
-            sets = await parseEntryAI(text, candidates, unitSystem, QUICKLOG_ENDPOINT, ctrl.signal);
-          } finally {
-            clearTimeout(timer);
+            const ctrl = new AbortController();
+            // Worker provider work is capped at 2.8s; leave transport/D1 margin without hanging
+            // the gym hot path indefinitely.
+            const timer = setTimeout(() => ctrl.abort(), 5_000);
+            try {
+              sets = await parseEntryAI(text, candidates, unitSystem, QUICKLOG_ENDPOINT, ctrl.signal);
+            } finally {
+              clearTimeout(timer);
+            }
+            break;
+          } catch (error) {
+            if (isRemoteAiConsentError(error)) return { ok: false, reason: 'ai_consent_required' };
+            if (isQuotaError(error) || (error instanceof AiApiError && error.code === 'data_deleted_until_reset')) {
+              showAiAccessError(error);
+              return { ok: false, reason: 'ai_quota_exhausted' };
+            }
+            if (isAttemptLimitError(error)) {
+              showAiAccessError(error);
+              return { ok: false, reason: 'ai_offline' };
+            }
+            if (isSubscriptionRequiredError(error) && !retriedAccess) {
+              retriedAccess = true;
+              const retryAccess = await requestAiAccess('workout_text');
+              if (retryAccess === 'allowed') continue;
+              if (retryAccess === 'quota' || retryAccess === 'data_deleted') {
+                return { ok: false, reason: 'ai_quota_exhausted' };
+              }
+              return { ok: false, reason: 'subscription_required' };
+            }
+            // network / timeout / proxy error — the set was NOT parseable on-device either, so tell
+            // the user the AI is unreachable (actionable: use the "name weight reps" format).
+            return { ok: false, reason: 'ai_offline' };
           }
-        } catch {
-          // network / timeout / proxy error — the set was NOT parseable on-device either, so tell
-          // the user the AI is unreachable (actionable: use the "name weight reps" format).
-          return { ok: false, reason: 'ai_offline' };
         }
         if (sets.length > 0) {
           // Resolve every catalog row before the durable write, then insert the whole command with
@@ -276,7 +325,19 @@ export function useQuickLog() {
       // Neither the rules nor the AI could read it → parse-failure hint (format guidance).
       return { ok: false, reason: local.reason };
     },
-    [db, candidates, unitSystem, remoteAiAllowed, saveParsed, getExerciseRow, ensureSession, logSets, setSummary],
+    [
+      db,
+      candidates,
+      unitSystem,
+      remoteAiAllowed,
+      requestAiAccess,
+      showAiAccessError,
+      saveParsed,
+      getExerciseRow,
+      ensureSession,
+      logSets,
+      setSummary,
+    ],
   );
 
   /**

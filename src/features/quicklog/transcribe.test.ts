@@ -3,11 +3,18 @@ import {
   createUploadTask,
   type FileSystemUploadResult,
 } from 'expo-file-system/legacy';
-import { transcribeAudio } from './transcribe';
+import { TRANSCRIBE_UPLOAD_TIMEOUT_MS, transcribeAudio } from './transcribe';
 
 jest.mock('expo-file-system/legacy', () => ({
   FileSystemUploadType: { MULTIPART: 'multipart' },
   createUploadTask: jest.fn(),
+}));
+
+jest.mock('@/features/subscription/workerClient', () => ({
+  authorizedAiUpload: jest.fn(
+    async (_endpoint: string, upload: (headers: Record<string, string>) => Promise<FileSystemUploadResult>) =>
+      upload({ 'x-reploom-client': 'ios-v1' }),
+  ),
 }));
 
 const mockedCreateUploadTask = jest.mocked(createUploadTask);
@@ -50,18 +57,35 @@ describe('transcribeAudio', () => {
     expect(task.cancelAsync).not.toHaveBeenCalled();
   });
 
-  it('rejects a result that races in after the eight second deadline', async () => {
+  it('rejects a result that races in after the bounded upload deadline', async () => {
     jest.useFakeTimers();
     let resolveUpload!: (value: FileSystemUploadResult) => void;
     const task = installUploadTask(() => new Promise((resolve) => (resolveUpload = resolve)));
 
     const result = transcribeAudio('file:///voice.m4a', 'https://worker.example');
     const rejected = expect(result).rejects.toThrow('transcribe timed out');
-    await jest.advanceTimersByTimeAsync(8_000);
+    await jest.advanceTimersByTimeAsync(TRANSCRIBE_UPLOAD_TIMEOUT_MS);
     resolveUpload(uploadResult(200, JSON.stringify({ text: 'late result' })));
 
     await rejected;
     expect(task.cancelAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts a successful upload just before the bounded deadline', async () => {
+    jest.useFakeTimers();
+    const task = installUploadTask(
+      () => new Promise((resolve) => {
+        setTimeout(
+          () => resolve(uploadResult(200, JSON.stringify({ text: 'bench 100 5' }))),
+          TRANSCRIBE_UPLOAD_TIMEOUT_MS - 100,
+        );
+      }),
+    );
+    const result = transcribeAudio('file:///voice.m4a', 'https://worker.example');
+    await jest.advanceTimersByTimeAsync(TRANSCRIBE_UPLOAD_TIMEOUT_MS - 100);
+
+    await expect(result).resolves.toBe('bench 100 5');
+    expect(task.cancelAsync).not.toHaveBeenCalled();
   });
 
   it('rejects a result that races in after caller cancellation', async () => {

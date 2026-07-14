@@ -29,6 +29,14 @@ import Animated, {
 import { hasCurrentRemoteAiConsent } from '@/lib/settings';
 import { deleteOwnedTemporaryFile } from '@/lib/temporaryFiles';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useSubscription, type AiAccessDecision } from '@/features/subscription/SubscriptionProvider';
+import {
+  AiApiError,
+  isAttemptLimitError,
+  isQuotaError,
+  isRemoteAiConsentError,
+  isSubscriptionRequiredError,
+} from '@/features/subscription/workerClient';
 import { IconSquare, useSkinAccent } from '@/ui/primitives';
 import { useSkinOrNull } from '@/ui/skins/SkinContext';
 import type { HudSkin } from '@/ui/skins/types';
@@ -39,7 +47,11 @@ import { transcribeAudio } from './transcribe';
 import { useQuickLog, type QuickSubmitResult, type SavedQuickSet } from './useQuickLog';
 
 /** Where the voice flow is right now — hosts mirror this into their status line / input locks. */
-export type MicState = 'idle' | 'recording' | 'transcribing' | 'submitting';
+export type MicState = 'idle' | 'recording' | 'finishing' | 'transcribing' | 'submitting';
+
+/** Native recording ceiling; the Worker keeps a slightly larger validation allowance for rounding. */
+export const MAX_VOICE_RECORDING_SECONDS = 30;
+const VOICE_RECORDING_FALLBACK_DELAY_MS = 250;
 
 /**
  * What a hint means, so hosts can react exactly like the pre-extraction QuickLogBar did:
@@ -65,7 +77,9 @@ export type QuickFailReason =
   | 'no_reps'
   | 'no_session'
   | 'ai_offline'
-  | 'ai_consent_required';
+  | 'ai_consent_required'
+  | 'subscription_required'
+  | 'ai_quota_exhausted';
 
 /**
  * The one reason→hint mapping for quicklog submit failures — shared by MicButton (voice) and
@@ -86,6 +100,8 @@ export function parseFailHint(reason: QuickFailReason, t: TFunction, ko: boolean
         : 'Couldn\'t reach AI — try the "bench 100 5" format.',
     });
   }
+  if (reason === 'subscription_required') return t('quicklog.fail.subscription_required');
+  if (reason === 'ai_quota_exhausted') return t('quicklog.fail.ai_quota_exhausted');
   if (reason === 'no_exercise') return t('quicklog.fail.no_exercise');
   if (reason === 'no_reps' || reason === 'empty') return t('quicklog.fail.no_reps');
   return t('quicklog.fail.log');
@@ -152,12 +168,17 @@ function MicButtonCore({
   const { t, i18n } = useTranslation();
   const locale = useSettingsStore((s) => s.locale); // transcribe in the UI language (Whisper code)
   const remoteAiAllowed = useSettingsStore((s) => hasCurrentRemoteAiConsent(s.remoteAiConsent));
+  const { requestAiAccess, showAiAccessError } = useSubscription();
   const skin = useSkinOrNull();
   const accent = useSkinAccent();
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [state, setState] = useState<MicState>('idle');
+  const [checkingAccess, setCheckingAccess] = useState(false);
   const voiceGen = useRef(0); // bump = cancel the in-flight transcription (result gets dropped)
   const transcriptionAbort = useRef<AbortController | null>(null);
+  const recordingActive = useRef(false);
+  const recordingAutoStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mounted = useRef(true);
 
   const ko = i18n.language.startsWith('ko');
   // New copy not yet in the locale catalogs (owned elsewhere) — per-locale defaults until translated.
@@ -190,7 +211,110 @@ function MicButtonCore({
     [submit, onSaved, onAmbiguous, onHint, t, ko],
   );
 
+  const clearRecordingAutoStop = useCallback(() => {
+    if (recordingAutoStopTimer.current == null) return;
+    clearTimeout(recordingAutoStopTimer.current);
+    recordingAutoStopTimer.current = null;
+  }, []);
+
+  /**
+   * One guarded recording completion path for both a user tap and the automatic ceiling. The ref
+   * flips before the first await, so a tap racing the fallback timer can never upload twice.
+   */
+  const finishRecording = useCallback(async () => {
+    if (!recordingActive.current) return;
+    recordingActive.current = false;
+    clearRecordingAutoStop();
+    // Keep the control locked until stop(), the URI snapshot, and audio-mode reset complete. A
+    // second tap must never prepare the same recorder while its previous file is still finalizing.
+    go('finishing');
+
+    let gen = -1;
+    let recordedUri: string | null = null;
+    let ctrl: AbortController | null = null;
+    try {
+      try {
+        await recorder.stop();
+      } catch (stopError) {
+        // Native `forDuration` can finish before the JS fallback calls stop(). That is a valid
+        // completion only when the recorder has already produced its owned temporary file.
+        recordedUri = recorder.uri;
+        if (!recordedUri) throw stopError;
+      }
+      recordedUri ??= recorder.uri;
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+      if (!mounted.current) return;
+      if (!recordedUri) {
+        go('idle');
+        onHint(t('quicklog.fail.no_recording'), 'device');
+        return;
+      }
+      // Consent may have been withdrawn after recording started. Never upload in that case.
+      // The timer owns its start-render callback for 30s. Read the store at finish time so a
+      // consent withdrawal during recording can never upload through a stale closure.
+      if (!hasCurrentRemoteAiConsent(useSettingsStore.getState().remoteAiConsent)) {
+        go('idle');
+        onHint(parseFailHint('ai_consent_required', t, ko), 'device');
+        return;
+      }
+      gen = ++voiceGen.current;
+      go('transcribing');
+      ctrl = new AbortController();
+      transcriptionAbort.current = ctrl;
+      const heard = await transcribeAudio(recordedUri, QUICKLOG_ENDPOINT, locale, ctrl.signal); // transcribe in UI language
+      if (gen !== voiceGen.current || !mounted.current) return; // cancelled/unmounted — drop silently
+      go('idle');
+      if (!heard) {
+        onHint(t('quicklog.fail.empty_voice'), 'device');
+        return;
+      }
+      onTranscript?.(heard); // host may echo it into its input, like a typed line
+      go('submitting'); // same in-flight semantics as a typed submit → host shows "logging…"
+      try {
+        await submitTranscript(heard);
+      } finally {
+        if (mounted.current) go('idle');
+      }
+    } catch (error) {
+      // Capture the stopped recording before returning to idle; a later recording must never be
+      // mistaken for this request's cleanup target.
+      recordedUri ??= recorder.uri;
+      if (!mounted.current || (gen !== -1 && gen !== voiceGen.current)) return;
+      go('idle');
+      if (isRemoteAiConsentError(error)) {
+        onHint(parseFailHint('ai_consent_required', t, ko), 'device');
+      } else if (isQuotaError(error) || (error instanceof AiApiError && error.code === 'data_deleted_until_reset')) {
+        showAiAccessError(error);
+        onHint(parseFailHint('ai_quota_exhausted', t, ko), 'device');
+      } else if (isAttemptLimitError(error)) {
+        showAiAccessError(error);
+        onHint(parseFailHint('ai_offline', t, ko), 'device');
+      } else if (isSubscriptionRequiredError(error)) {
+        onHint(parseFailHint('subscription_required', t, ko), 'device');
+      } else {
+        onHint(t('quicklog.fail.voice'), 'device');
+      }
+    } finally {
+      if (ctrl != null && transcriptionAbort.current === ctrl) transcriptionAbort.current = null;
+      if (!(await deleteOwnedTemporaryFile(recordedUri))) {
+        console.error('[privacy] temporary voice recording could not be removed');
+      }
+    }
+  }, [
+    clearRecordingAutoStop,
+    go,
+    recorder,
+    t,
+    ko,
+    locale,
+    onHint,
+    onTranscript,
+    submitTranscript,
+    showAiAccessError,
+  ]);
+
   const toggle = useCallback(async () => {
+    if (checkingAccess) return;
     // Escape hatch: tapping while transcribing CANCELS the wait — the control is never locked.
     if (state === 'transcribing') {
       transcriptionAbort.current?.abort();
@@ -199,57 +323,10 @@ function MicButtonCore({
       onHint(null, 'device');
       return;
     }
-    if (state === 'submitting') return; // self-locked (rendered disabled) — belt and braces
+    if (state === 'finishing' || state === 'submitting') return; // self-locked — belt and braces
 
     if (state === 'recording') {
-      go('idle');
-      let gen = -1;
-      let recordedUri: string | null = null;
-      let ctrl: AbortController | null = null;
-      try {
-        await recorder.stop();
-        recordedUri = recorder.uri;
-        await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
-        if (!recordedUri) {
-          onHint(t('quicklog.fail.no_recording'), 'device');
-          return;
-        }
-        // Consent may have been withdrawn after recording started. Never upload in that case.
-        if (!remoteAiAllowed) {
-          onHint(parseFailHint('ai_consent_required', t, ko), 'device');
-          return;
-        }
-        gen = ++voiceGen.current;
-        go('transcribing');
-        ctrl = new AbortController();
-        transcriptionAbort.current = ctrl;
-        const heard = await transcribeAudio(recordedUri, QUICKLOG_ENDPOINT, locale, ctrl.signal); // transcribe in UI language
-        if (gen !== voiceGen.current) return; // cancelled mid-upload — drop the result silently
-        go('idle');
-        if (!heard) {
-          onHint(t('quicklog.fail.empty_voice'), 'device');
-          return;
-        }
-        onTranscript?.(heard); // host may echo it into its input, like a typed line
-        go('submitting'); // same in-flight semantics as a typed submit → host shows "logging…"
-        try {
-          await submitTranscript(heard);
-        } finally {
-          go('idle');
-        }
-      } catch {
-        // Capture the stopped recording before returning to idle; a later recording must never be
-        // mistaken for this request's cleanup target.
-        recordedUri ??= recorder.uri;
-        if (gen !== -1 && gen !== voiceGen.current) return; // cancelled — stay quiet
-        go('idle');
-        onHint(t('quicklog.fail.voice'), 'device');
-      } finally {
-        if (ctrl != null && transcriptionAbort.current === ctrl) transcriptionAbort.current = null;
-        if (!(await deleteOwnedTemporaryFile(recordedUri))) {
-          console.error('[privacy] temporary voice recording could not be removed');
-        }
-      }
+      await finishRecording();
       return;
     }
 
@@ -267,39 +344,120 @@ function MicButtonCore({
       return;
     }
 
+    setCheckingAccess(true);
+    let access: AiAccessDecision;
+    try {
+      access = await requestAiAccess('voice');
+    } finally {
+      if (mounted.current) setCheckingAccess(false);
+    }
+    if (!mounted.current) return;
+    if (access !== 'allowed') {
+      onHint(
+        parseFailHint(
+          access === 'quota' || access === 'data_deleted'
+            ? 'ai_quota_exhausted'
+            : access === 'unavailable'
+              ? 'ai_offline'
+              : 'subscription_required',
+          t,
+          ko,
+        ),
+        'device',
+      );
+      return;
+    }
+
+    let recordingModeEnabled = false;
     try {
       const perm = await AudioModule.requestRecordingPermissionsAsync();
+      if (!mounted.current) return;
       if (!perm.granted) {
         onHint(t('quicklog.fail.mic_denied'), 'device');
         return;
       }
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      recordingModeEnabled = true;
+      if (!mounted.current) {
+        await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+        return;
+      }
       await recorder.prepareToRecordAsync();
-      recorder.record();
+      if (!mounted.current) {
+        await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+        return;
+      }
+      recorder.record({ forDuration: MAX_VOICE_RECORDING_SECONDS });
+      recordingActive.current = true;
+      clearRecordingAutoStop();
+      recordingAutoStopTimer.current = setTimeout(() => {
+        void finishRecording();
+      }, MAX_VOICE_RECORDING_SECONDS * 1000 + VOICE_RECORDING_FALLBACK_DELAY_MS);
       go('recording');
       onHint(null, 'device');
     } catch {
-      onHint(t('quicklog.fail.record'), 'device');
+      recordingActive.current = false;
+      clearRecordingAutoStop();
+      if (recordingModeEnabled) {
+        await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => undefined);
+      }
+      if (mounted.current) onHint(t('quicklog.fail.record'), 'device');
     }
-  }, [state, go, recorder, locale, remoteAiAllowed, onHint, onTranscript, submitTranscript, t, ko, dv]);
+  }, [
+    state,
+    checkingAccess,
+    go,
+    recorder,
+    remoteAiAllowed,
+    requestAiAccess,
+    finishRecording,
+    clearRecordingAutoStop,
+    onHint,
+    t,
+    ko,
+    dv,
+  ]);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
       voiceGen.current += 1;
       transcriptionAbort.current?.abort();
-    },
-    [],
-  );
+      clearRecordingAutoStop();
+      if (!recordingActive.current) return;
+      recordingActive.current = false;
+      void (async () => {
+        let recordedUri = recorder.uri;
+        try {
+          await recorder.stop();
+          recordedUri ??= recorder.uri;
+        } catch {
+          recordedUri ??= recorder.uri;
+        }
+        try {
+          await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+        } finally {
+          if (!(await deleteOwnedTemporaryFile(recordedUri))) {
+            console.error('[privacy] temporary voice recording could not be removed');
+          }
+        }
+      })();
+    };
+  }, [clearRecordingAutoStop, recorder]);
 
   const recording = state === 'recording';
+  const finishing = state === 'finishing';
   const transcribing = state === 'transcribing';
-  const blocked = disabled || state === 'submitting';
-  const glyph = recording ? '●' : transcribing ? '✕' : '🎤︎';
+  const blocked = disabled || checkingAccess || finishing || state === 'submitting';
+  const glyph = recording ? '●' : finishing ? '…' : transcribing ? '✕' : '🎤︎';
   const label = recording
     ? t('quicklog.stopRecording')
-    : transcribing
-      ? t('quicklog.cancelTranscribe', { defaultValue: dv('음성 인식 취소', 'Cancel voice transcription') })
-      : t('quicklog.startRecording');
+    : finishing
+      ? t('quicklog.finishingRecording', { defaultValue: dv('녹음 마무리 중', 'Finishing recording') })
+      : transcribing
+        ? t('quicklog.cancelTranscribe', { defaultValue: dv('음성 인식 취소', 'Cancel voice transcription') })
+        : t('quicklog.startRecording');
 
   // ── FAB idle pulse — decoration ONLY (§6): runs on the UI thread while idle, never gates taps.
   // Period comes from skin.motion.ambient; 'none' skins keep a static glow with zero clock.

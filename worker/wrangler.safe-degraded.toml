@@ -2,6 +2,9 @@ name = "overdrive-quicklog"
 main = "src/safe-degraded.js"
 compatibility_date = "2024-11-01"
 
+[triggers]
+crons = ["17 4 * * *"]
+
 # Emergency rollback target: no AI-provider code path and no request/application logging.
 [observability]
 enabled = false
@@ -10,3 +13,7 @@ enabled = false
 binding = "DB"
 database_name = "overdrive-rank"
 database_id = "a789812b-6608-4dae-90d8-8dd1f83de42a"
+
+# ENTITLEMENT_SESSION_SECRET lets an already-running app use usage/deletion only until its existing
+# 15-minute token expires. This rollback intentionally cannot query Apple or mint a fresh subscription session;
+# automatic cleanup continues, and normal service must be restored for a new in-app deletion token.

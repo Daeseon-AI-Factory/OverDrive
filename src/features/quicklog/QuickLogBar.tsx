@@ -50,8 +50,9 @@ export function QuickLogBar() {
   const cardNonce = useRef(0);
 
   const recording = micState === 'recording';
+  const finishing = micState === 'finishing';
   const transcribing = micState === 'transcribing';
-  const anyBusy = busy || micState === 'submitting'; // typed OR voice submit — one shared lock
+  const anyBusy = busy || finishing || micState === 'submitting'; // typed OR voice submit — one shared lock
 
   const ko = i18n.language.startsWith('ko');
   // New copy not yet in the locale catalogs (owned elsewhere) — per-locale defaults until translated.
@@ -202,7 +203,9 @@ export function QuickLogBar() {
 
   const statusHint = recording
     ? t('quicklog.recording')
-    : transcribing
+    : finishing
+      ? t('quicklog.finishingRecording', { defaultValue: dv('녹음 마무리 중…', 'Finishing recording…') })
+      : transcribing
       ? t('quicklog.transcribing')
       : anyBusy
         ? t('quicklog.logging', { defaultValue: dv('기록 중…', 'Logging…') })
@@ -257,7 +260,7 @@ export function QuickLogBar() {
           submitBehavior="submit" // keep the keyboard up after logging — the next set is one line away
           autoCapitalize="none"
           autoCorrect={false}
-          editable={!recording && !transcribing}
+          editable={!recording && !finishing && !transcribing}
         />
         <Button
           label={ko && skin ? skin.cta.logWord : t('quicklog.log')}

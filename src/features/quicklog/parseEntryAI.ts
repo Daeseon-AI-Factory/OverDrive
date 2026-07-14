@@ -1,5 +1,5 @@
 import type { ParseCandidate, ParsedSet, UnitSystem } from './parseEntry';
-import { REPLOOM_CLIENT_HEADERS } from './config';
+import { authorizedAiFetch } from '@/features/subscription/workerClient';
 
 /**
  * Validate + normalize the proxy's (LLM's) loose JSON into ParsedSet[]. Pure → unit-tested.
@@ -44,13 +44,12 @@ export async function parseEntryAI(
   signal?: AbortSignal,
 ): Promise<ParsedSet[]> {
   const exercises = candidates.map((c) => ({ id: c.id, names: [c.name, ...c.aliases].filter(Boolean) }));
-  const res = await fetch(`${endpoint.replace(/\/$/, '')}/parse`, {
+  const res = await authorizedAiFetch(endpoint, '/parse', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', ...REPLOOM_CLIENT_HEADERS },
+    headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ text, unitSystem, exercises }),
     signal,
   });
-  if (!res.ok) throw new Error(`quicklog proxy ${res.status}`);
   const data = await res.json();
   return normalizeAISets(data);
 }

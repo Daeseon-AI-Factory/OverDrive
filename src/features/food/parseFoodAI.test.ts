@@ -3,11 +3,20 @@ import {
   createUploadTask,
   type FileSystemUploadResult,
 } from 'expo-file-system/legacy';
-import { normalizeFoodItems, parseFoodPhoto } from './parseFoodAI';
+import { FOOD_PHOTO_UPLOAD_TIMEOUT_MS, normalizeFoodItems, parseFoodPhoto } from './parseFoodAI';
 
 jest.mock('expo-file-system/legacy', () => ({
   FileSystemUploadType: { MULTIPART: 'multipart' },
   createUploadTask: jest.fn(),
+}));
+
+jest.mock('@/features/subscription/workerClient', () => ({
+  authorizedAiFetch: jest.fn(),
+  authorizedAiUpload: jest.fn(async (_endpoint: string, upload: (headers: Record<string, string>) => Promise<FileSystemUploadResult>) => {
+    const result = await upload({ 'x-reploom-client': 'ios-v1' });
+    if (result.status < 200 || result.status >= 300) throw new Error(`worker_error ${result.status}`);
+    return result;
+  }),
 }));
 
 const mockedCreateUploadTask = jest.mocked(createUploadTask);
@@ -86,16 +95,33 @@ describe('parseFoodPhoto', () => {
     expect(task.cancelAsync).not.toHaveBeenCalled();
   });
 
-  it('cancels the native upload and rejects when the 20 second deadline expires', async () => {
+  it('cancels the native upload and rejects when the bounded deadline expires', async () => {
     jest.useFakeTimers();
     const task = installUploadTask(() => new Promise(() => {}));
 
     const result = parseFoodPhoto('file:///meal.jpg', 'https://worker.example');
     const rejected = expect(result).rejects.toThrow('food photo timed out');
-    await jest.advanceTimersByTimeAsync(20_000);
+    await jest.advanceTimersByTimeAsync(FOOD_PHOTO_UPLOAD_TIMEOUT_MS);
 
     await rejected;
     expect(task.cancelAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts a successful photo response just before the bounded deadline', async () => {
+    jest.useFakeTimers();
+    const task = installUploadTask(
+      () => new Promise((resolve) => {
+        setTimeout(
+          () => resolve(uploadResult(200, JSON.stringify({ items: [{ name: 'rice', kcal: 300, proteinG: 6 }] }))),
+          FOOD_PHOTO_UPLOAD_TIMEOUT_MS - 100,
+        );
+      }),
+    );
+    const result = parseFoodPhoto('file:///meal.jpg', 'https://worker.example');
+    await jest.advanceTimersByTimeAsync(FOOD_PHOTO_UPLOAD_TIMEOUT_MS - 100);
+
+    await expect(result).resolves.toEqual([{ name: 'rice', kcal: 300, proteinG: 6 }]);
+    expect(task.cancelAsync).not.toHaveBeenCalled();
   });
 
   it('cancels the native upload when the caller aborts', async () => {
@@ -121,7 +147,7 @@ describe('parseFoodPhoto', () => {
   it('rejects non-success HTTP responses', async () => {
     const task = installUploadTask(async () => uploadResult(503, '{"error":"unavailable"}'));
 
-    await expect(parseFoodPhoto('file:///meal.jpg', 'https://worker.example')).rejects.toThrow('food photo 503');
+    await expect(parseFoodPhoto('file:///meal.jpg', 'https://worker.example')).rejects.toThrow('worker_error 503');
     expect(task.cancelAsync).not.toHaveBeenCalled();
   });
 });

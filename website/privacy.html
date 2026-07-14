@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Reploom — Privacy Policy</title>
-  <meta name="description" content="How Reploom handles Apple Health data, workout and meal inputs, leaderboards, local storage, and deletion." />
+  <meta name="description" content="How Reploom handles Apple Health data, optional AI inputs, subscription entitlement and quotas, local storage, and deletion." />
   <meta name="theme-color" content="#07070B" />
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -28,12 +28,14 @@
       <p class="updated">Effective and last updated: July 13, 2026</p>
 
       <div class="lead">
-        <strong>Plain-language summary.</strong> Reploom has no user accounts, advertising, ad
+        <strong>Plain-language summary.</strong> Reploom has no login account, advertising, ad
         networks, or third-party analytics SDKs. Apple Health data is read and scored on your
-        device and is not sent to Reploom's processing service or AI provider. Optional AI tools
-        are off by default and, after you confirm you are 18 or older and enable Remote AI, send the
-        workout text, voice clip, meal text, or meal photo you choose plus the minimal parsing
-        context listed below. Public leaderboards are not available in v1.
+        device and is not sent to Reploom's processing service or AI provider. Optional Reploom Pro
+        AI tools are off by default and, after you confirm you are 18 or older and enable Remote AI,
+        send the workout text, voice clip, meal text, or meal photo you choose plus the minimal
+        parsing context listed below. Apple handles subscription payment. Reploom verifies
+        entitlement and stores pseudonymous quota totals, but not AI request content, in Cloudflare
+        D1. Public leaderboards are not available in v1.
       </div>
 
       <div class="notice">
@@ -47,14 +49,15 @@
         <a href="#local">2. Data kept on device</a>
         <a href="#health">3. Apple Health</a>
         <a href="#ai">4. Optional AI processing</a>
-        <a href="#rank">5. Legacy leaderboard data</a>
-        <a href="#providers">6. Service providers</a>
-        <a href="#retention">7. Retention</a>
-        <a href="#choices">8. Your choices</a>
-        <a href="#children">9. Children</a>
-        <a href="#security">10. Security</a>
-        <a href="#website">11. This website</a>
-        <a href="#changes">12. Changes and contact</a>
+        <a href="#subscription">5. Subscription and AI quota</a>
+        <a href="#rank">6. Legacy leaderboard data</a>
+        <a href="#providers">7. Service providers</a>
+        <a href="#retention">8. Retention</a>
+        <a href="#choices">9. Your choices</a>
+        <a href="#children">10. Children</a>
+        <a href="#security">11. Security</a>
+        <a href="#website">12. This website</a>
+        <a href="#changes">13. Changes and contact</a>
       </nav>
 
       <h2 id="scope">1. Scope and operator</h2>
@@ -116,9 +119,10 @@
       <h2 id="ai">4. Optional AI processing</h2>
       <p>
         Reploom's core manual workout logging works without sending HealthKit data to an AI provider.
-        Remote AI is off by default. If you confirm you are 18 or older and enable it in Settings
-        after reading the disclosure, then deliberately use an AI-assisted tool, Reploom sends the
-        selected input through a Cloudflare Worker to Groq for that request:
+        Remote AI is off by default. If you confirm you are 18 or older, enable it in Settings after
+        reading the disclosure, have an active Reploom Pro entitlement and remaining quota, and then
+        deliberately use an AI-assisted tool, Reploom sends the selected input through a Cloudflare
+        Worker to Groq for that request:
       </p>
       <table>
         <thead>
@@ -161,9 +165,10 @@
       </p>
       <p>
         The v1 sportswear character is built into the app. It does not use your photo and does not
-        send an avatar image to an AI provider. The Worker code forwards the selected logging input
-        and returns the result; it does not write AI request bodies or results to D1, KV, R2, or
-        another Reploom application store. Groq says inference customer data is not retained by
+        send an avatar image to an AI provider. The Worker forwards the selected logging input and
+        returns the result; it does not write AI request bodies or results to D1, KV, R2, or another
+        Reploom application store. It stores only the subscription and quota records described in
+        the next section. Groq says inference customer data is not retained by
         default, but inputs and outputs may be logged for platform reliability or suspected-abuse
         investigation for up to 30 days, or longer if legally required. Groq separately retains
         usage metadata that it says does not contain customer inputs or outputs. Reploom's Worker
@@ -177,7 +182,51 @@
         These tools are not medical advice.
       </p>
 
-      <h2 id="rank">5. Legacy leaderboard data</h2>
+      <h2 id="subscription">5. Subscription entitlement and AI quota</h2>
+      <p>
+        Reploom Pro is a monthly auto-renewable subscription purchased through Apple. Apple handles
+        payment information; Reploom never receives a card or bank-account number. StoreKit gives
+        the app localized product information and a StoreKit-verified transaction. During
+        a session exchange, the app sends the transaction identifier and a deterministic app-account
+        token to Reploom's Worker. The Worker asks Apple's App Store Server API whether the
+        subscription is current, expired, revoked, or refunded and validates the transaction fields
+        returned by Apple's authenticated server API before allowing an AI request. Neither exchange value is
+        written to Cloudflare D1.
+      </p>
+      <p>
+        Each paid billing period includes 1,000 AI credits and up to 60 meal-photo analyses. A
+        workout-text fallback uses 1 credit, typed-meal estimation 2, voice transcription 3, and a
+        meal-photo analysis 8. If a voice transcript cannot be parsed on-device, the flexible
+        workout parser uses 1 additional credit, so a complete voice-workout flow uses 3–4 credits.
+        The app requires 4 remaining credits before recording to reduce partial voice-workout flows;
+        the Worker remains authoritative because devices share the allowance. The Worker stores a
+        one-way HMAC-derived subscriber key, a one-way
+        HMAC-derived billing-period key and its start/end dates, successful-use credit and photo
+        totals, weighted provider-attempt and meal-photo-attempt totals, and a
+        one-way HMAC key derived from each request identifier together with route, cost, status, and timestamps so
+        retries are not charged twice. D1 does not store the transaction identifier, deterministic
+        app-account token, signed transaction, product, environment, workout or meal text, photo,
+        audio, transcript, or AI result. Provider failures return the advertised successful-use
+        allowance, while non-refundable attempt totals cap repeated failures at 1,250 weighted
+        credits and 75 photo attempts per billing period. Apple Sandbox/TestFlight periods renew on
+        an accelerated schedule, so test entitlements also use a separate HMAC-derived actor/day
+        aggregate capped at 200 weighted attempts and 12 photo attempts per UTC day.
+      </p>
+      <p>
+        The derived key and quota records are linked to the Apple subscription for service access,
+        not advertising or tracking. Multiple devices using the same Apple subscription share the
+        same billing-period quota. Deleting Reploom does not cancel the Apple subscription. The
+        authenticated in-app deletion control immediately removes request, billing-period, usage,
+        and service-principal details and invalidates the current Reploom AI session. To prevent
+        deletion from resetting a paid allowance, Reploom keeps a minimal one-way deletion
+        tombstone through the current period end and blocks Remote AI during that interval. For an
+        Apple test entitlement, its one-way actor/day attempt totals also remain only through the
+        current UTC day so accelerated test renewal or deletion cannot reset provider-cost safety.
+        The next successful daily cleanup after each expiry removes these records. Deletion
+        does not erase Apple's purchase history or cancel renewal.
+      </p>
+
+      <h2 id="rank">6. Legacy leaderboard data</h2>
       <p>
         Public leaderboards are not available in Reploom v1, and v1 does not create or update a
         leaderboard row. An earlier TestFlight build allowed an opt-in leaderboard and may have
@@ -191,13 +240,16 @@
         and clears the local leaderboard values after the server confirms deletion.
       </p>
 
-      <h2 id="providers">6. Service providers and disclosures</h2>
+      <h2 id="providers">7. Service providers and disclosures</h2>
       <dl>
         <dt>Cloudflare</dt>
-        <dd>Hosts these static pages, routes optional AI requests, may process operational/security metadata, and retains legacy TestFlight leaderboard rows in D1 until deletion.</dd>
+        <dd>Hosts these static pages, routes optional AI requests, may process operational/security metadata, and stores pseudonymous subscription/quota records in D1 until authenticated deletion or automatic period-end cleanup, plus legacy TestFlight leaderboard rows until deletion.</dd>
         <dt>Groq</dt>
         <dd>Processes selected workout text and parsing context, voice audio and sometimes its
           transcript, meal text, and meal photos.</dd>
+        <dt>Apple App Store and StoreKit</dt>
+        <dd>Processes subscription payment and purchase history and returns product, transaction,
+          entitlement, renewal, refund, and revocation information used to provide Reploom Pro.</dd>
         <dt>Apple HealthKit</dt>
         <dd>Provides on-device health access controlled by your Apple Health permissions.</dd>
       </dl>
@@ -214,10 +266,11 @@
         <a href="https://console.groq.com/docs/your-data">Groq data-retention documentation</a>.
       </p>
 
-      <h2 id="retention">7. Retention</h2>
+      <h2 id="retention">8. Retention</h2>
       <ul>
         <li><strong>Local app data and Remote AI consent:</strong> remain until you change the setting, remove data using an available in-app control, or delete the app.</li>
         <li><strong>AI request and result content:</strong> Reploom's Worker application does not persist it. Groq says inference content is not retained by default, but may be logged for reliability or suspected abuse for up to 30 days, or longer when legally required.</li>
+        <li><strong>Subscription and quota ledger:</strong> after a billing period ends, its request details, successful-use totals, and provider-attempt totals are automatically deleted by the next successful daily cleanup; a pseudonymous service principal is deleted in that run when it has no remaining period. The authenticated in-app deletion control instead removes those request, period, usage, and principal details immediately, leaving a minimal one-way tombstone through the current period end; Remote AI remains blocked during that interval. For Apple Sandbox/TestFlight use only, a one-way actor/day key and aggregate attempt totals remain through the current UTC day to prevent accelerated renewal or deletion from resetting cost protection. The next successful daily cleanup after each expiry deletes the corresponding safety record. Reploom cannot delete Apple's purchase history.</li>
         <li><strong>Temporary voice and selected-photo cache files:</strong> deleted after each request or cancellation and swept from their dedicated cache directories on the next launch after an interrupted cleanup.</li>
         <li><strong>Network and operational metadata:</strong> Cloudflare and Groq process request metadata to operate and protect their services. Reploom's release-candidate configuration disables application-level Worker observability logs, but that becomes an operational statement only after the exact version is deployed and verified. Reploom does not claim that Groq Zero Data Retention is enabled.</li>
         <li><strong>Legacy leaderboard entry:</strong> remains in D1 until the v1 Settings deletion action removes the row matching the locally held random device ID. V1 does not submit new ranking data.</li>
@@ -225,19 +278,22 @@
         <li><strong>Support and privacy messages:</strong> processed in Gmail and kept only as long as needed to resolve the request, protect the service, or satisfy a legal obligation. Messages are manually deleted when no longer needed and may be deleted earlier on request unless security or law requires retention.</li>
       </ul>
 
-      <h2 id="choices">8. Your choices and deletion</h2>
+      <h2 id="choices">9. Your choices and deletion</h2>
       <ul>
         <li>Use Reploom's Disconnect Apple Health action to clear its local snapshot; separately revoke individual permissions in iOS Settings or the Health app to stop future access.</li>
         <li>Leave Remote AI off, or turn it off later, and use manual workout logging instead.</li>
+        <li>Manage or cancel Reploom Pro in Apple's subscription settings. Deleting the app or its quota ledger does not cancel the Apple subscription.</li>
+        <li>Use the authenticated in-app subscription-data deletion action to remove Reploom's request and quota details immediately without deleting local workouts or Apple purchase history. A minimal deletion tombstone remains through the paid period end, Remote AI cannot be re-enabled before then, and the next successful daily cleanup removes it. For Apple test purchases only, the one-way daily cost-safety aggregate described above remains through that UTC day.</li>
         <li>If you used an earlier TestFlight leaderboard, delete its legacy row in Settings before deleting the app.</li>
         <li>Delete the app to remove its local app container.</li>
       </ul>
       <p>
-        Reploom has no account to delete. See the
+        Reploom has no login account to delete. Subscription and quota service data is handled
+        separately as described above. See the
         <a href="data.html">Data Deletion Guide</a> for exact scope and deletion order.
       </p>
 
-      <h2 id="children">9. Children</h2>
+      <h2 id="children">10. Children</h2>
       <p>
         Reploom is not directed to children under 13. Remote AI is available only after the user
         confirms they are 18 or older. The v1 app does not offer remote photo-avatar generation. If
@@ -245,7 +301,7 @@
         channel once it is verified.
       </p>
 
-      <h2 id="security">10. Security</h2>
+      <h2 id="security">11. Security</h2>
       <p>
         Local data is protected by the iOS app sandbox and your device security. AI traffic uses
         HTTPS through a server-side proxy so provider API keys are not shipped in the app. No
@@ -253,7 +309,7 @@
         other unnecessary sensitive information in free-text logs, handles, or crew codes.
       </p>
 
-      <h2 id="website">11. This website</h2>
+      <h2 id="website">12. This website</h2>
       <p>
         These pages are hosted on Cloudflare Pages. Cloudflare necessarily receives normal web
         request information such as IP address, requested URL, browser headers, and time to deliver
@@ -261,7 +317,7 @@
         analytics, advertising, tracking scripts, or external web fonts.
       </p>
 
-      <h2 id="changes">12. Changes and contact</h2>
+      <h2 id="changes">13. Changes and contact</h2>
       <p>
         Material changes will be posted here with a revised date before they take effect. For
         privacy, deletion, or support questions, email

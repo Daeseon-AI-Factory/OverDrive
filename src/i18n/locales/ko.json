@@ -482,9 +482,12 @@
       "empty_voice": "아무 소리도 못 들었어 — 말하고 탭해서 멈춰.",
       "mic_denied": "음성엔 마이크 권한 필요.",
       "ai_consent_required": "원격 AI가 꺼져 있어 — 설정에서 켜거나 \"벤치 100 5\" 형식으로 로컬 기록해줘.",
-      "no_voice": "음성은 AI 엔드포인트 설정 필요(.env)."
+      "subscription_required": "원격 AI는 Reploom Pro가 필요해 — 로컬 \"벤치 100 5\" 기록은 무료야.",
+      "ai_quota_exhausted": "이번 결제 기간의 Pro AI 한도에 도달했어 — 로컬 기록은 계속 돼.",
+      "no_voice": "음성 기록은 지금 사용할 수 없어 — 직접 입력해줘."
     },
     "recording": "● 녹음 중… 탭해서 멈춤",
+    "finishingRecording": "녹음 마무리 중…",
     "transcribing": "전사 중…",
     "startRecording": "음성 기록 시작",
     "stopRecording": "음성 기록 중지",
@@ -515,11 +518,89 @@
     "kcal": "{n} kcal",
     "fail": "추정 실패 — 더 간단히 써봐.",
     "saveFailed": "식사를 저장하지 못했어. 기록은 추가되지 않았어 — 다시 해봐.",
-    "photoUnavailable": "사진 추정은 AI 엔드포인트 설정 필요(.env).",
+    "photoPrepareFailed": "사진을 안전하게 줄이지 못했어. 다른 사진을 골라 다시 해봐.",
+    "photoUnavailable": "사진 추정은 지금 사용할 수 없어 — 잠시 후 다시 해봐.",
     "aiConsent": {
       "required": "원격 AI가 꺼져 있어 — 식단을 추정하려면 설정에서 먼저 켜줘.",
       "explainer": "식단 텍스트와 선택한 사진을 추정하려면 선택형 원격 AI 처리가 필요해. 저장된 식사 반복은 기기 안에서 처리돼.",
       "settings": "AI 설정"
+    },
+    "subscriptionRequired": "AI 식단 추정은 Reploom Pro가 필요해. 저장한 식사 반복은 무료야.",
+    "quotaReached": "이번 결제 기간의 Pro AI 한도에 도달했어. Pro 패널에서 초기화 시간을 확인해줘."
+  },
+  "subscription": {
+    "title": "AI 기록을 더 간단하게",
+    "activeTitle": "Reploom Pro 이용 현황",
+    "unavailableTitle": "Pro 확인을 사용할 수 없음",
+    "priceMonthly": "월 {price}",
+    "priceLoading": "App Store 가격 확인 중…",
+    "subscribe": "월 {price} 구독",
+    "subscribeUnavailable": "구독을 사용할 수 없음",
+    "restore": "구매 복원",
+    "manage": "구독 관리",
+    "processing": "App Store 확인 중…",
+    "pending": "구매 승인을 기다리는 중이야. Apple 확인 뒤 Pro가 활성화돼.",
+    "renewal": "구매 확정 시 Apple 계정으로 결제돼. 현재 기간이 끝나기 최소 24시간 전에 취소하지 않으면 자동 갱신돼. App Store 구독에서 관리하거나 취소할 수 있어.",
+    "benefit": {
+      "credits": "운동·음성·식단 기록용 AI 크레딧을 결제 기간마다 1,000 제공",
+      "photos": "크레딧 한도 안에서 결제 기간마다 식단 사진 최대 60장",
+      "freeCore": "수동 기록·로컬 파싱·반복·Apple 건강·운동 추천은 무료로 무제한 유지",
+      "costs": "1회당: 운동 텍스트 1 · 식단 텍스트 2 · 음성 운동 3–4 · 식단 사진 8 크레딧",
+      "safety": "AI 제공자 오류는 포함 사용량에 돌려줘. 제공자 오류가 반복되면 초기화 때까지 원격 AI가 멈출 수 있고, 수동·로컬 기록은 계속 쓸 수 있어.",
+      "consent": "원격 AI는 만 18세 이상 확인과 선택한 텍스트·음성·식단 사진을 Groq에 보내는 동의가 필요해."
+    },
+    "usage": {
+      "title": "현재 결제 기간 사용량",
+      "credits": "AI 크레딧",
+      "photos": "식단 사진"
+    },
+    "quota": {
+      "title": "AI 한도 도달",
+      "reached": "기존 기록은 안전해",
+      "body": "원격 AI만 잠시 멈춰. 수동 기록·로컬 빠른 기록·반복·Apple 건강·운동 추천은 계속 쓸 수 있어.",
+      "reset": "{date} 초기화"
+    },
+    "safety": {
+      "title": "원격 AI 일시 중지",
+      "reached": "반복된 제공자 오류가 안전 한도에 도달했어",
+      "body": "실패한 시도는 포함 사용량에 다시 돌려놨지만 서비스 비용 보호를 위해 원격 AI가 멈춰 있어. 수동·로컬 기록은 계속 작동해."
+    },
+    "deleted": {
+      "title": "AI 데이터 삭제됨",
+      "blocked": "이번 결제 기간에는 원격 AI가 멈춰 있어",
+      "body": "Apple 구독은 계속 활성 상태지만 초기화 시각까지 원격 AI를 쓸 수 없어. 로컬·수동 기능은 계속 작동해."
+    },
+    "settings": {
+      "section": "구독",
+      "active": "서버 확인 완료 · {date}까지 현재 이용 권한",
+      "checking": "Apple과 Reploom에서 확인 중…",
+      "deleted": "AI 데이터 삭제됨 · {date}까지 원격 AI 중지",
+      "unavailable": "구독은 iPhone 빌드에서 사용할 수 있어",
+      "verifyError": "지금 Pro를 확인하지 못했어. 복원하거나 다시 시도해줘.",
+      "free": "무료 핵심 기능 · Pro AI 비활성",
+      "pro": "PRO",
+      "freeBadge": "무료",
+      "freeCore": "수동/로컬 운동 기록·식사 반복·Apple 건강·운동 추천에는 결제벽이 없어.",
+      "viewPro": "Pro 보기"
+    },
+    "data": {
+      "currentPeriod": "현재 결제 기간 종료 시각",
+      "deleteTitle": "Pro 서비스 데이터 삭제",
+      "deleteHint": "서버의 구독/한도 사용 데이터를 삭제해. Apple 결제는 취소되지 않아.",
+      "deleteConfirm": "Reploom 서버의 Pro 한도와 요청 상세를 삭제해. 한도 초기화를 막는 단방향 기록은 {date}까지 남고, Apple 테스트 구매는 단방향 일일 시도 합계가 현재 UTC 날짜 끝까지 남을 수 있어. Apple 구독과 구매 내역은 지워지지 않아. 수동·로컬 기능은 계속 쓸 수 있어.",
+      "deleteAction": "데이터 삭제",
+      "deleting": "Pro 서비스 데이터 삭제 중…",
+      "deletedTitle": "Pro 서비스 데이터 삭제됨",
+      "deletedBody": "{date}까지 원격 AI가 차단돼. Apple 테스트 구매의 단방향 일일 시도 합계는 현재 UTC 날짜 끝까지 남을 수 있어. Apple 구독과 수동·로컬 기능은 그대로야.",
+      "deleteFailed": "Pro 서비스 데이터를 삭제하지 못했어. 변경된 건 없어. 다시 시도해줘."
+    },
+    "error": {
+      "purchase": "구매를 완료하거나 확인하지 못했어. 다시 시도하기 전에 App Store 구매 상태를 확인해줘.",
+      "restore": "구매를 복원하지 못했어. App Store 계정을 확인하고 다시 시도해줘.",
+      "nothingToRestore": "이 App Store 계정에서 활성 Reploom Pro 구매를 찾지 못했어.",
+      "verify": "지금 Apple 구매를 확인할 수 없어. 로컬 기능은 계속 작동해. 잠시 후 다시 시도해줘.",
+      "manage": "App Store 구독 관리 화면을 열지 못했어.",
+      "consentRequired": "구독하기 전에 설정에서 ‘만 18세 이상이며 원격 AI 허용’을 켜줘."
     }
   },
   "rest": {
@@ -527,6 +608,8 @@
   },
   "common": {
     "back": "뒤로",
+    "cancel": "취소",
+    "close": "닫기",
     "saveFailed": "저장 실패 — 다시 시도해줘."
   },
   "onboarding": {

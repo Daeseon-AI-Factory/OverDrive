@@ -2,6 +2,13 @@
 
 Updated: 2026-07-13. App Store Connect app `6786831176`, bundle `ai.daeseon.reploom`.
 
+The original free Build 13 submission was accepted into the review queue and then deliberately
+withdrawn on 2026-07-13 after the decision to prepare Reploom Pro and server-enforced AI limits.
+Review submission `72f01614-39bb-4b0e-95e7-a3810e5fbb97` read back `COMPLETE`, its item `REMOVED`,
+and version 1.0 `DEVELOPER_REJECTED`. Build 13 remains valid as a binary rollback artifact but must
+not be resubmitted as the subscription release. The current Build 14 work is repository/local
+integration groundwork only; no replacement binary has been uploaded, attached, or submitted.
+
 ## Verified before this release candidate
 
 - App Store version `1.0` exists in `PREPARE_FOR_SUBMISSION`.
@@ -34,6 +41,8 @@ Updated: 2026-07-13. App Store Connect app `6786831176`, bundle `ai.daeseon.repl
 - [x] Build Release for a 6.9-inch simulator with realistic seeded data.
 - [ ] App verification: AI OFF → zero HTTP calls, AI ON → disclosed calls only, withdrawal → zero future calls.
 - [ ] Verify local QuickLog save/edit/undo while AI is off and while endpoint access fails.
+- [ ] Verify local QuickLog and saved-meal repeat remain unblocked while unsubscribed and after AI
+  quota exhaustion.
 - [x] Verify body-region recommendations on the final Release build.
 - [x] Verify full exercise search on the final Release build: Maestro entered `bench`, the live
   catalog returned Barbell Bench Press with the seeded last-set context, and the result was visually inspected.
@@ -58,10 +67,26 @@ Updated: 2026-07-13. App Store Connect app `6786831176`, bundle `ai.daeseon.repl
   `/body-avatar` return 410 on both the normal live version and immutable safe version.
 - [ ] Confirm Cloudflare edge rate limiting and Groq spend limits; Worker version readback confirms
   30 cost tokens per 60 seconds, while the account-level Groq spend cap remains unverified.
+- [ ] After immutable-version promotion, run `wrangler triggers deploy` with the matching config
+  and read back the live `17 4 * * *` Cron Trigger; versions upload/deploy does not apply triggers.
+- [x] Local subscription Worker tests cover authenticated App Store Server API response and
+  transaction-field validation, 15-minute session auth, D1
+  idempotency, 1,000-credit and 60-photo limits, provider-failure refund, stale-reservation recovery,
+  non-refundable 1,250/75 period attempt ceilings, 200/12 Apple-test UTC-day ceilings that survive
+  accelerated renewal and privacy deletion, authenticated deletion/tombstones, and expired-request/
+  period/orphan-principal cleanup. Persistent
+  actor/period/request HMACs use a separately backed-up identity secret that must never rotate;
+  session signing uses an independently rotatable secret. This source has not been deployed.
+- [ ] Deferred to the separate payment-platform integration: deploy and read back the subscription
+  Worker only after its Apple In-App Purchase credentials are installed. Record new immutable normal
+  and safe rollback IDs before changing production traffic.
 - [ ] Verify the live production text and preview vision model IDs, latency, JSON behavior, and model permissions.
 - [x] Track and dry-run a cost-zero safe-degraded Worker that keeps AI fail-closed and legacy deletion available.
 - [x] Upload and smoke-test safe-degraded Worker `33abed25-1f2e-497f-8580-72b29e267840`
   as the explicit rollback version; its marked `/parse` is 503 and legacy deletion validation remains available.
+- [x] Document the safe rollback boundary: subscription usage/deletion works only with an existing,
+  unexpired 15-minute token; session exchange is deliberately disabled, while automatic expiry
+  cleanup continues. Do not claim fresh in-app subscription-data deletion during a rollback.
 - [x] Record normal Worker `dee65f64-88ee-491f-962f-f9b686bfd561`, safe Worker
   `33abed25-1f2e-497f-8580-72b29e267840`, Pages production
   `1798ec5a-4134-4b02-b553-b00f6ea7e720`, and preview
@@ -111,9 +136,73 @@ Updated: 2026-07-13. App Store Connect app `6786831176`, bundle `ai.daeseon.repl
 - [x] Associate only validated Build 13 with version 1.0.
 - [x] Re-read every public-API-accessible server-side field and all five screenshots after upload;
   the private App Privacy/DSA/Medical/Mac/Vision gates remain explicitly open above.
-- [ ] Add the version to App Review and submit only after every item above is verified. URL completion
-  did not close the gate: the version-item POST still returned `409 STATE_ERROR.ENTITY_STATE_INVALID`,
-  the draft still has zero items, and no submission has occurred.
+- [x] Submit the free Build 13 candidate, read back `WAITING_FOR_REVIEW`, then withdraw it after the
+  product decision to add Reploom Pro; final withdrawal readback is recorded at the top of this file.
+
+## Reploom Pro rebuild and resubmission gates
+
+Scope fence: completed items below mean only the evidence named on that line (repository tests,
+local Release simulator, or an earlier App Store Connect readback). The separate payment platform,
+Apple server credentials, remote D1 migration, cleanup cron deployment, production Worker traffic,
+real purchase/entitlement exchange, TestFlight upload, and App Review resubmission are deferred and
+remain unchecked.
+
+- [ ] Paid Applications Agreement, tax, and banking status are active and read back. Korea
+  e-Commerce `Active` is not evidence for this separate gate.
+- [x] Create subscription group `22233430` and one-month subscription `6790532250` with product ID
+  `ai.daeseon.reploom.pro.monthly.v1`, Family Sharing off, and no introductory offer. The product
+  remains `MISSING_METADATA` until its remaining review metadata is supplied.
+- [x] Set and read back the USA customer price as US $4.99 and Apple's equalized prices for exactly
+  the same 132 storefronts where the app is available. All 132 price rows read back
+  `planType=UPFRONT` and `startDate=null`; automatic new-territory inclusion remains off.
+- [x] App Store product metadata and implemented paywall copy state the exact allowance: 1,000 AI
+  credits per paid period, at most 60 meal photos; workout text 1, meal text 2, transcription 3,
+  meal photo 8, and an extra 1 when a voice transcript needs flexible parsing (voice total 3–4,
+  preflight requires 4 remaining).
+- [x] Billing Grace Period readback is disabled in both production and Sandbox (`optIn=false`,
+  `sandboxOptIn=false`, with no duration or renewal type); v1 entitlement behavior depends on it
+  remaining disabled.
+- [ ] App Store Server API In-App Purchase key is generated once, stored only as Worker secrets, and
+  its Key ID/Issuer/bundle/product environment is verified without printing the private key.
+- [ ] App Store Connect App Privacy answers include linked Product Interaction for successful-use,
+  provider-attempt, request-state, period-reset, and Apple-test daily safety aggregates.
+- [ ] StoreKit 2 product loading, purchase success, user cancellation, pending approval, renewal,
+  expiration/refund, current entitlement, restore, and manage-subscription links are exercised.
+- [ ] Non-subscribers and exhausted subscribers can still complete all manual/local logging paths.
+- [x] Build 14 Release simulator app (`ai.daeseon.reploom`, version `1.0`, build `14`) preserved the
+  realistic v6 seed (5 sessions / 1 open / 20 sets / 1 cardio / 3 foods; integrity `ok`) and visually
+  rendered the free Pro card, purchase disclosure, active `412/1000` + `18/60` fixture, and exhausted
+  `1000/1000` + `60/60` fixture. This proves only simulator UI behavior, not StoreKit ownership or a
+  Worker-backed entitlement.
+- [ ] Release simulator + realistic DB seed + StoreKit Test visually verifies product loading,
+  paywall, purchase/cancel/pending UI, Terms/Privacy/Restore, VoiceOver labels, and localized price;
+  the simulator-only `-ReploomSubscriptionUIFixture=active|quota` launch argument verifies
+  entitlement/usage/quota visuals without claiming a Worker-backed entitlement. Native
+  `targetEnvironment(simulator)` is the hard gate; the App Store device binary always returns null.
+- [ ] TestFlight/Sandbox on a real device verifies purchase → immediate Worker session → quota use →
+  restore across reinstall. Simulator-only StoreKit Test is not a substitute for this gate.
+- [ ] Upload a truthful paywall review screenshot and set/read back both subscription-group and
+  product localizations, product review note, availability, price, tax category, and state
+  `READY_TO_SUBMIT`.
+- [x] Tracked Expo build number, generated Debug/Release Xcode build settings, and the local Release
+  simulator app all read `14`; the final device archive and exported app still require an independent
+  `CFBundleVersion=14` scan.
+- [ ] Build 14 or later is `VALID` / `APP_STORE_ELIGIBLE`, attached to version 1.0, and the first
+  subscription is selected with that version before submitting a new review submission.
+- [ ] New submission and version both read back `WAITING_FOR_REVIEW`; never infer success from the
+  submit click alone.
+
+Future payment-platform gaps, not completion work for this change:
+
+- [ ] If Billing Grace Period is ever enabled, redesign and retest the nominal-expiry entitlement
+  policy before changing the App Store setting.
+- [ ] Exercise Ask to Buy from pending through later approval without leaving a stale cancellation
+  message or losing the initiating AI action.
+- [ ] Verify signed-out/offline purchase and restore behavior on a physical device.
+- [ ] Install Apple credentials, apply the remote D1 migration, deploy/read back normal + safe
+  versions and the cleanup cron, and verify the live entitlement session.
+- [ ] Confirm App Privacy Product Interaction answers, the Groq account spend cap, and unit economics
+  before treating the allowance as a profitability guarantee.
 
 ## Verification ledger required at handoff
 

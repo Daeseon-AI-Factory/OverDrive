@@ -2,6 +2,9 @@ name = "overdrive-quicklog"
 main = "src/index.js"
 compatibility_date = "2024-11-01"
 
+[triggers]
+crons = ["17 4 * * *"]
+
 # Do not retain Worker invocation/application logs for user-submitted AI requests. Cloudflare may
 # still process ordinary network/security metadata under its own service policies.
 [observability]
@@ -23,6 +26,10 @@ namespace_id = "7801001"
 
 # The API key is a SECRET, not a var (never commit it):
 #   cd worker && npx wrangler secret put GROQ_API_KEY
+# StoreKit entitlement verification also requires five secrets:
+#   APPLE_IAP_ISSUER_ID, APPLE_IAP_KEY_ID, APPLE_IAP_PRIVATE_KEY,
+#   ENTITLEMENT_IDENTITY_SECRET (stable; never rotate after launch),
+#   ENTITLEMENT_SESSION_SECRET (rotatable; at least 32 random characters).
 
 [[d1_databases]]
 binding = "DB"

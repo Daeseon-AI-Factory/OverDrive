@@ -86,6 +86,7 @@
     "log": "LOG ⚡",
     "help": "Type or 🎤 say it: exercise + weight + reps. Or tap a recent lift.",
     "recording": "● Recording… tap to stop",
+    "finishingRecording": "Finishing recording…",
     "transcribing": "Transcribing…",
     "startRecording": "Start voice logging",
     "stopRecording": "Stop voice logging",
@@ -100,7 +101,9 @@
       "empty_voice": "Didn't hear anything — speak, then tap stop.",
       "mic_denied": "Voice needs microphone permission.",
       "ai_consent_required": "Remote AI is off — enable it in Settings, or log locally with the \"bench 100 5\" format.",
-      "no_voice": "Voice needs the AI endpoint set (.env)."
+      "subscription_required": "Reploom Pro is required for remote AI — local \"bench 100 5\" logging stays free.",
+      "ai_quota_exhausted": "Your Pro AI limit is reached for this billing period — local logging still works.",
+      "no_voice": "Voice logging isn't available right now — type it instead."
     }
   },
   "power": {
@@ -149,11 +152,89 @@
     "kcal": "{n} kcal",
     "fail": "Couldn't estimate — try simpler wording.",
     "saveFailed": "Couldn't save that meal. Nothing was added — try again.",
-    "photoUnavailable": "Photo estimate needs the AI endpoint set (.env).",
+    "photoPrepareFailed": "Couldn't prepare that photo safely. Choose another photo and try again.",
+    "photoUnavailable": "Photo estimation isn't available right now — try again later.",
     "aiConsent": {
       "required": "Remote AI is off — enable it in Settings before estimating a meal.",
       "explainer": "Meal text and selected photos need optional remote AI processing. Repeating a saved meal stays local.",
       "settings": "AI SETTINGS"
+    },
+    "subscriptionRequired": "Reploom Pro is required for AI meal estimates. Manual meal repeats stay free.",
+    "quotaReached": "Your Pro AI limit is reached for this billing period. Check the reset time in the Pro panel."
+  },
+  "subscription": {
+    "title": "Make AI logging effortless",
+    "activeTitle": "Your Reploom Pro plan",
+    "unavailableTitle": "Pro verification is unavailable",
+    "priceMonthly": "{price} per month",
+    "priceLoading": "Loading the App Store price…",
+    "subscribe": "Subscribe for {price}",
+    "subscribeUnavailable": "Subscription unavailable",
+    "restore": "Restore purchases",
+    "manage": "Manage subscription",
+    "processing": "Contacting the App Store…",
+    "pending": "The purchase is pending approval. Pro will activate after Apple confirms it.",
+    "renewal": "Payment is charged to your Apple Account at confirmation. The subscription renews automatically unless canceled at least 24 hours before the current period ends. Manage or cancel it in your App Store subscriptions.",
+    "benefit": {
+      "credits": "1,000 AI credits each billing period for workout, voice and meal logging",
+      "photos": "Up to 60 meal photos each billing period, within the credit allowance",
+      "freeCore": "Manual logging, local parsing, repeats, Apple Health and exercise recommendations remain free and unlimited",
+      "costs": "Per use: workout text 1 · meal text 2 · voice workout 3–4 · meal photo 8 credits",
+      "safety": "AI provider failures return included usage. Repeated provider failures can pause remote AI until reset; manual and local logging stay available.",
+      "consent": "Remote AI requires confirmation that you are 18 or older and consent to send selected text, audio or meal photos to Groq."
+    },
+    "usage": {
+      "title": "Current billing-period usage",
+      "credits": "AI credits",
+      "photos": "Meal photos"
+    },
+    "quota": {
+      "title": "AI limit reached",
+      "reached": "Your records are safe",
+      "body": "Only remote AI is paused. Manual logging, local quick parsing, repeats, Apple Health and recommendations keep working.",
+      "reset": "Resets {date}"
+    },
+    "safety": {
+      "title": "Remote AI is paused",
+      "reached": "Repeated provider failures hit the safety limit",
+      "body": "Failed attempts were returned to your included usage, but remote AI is paused to protect service costs. Manual and local logging still work."
+    },
+    "deleted": {
+      "title": "AI data was deleted",
+      "blocked": "Remote AI is paused for this billing period",
+      "body": "Your Apple subscription is still active, but remote AI stays unavailable until the reset time. Local and manual features keep working."
+    },
+    "settings": {
+      "section": "Subscription",
+      "active": "Server verified · current access through {date}",
+      "checking": "Checking with Apple and Reploom…",
+      "deleted": "AI data deleted · remote AI paused until {date}",
+      "unavailable": "Subscriptions are available on iPhone builds",
+      "verifyError": "Couldn't verify Pro right now. Restore or try again.",
+      "free": "Free core · Pro AI not active",
+      "pro": "PRO",
+      "freeBadge": "FREE",
+      "freeCore": "Manual/local workout logging, meal repeats, Apple Health and recommendations are not paywalled.",
+      "viewPro": "View Pro"
+    },
+    "data": {
+      "currentPeriod": "the end of the current billing period",
+      "deleteTitle": "Delete Pro service data",
+      "deleteHint": "Deletes server-side subscription/quota usage data; it does not cancel Apple billing.",
+      "deleteConfirm": "This deletes Reploom's server-side Pro quota and request details. A one-way reset-prevention record remains until {date}; Apple test purchases may also keep one-way daily attempt totals through the current UTC day. This does not cancel your Apple subscription or erase Apple's purchase history. Manual and local features remain available.",
+      "deleteAction": "Delete data",
+      "deleting": "Deleting Pro service data…",
+      "deletedTitle": "Pro service data deleted",
+      "deletedBody": "Remote AI is blocked until {date}. Apple test purchases may retain one-way daily attempt totals through the current UTC day. Your Apple subscription is still active; manual and local features remain available.",
+      "deleteFailed": "Couldn't delete the Pro service data. Nothing was changed; try again."
+    },
+    "error": {
+      "purchase": "The purchase could not be completed or verified. Check your App Store purchase status before trying again.",
+      "restore": "Couldn't restore purchases. Check your App Store account and try again.",
+      "nothingToRestore": "No active Reploom Pro purchase was found for this App Store account.",
+      "verify": "Apple purchase verification is unavailable right now. Local features still work; try again shortly.",
+      "manage": "Couldn't open App Store subscription management.",
+      "consentRequired": "Enable “18+ and allow remote AI” in Settings before subscribing."
     }
   },
   "rest": {
@@ -527,6 +608,8 @@
   },
   "common": {
     "back": "Back",
+    "cancel": "Cancel",
+    "close": "Close",
     "saveFailed": "Couldn't save — please try again."
   },
   "onboarding": {

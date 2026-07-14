@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Reploom — Data Deletion Guide</title>
-  <meta name="description" content="How to remove local Reploom data, Apple Health permissions and records, AI inputs, and a legacy TestFlight ranking entry." />
+  <meta name="description" content="How to remove local Reploom data, subscription quota records, Apple Health permissions and records, AI inputs, and legacy ranking data." />
   <meta name="theme-color" content="#07070B" />
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -28,9 +28,10 @@
       <p class="updated">Deletion guidance last updated: July 13, 2026</p>
 
       <div class="lead">
-        Reploom has no user account. Most data lives only in the app's private container on your
-        iPhone, so deleting the app removes that local data. Apple Health records and a legacy
-        TestFlight ranking row live in different systems and must be handled separately.
+        Reploom has no login account. Most data lives only in the app's private container on your
+        iPhone, so deleting the app removes that local data. Apple purchase history, Reploom's
+        pseudonymous subscription/quota ledger, Apple Health records, and a legacy TestFlight
+        ranking row live in different systems and must be handled separately.
       </div>
 
       <div class="notice">
@@ -43,6 +44,7 @@
         <a href="#local">Local Reploom data</a>
         <a href="#health">Apple Health</a>
         <a href="#ai">AI-assisted inputs</a>
+        <a href="#subscription">Subscription and quota data</a>
         <a href="#leaderboard">Legacy ranking entry</a>
         <a href="#account">No account to delete</a>
         <a href="#checklist">Complete removal checklist</a>
@@ -89,7 +91,8 @@
         typed meal estimation, or meal-photo
         estimation, the selected input passes through Reploom's Cloudflare Worker to Groq. The Worker
         application code does not write request bodies or results to D1, KV, R2, or another Reploom
-        application store. There is therefore no Reploom account copy to delete from those stores.
+        application store. Subscription and quota metadata is stored separately as described in the
+        next section; the AI input itself is not copied into that ledger.
         Reploom deletes request-time voice recordings and app-cache meal-photo copies after each
         request or cancellation. If an interrupted app session prevents that cleanup, the next
         launch sweeps the dedicated recording and selected-photo cache directories.
@@ -108,7 +111,48 @@
         remote avatar request.
       </p>
 
-      <h2 id="leaderboard">4. Delete a legacy TestFlight ranking entry</h2>
+      <h2 id="subscription">4. Delete subscription and quota service data</h2>
+      <p>
+        To verify Reploom Pro and enforce its billing-period allowance, Reploom's Worker keeps a
+        one-way HMAC-derived subscriber key, a one-way HMAC-derived billing-period key and its
+        start/end dates, aggregate successful credit and photo use, aggregate weighted provider
+        attempts and photo attempts, and a one-way HMAC key derived from each request identifier
+        together with route, cost, status, and timestamps. The transaction identifier and
+        deterministic app-account token are processed only while exchanging a native
+        StoreKit-verified transaction against Apple's authenticated server API and are not written
+        to D1. D1 also does not store a signed transaction, product,
+        environment, payment information, workout or meal text, voice recording, photo, transcript,
+        or AI result. Apple Sandbox/TestFlight requests also use a one-way actor/day key with daily
+        attempt totals because accelerated test renewals must not reset provider-cost protection.
+      </p>
+      <ol class="steps">
+        <li>Open Reploom <strong>Settings</strong> and scroll to <strong>Privacy, support &amp; terms</strong>.</li>
+        <li>Choose <strong>Delete Pro service data</strong>. It appears while Reploom has a current,
+          server-verified Pro session.</li>
+        <li>Read the confirmation carefully. This authenticated action immediately removes request,
+          billing-period, usage, and service-principal details, invalidates the active Reploom AI
+          session, and blocks Remote AI until the current paid period ends.</li>
+        <li>Confirm and keep the app open until Reploom reports that deletion succeeded.</li>
+      </ol>
+      <p>
+        If purchase verification is temporarily unavailable and the in-app deletion control is not
+        shown, email <a href="mailto:showep12@gmail.com">showep12@gmail.com</a> before deleting the app.
+      </p>
+      <p>
+        Reploom retains a minimal one-way deletion tombstone through the current period end, so
+        deleting the ledger cannot reset and reuse the same allowance. For Apple test purchases,
+        the one-way actor/day attempt aggregate also remains only through the current UTC day so
+        deletion or accelerated renewal cannot reset cost protection. The next successful daily
+        cleanup after each expiry removes those safety records. Without an in-app deletion request,
+        request details and period totals are automatically removed by the next successful daily
+        cleanup after their period ends, along with any service principal that has no remaining
+        period. This action does not cancel renewal, refund a purchase, erase Apple's purchase
+        history, or delete local workouts and meals. Manage or cancel the subscription separately
+        in your Apple Account subscription settings. If the in-app action cannot complete, email
+        <a href="mailto:showep12@gmail.com">showep12@gmail.com</a> before deleting the app.
+      </p>
+
+      <h2 id="leaderboard">5. Delete a legacy TestFlight ranking entry</h2>
       <p>
         Public leaderboards are not available in v1, and v1 submits no new ranking data. An earlier
         TestFlight build may have stored a handle, random app-generated device ID, Combat Power,
@@ -129,16 +173,19 @@
         be identifying.
       </p>
 
-      <h2 id="account">5. No account to delete</h2>
+      <h2 id="account">6. No login account to delete</h2>
       <p>
         Reploom does not create an email, password, Sign in with Apple, or social account. Deleting
-        the app therefore removes the local profile rather than closing an online account. The
-        legacy ranking row described above is keyed by a random app-generated ID, but its
-        user-chosen handle may be identifying; it is service data, not a login account.
+        the app therefore removes the local profile rather than closing an online account. Apple
+        purchase history and the subscription/quota service data described above are not a Reploom
+        login account and require their separate controls. The legacy ranking row described above
+        is keyed by a random app-generated ID, but its user-chosen handle may be identifying.
       </p>
 
-      <h2 id="checklist">6. Complete removal checklist</h2>
+      <h2 id="checklist">7. Complete removal checklist</h2>
       <ol class="steps">
+        <li>If you used Reploom Pro, run the subscription-data deletion action and wait for
+          confirmation. Separately cancel renewal in Apple subscription settings if desired.</li>
         <li>If Settings shows the legacy ranking deletion action, run it and wait for confirmation before deleting the app.</li>
         <li>Revoke Reploom's Apple Health read and write permissions.</li>
         <li>Delete any Reploom-written Health records you no longer want in the Health app.</li>

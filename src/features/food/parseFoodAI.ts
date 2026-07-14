@@ -4,9 +4,10 @@ import {
   type FileSystemUploadResult,
 } from 'expo-file-system/legacy';
 import type { FoodItemInput } from '@/db/repos/foodRepo';
-import { REPLOOM_CLIENT_HEADERS } from '@/features/quicklog/config';
+import { authorizedAiFetch, authorizedAiUpload } from '@/features/subscription/workerClient';
 
-const FOOD_PHOTO_UPLOAD_TIMEOUT_MS = 20_000;
+// Includes resizing-complete native upload plus the Worker's bounded 15s vision-provider call.
+export const FOOD_PHOTO_UPLOAD_TIMEOUT_MS = 30_000;
 
 /** Pure: validate + normalize the proxy's loose food JSON. Drops empty/garbage rows. Unit-tested. */
 export function normalizeFoodItems(data: unknown): FoodItemInput[] {
@@ -37,12 +38,23 @@ export async function parseFoodPhoto(
   signal?: AbortSignal,
 ): Promise<FoodItemInput[]> {
   if (signal?.aborted) throw new Error('food photo cancelled');
+  const res = await authorizedAiUpload(endpoint, (headers) => uploadFoodPhotoOnce(uri, endpoint, headers, signal));
+  return normalizeFoodItems(JSON.parse(res.body));
+}
+
+async function uploadFoodPhotoOnce(
+  uri: string,
+  endpoint: string,
+  headers: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<FileSystemUploadResult> {
+  if (signal?.aborted) throw new Error('food photo cancelled');
   const task = createUploadTask(`${endpoint.replace(/\/$/, '')}/food`, uri, {
     httpMethod: 'POST',
     uploadType: FileSystemUploadType.MULTIPART,
     fieldName: 'file',
     mimeType: 'image/jpeg',
-    headers: REPLOOM_CLIENT_HEADERS,
+    headers,
   });
 
   let timedOut = false;
@@ -81,18 +93,16 @@ export async function parseFoodPhoto(
   if (timedOut) throw new Error('food photo timed out');
   if (signal?.aborted) throw new Error('food photo cancelled');
   if (!res) throw new Error(timedOut ? 'food photo timed out' : 'food photo cancelled');
-  if (res.status < 200 || res.status >= 300) throw new Error(`food photo ${res.status}`);
-  return normalizeFoodItems(JSON.parse(res.body));
+  return res;
 }
 
 /** Meal description text → estimated items, via the Worker proxy (Groq; key server-side). */
 export async function parseFoodText(text: string, endpoint: string, signal?: AbortSignal): Promise<FoodItemInput[]> {
-  const res = await fetch(`${endpoint.replace(/\/$/, '')}/food`, {
+  const res = await authorizedAiFetch(endpoint, '/food', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', ...REPLOOM_CLIENT_HEADERS },
+    headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ text }),
     signal,
   });
-  if (!res.ok) throw new Error(`food proxy ${res.status}`);
   return normalizeFoodItems(await res.json());
 }

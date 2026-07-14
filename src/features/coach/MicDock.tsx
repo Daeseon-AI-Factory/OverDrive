@@ -129,6 +129,8 @@ export function MicDock() {
   const status =
     micState === 'recording'
       ? t('quicklog.recording')
+      : micState === 'finishing'
+        ? t('quicklog.finishingRecording', { defaultValue: dv('녹음 마무리 중…', 'Finishing recording…') })
       : micState === 'transcribing'
         ? t('quicklog.transcribing')
         : micState === 'submitting'

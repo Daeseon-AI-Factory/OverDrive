@@ -482,9 +482,12 @@
       "empty_voice": "No se oyó nada — habla y toca parar.",
       "mic_denied": "La voz necesita permiso de micrófono.",
       "ai_consent_required": "La IA remota está desactivada — actívala en Ajustes o registra localmente con el formato \"banca 100 5\".",
-      "no_voice": "La voz necesita el endpoint AI (.env)."
+      "subscription_required": "La IA remota requiere Reploom Pro; el registro local sigue siendo gratis.",
+      "ai_quota_exhausted": "Alcanzaste el límite de IA Pro de este periodo; el registro local sigue funcionando.",
+      "no_voice": "El registro por voz no está disponible ahora — escribe el ejercicio."
     },
     "recording": "● Grabando… toca para parar",
+    "finishingRecording": "Finalizando la grabación…",
     "transcribing": "Transcribiendo…",
     "startRecording": "Iniciar registro por voz",
     "stopRecording": "Detener registro por voz",
@@ -515,11 +518,89 @@
     "kcal": "{n} kcal",
     "fail": "No se pudo estimar — simplifica.",
     "saveFailed": "No se pudo guardar esta comida. No se añadió nada — inténtalo de nuevo.",
-    "photoUnavailable": "La estimación por foto necesita el endpoint AI (.env).",
+    "photoPrepareFailed": "No se pudo preparar la foto de forma segura. Elige otra e inténtalo de nuevo.",
+    "photoUnavailable": "La estimación por foto no está disponible ahora — inténtalo más tarde.",
     "aiConsent": {
       "required": "La IA remota está desactivada — actívala en Ajustes antes de estimar una comida.",
       "explainer": "El texto de comidas y las fotos elegidas requieren el procesamiento remoto opcional. Repetir una comida guardada sigue siendo local.",
       "settings": "AJUSTES DE IA"
+    },
+    "subscriptionRequired": "Reploom Pro es necesario para estimar comidas con IA. Repetir comidas guardadas sigue siendo gratis.",
+    "quotaReached": "Alcanzaste el límite de IA Pro de este periodo. Consulta el reinicio en el panel Pro."
+  },
+  "subscription": {
+    "title": "Registra con IA sin esfuerzo",
+    "activeTitle": "Tu plan Reploom Pro",
+    "unavailableTitle": "La verificación de Pro no está disponible",
+    "priceMonthly": "{price} al mes",
+    "priceLoading": "Cargando el precio de App Store…",
+    "subscribe": "Suscribirse por {price}",
+    "subscribeUnavailable": "Suscripción no disponible",
+    "restore": "Restaurar compras",
+    "manage": "Gestionar suscripción",
+    "processing": "Contactando con App Store…",
+    "pending": "La compra espera aprobación. Pro se activará cuando Apple la confirme.",
+    "renewal": "El pago se carga a tu cuenta de Apple al confirmar. La suscripción se renueva automáticamente salvo que la canceles al menos 24 horas antes de terminar el periodo actual. Puedes gestionarla o cancelarla en tus suscripciones de App Store.",
+    "benefit": {
+      "credits": "1.000 créditos de IA por periodo para registros de ejercicio, voz y comidas",
+      "photos": "Hasta 60 fotos de comidas por periodo, dentro del límite de créditos",
+      "freeCore": "Registro manual, análisis local, repeticiones, Apple Health y recomendaciones siguen gratis y sin límite",
+      "costs": "Por uso: ejercicio 1 · comida en texto 2 · ejercicio por voz 3–4 · foto de comida 8 créditos",
+      "safety": "Los fallos del proveedor de IA devuelven el uso incluido. Los fallos repetidos del proveedor pueden pausar la IA remota hasta el reinicio; el registro manual y local sigue disponible.",
+      "consent": "La IA remota requiere confirmar que tienes 18 años o más y aceptar el envío a Groq del texto, audio o fotos de comidas que selecciones."
+    },
+    "usage": {
+      "title": "Uso del periodo actual",
+      "credits": "Créditos de IA",
+      "photos": "Fotos de comidas"
+    },
+    "quota": {
+      "title": "Límite de IA alcanzado",
+      "reached": "Tus registros están seguros",
+      "body": "Solo se pausa la IA remota. El registro manual y local, las repeticiones, Apple Health y las recomendaciones siguen funcionando.",
+      "reset": "Se reinicia el {date}"
+    },
+    "safety": {
+      "title": "La IA remota está pausada",
+      "reached": "Los fallos repetidos alcanzaron el límite de seguridad",
+      "body": "Los intentos fallidos se devolvieron a tu uso incluido, pero la IA remota está pausada para proteger los costes. El registro manual y local sigue funcionando."
+    },
+    "deleted": {
+      "title": "Datos de IA eliminados",
+      "blocked": "La IA remota está pausada durante este periodo",
+      "body": "Tu suscripción de Apple sigue activa, pero la IA remota no estará disponible hasta el reinicio. Las funciones locales y manuales siguen funcionando."
+    },
+    "settings": {
+      "section": "Suscripción",
+      "active": "Verificado por el servidor · acceso actual hasta {date}",
+      "checking": "Comprobando con Apple y Reploom…",
+      "deleted": "Datos de IA eliminados · IA remota pausada hasta {date}",
+      "unavailable": "Las suscripciones están disponibles en la versión para iPhone",
+      "verifyError": "No se pudo verificar Pro. Restaura o inténtalo de nuevo.",
+      "free": "Funciones base gratis · IA Pro inactiva",
+      "pro": "PRO",
+      "freeBadge": "GRATIS",
+      "freeCore": "El registro manual/local, repetir comidas, Apple Health y las recomendaciones no tienen muro de pago.",
+      "viewPro": "Ver Pro"
+    },
+    "data": {
+      "currentPeriod": "el final del periodo de facturación actual",
+      "deleteTitle": "Eliminar datos del servicio Pro",
+      "deleteHint": "Elimina datos de suscripción y uso del servidor; no cancela la facturación de Apple.",
+      "deleteConfirm": "Esto elimina la cuota Pro y los detalles de solicitudes del servidor. Un registro unidireccional contra reinicios queda hasta {date}; las compras de prueba de Apple también pueden conservar totales diarios unidireccionales hasta terminar el día UTC. No cancela la suscripción ni borra el historial de Apple. Las funciones manuales y locales siguen disponibles.",
+      "deleteAction": "Eliminar datos",
+      "deleting": "Eliminando datos del servicio Pro…",
+      "deletedTitle": "Datos del servicio Pro eliminados",
+      "deletedBody": "La IA remota está bloqueada hasta {date}. Las compras de prueba de Apple pueden conservar totales diarios unidireccionales hasta terminar el día UTC. Tu suscripción y las funciones locales siguen activas.",
+      "deleteFailed": "No se pudieron eliminar los datos del servicio Pro. Nada cambió; inténtalo de nuevo."
+    },
+    "error": {
+      "purchase": "No se pudo completar o verificar la compra. Revisa su estado en App Store antes de intentarlo de nuevo.",
+      "restore": "No se pudieron restaurar las compras. Revisa tu cuenta de App Store.",
+      "nothingToRestore": "No se encontró una compra activa de Reploom Pro en esta cuenta.",
+      "verify": "No se puede verificar la compra de Apple ahora. Las funciones locales siguen disponibles.",
+      "manage": "No se pudo abrir la gestión de suscripciones de App Store.",
+      "consentRequired": "Activa “Tengo 18 años o más y permito la IA remota” en Ajustes antes de suscribirte."
     }
   },
   "rest": {
@@ -527,6 +608,8 @@
   },
   "common": {
     "back": "Atrás",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
     "saveFailed": "No se pudo guardar — inténtalo de nuevo."
   },
   "onboarding": {

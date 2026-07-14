@@ -14,7 +14,12 @@ Last reconciled with the v1 code and App Store Connect record: 2026-07-13.
 - Version: `1.0`
 - Primary category: Health & Fitness
 - Secondary category: none
-- Price: free
+- App download price: free
+- In-App Purchase: `Reploom Pro Monthly`, auto-renewable one-month subscription,
+  product ID `ai.daeseon.reploom.pro.monthly.v1`, App Store Connect subscription ID `6790532250`.
+  The USA customer price is US $4.99. Apple's equalized prices were read back for exactly the 132
+  enabled storefronts; every price row has `planType=UPFRONT` and `startDate=null`, and automatic
+  new-territory inclusion is off.
 - Live availability: `Specific Countries or Regions`; 132 of 175 storefronts enabled, the exact 43
   below disabled, no pre-orders, and automatic inclusion of newly added storefronts off. The full
   territory rows were read back independently on 2026-07-13.
@@ -67,7 +72,7 @@ gym, after a meal, and when you want a clear next action instead of another dash
 FAST WORKOUT LOGGING
 • Repeat a recent set with one tap.
 • Type a simple entry such as “bench 100 5” and save it locally without a network request.
-• Optionally enable remote AI for more flexible workout text and on-demand voice transcription.
+• Reploom Pro adds flexible workout AI and on-demand voice transcription.
 • Edit or undo a recent result when something is wrong.
 
 TRAIN BY BODY REGION
@@ -85,16 +90,25 @@ APPLE HEALTH — OPTIONAL
 • Write only workouts, body weight, and body fat that you actually log or enter.
 • Apple Health records stay on device and are never sent to Reploom’s AI service.
 
-MEAL LOGGING — OPTIONAL AI
-• Enable remote AI to estimate calories and protein from meal text or a photo you select.
+MEAL LOGGING — OPTIONAL REPLOOM PRO AI
+• Estimate calories and protein from meal text or a photo you select.
 • Estimates can be wrong and are not medical or dietary advice.
 • Repeat a saved meal locally without another AI request.
 
+REPLOOM PRO — MONTHLY SUBSCRIPTION
+• Remote AI features use 1,000 AI credits per billing period; meal photos also have a 60-photo limit.
+• Workout text uses 1 credit, meal text 2, voice transcription 3, and a meal photo 8.
+• If a voice transcript needs flexible workout parsing, it uses 1 more credit (3–4 total).
+• The purchase screen shows your localized monthly price before confirmation.
+• Manual logging, local quick parsing, saved-meal repeat, plans, history, body map, Combat Power,
+  and Apple Health remain available without Pro.
+
 PRIVACY BY DEFAULT
-• No Reploom account, ads, ad tracking, or third-party analytics SDK.
+• No Reploom login, ads, ad tracking, or third-party analytics SDK.
 • Remote AI is off by default, requires an 18+ self-attestation and explicit consent, and can be
   disabled at any time.
-• Manual workout logging remains available when remote AI is off or the network is unavailable.
+• Manual workout logging remains available when remote AI is off, a quota is reached, or the
+  network is unavailable.
 
 Combat Power and nutrition estimates are for general wellness and entertainment only. They are
 not diagnoses, treatment recommendations, or validated medical measurements.
@@ -134,6 +148,22 @@ local matching cannot resolve it, the transcript with the same workout context; 
 text or a selected meal photo. Turning it off stops future AI requests; local workout quick logging
 and saved-meal repeat remain available.
 
+Reploom Pro subscription:
+Settings → Reploom Pro, or attempt Voice/meal-photo AI while unsubscribed. The paywall retrieves the
+localized product name and monthly price from StoreKit. Product ID:
+ai.daeseon.reploom.pro.monthly.v1. Purchase, cancel/pending, current entitlement, Restore Purchases,
+and Manage Subscription are implemented with StoreKit 2. Each paid billing period includes 1,000 AI
+credits and up to 60 meal-photo analyses; workout text uses 1, meal text 2, voice transcription 3,
+and photo 8. If a voice transcript needs flexible workout parsing, it uses 1 more credit (3–4
+total), and voice recording requires at least 4 credits remaining.
+Manual/local logging remains available without Pro and after quota exhaustion. Use an Apple Sandbox
+account for review; no Reploom login is required.
+
+Provider failures are returned to the advertised successful-use allowance. Separate cost-safety
+counters can pause Remote AI after repeated failures; they do not block manual/local logging. Apple
+test entitlements also use a UTC-day safety cap because Sandbox billing periods renew faster than
+production periods.
+
 Optional Apple Health:
 Settings → Apple Health. Reploom requests read access only for workouts, VO₂ max, body weight, and
 body fat, and write access only for workouts, body weight, and body fat actually logged or entered.
@@ -147,11 +177,14 @@ V1 has no public leaderboard, chat, account creation, or remote photo-avatar gen
 Support and privacy contact: showep12@gmail.com
 ```
 
-## App Privacy answers — conservative v1 inventory
+## App Privacy answers — conservative subscription build inventory
 
-All declared collection is for App Functionality, not linked to the user's identity, and not used
-for tracking. Reploom has no account or advertising identifier. “Collected” below is conservative
-because selected inputs leave the device and Groq documents limited reliability/abuse retention.
+All declared collection is for App Functionality and not used for tracking. Selected AI inputs are
+not linked to identity. Subscription entitlement and quota records are conservatively marked linked
+to the Apple subscription even though Reploom stores only a one-way subscriber key rather than the
+transaction identifier or deterministic app-account token processed during the session exchange.
+“Collected” for AI content is conservative because selected inputs leave the device and Groq
+documents limited reliability/abuse retention.
 
 | Apple data type | Collected | Linked | Tracking | Exact v1 path |
 |---|---:|---:|---:|---|
@@ -160,9 +193,12 @@ because selected inputs leave the device and Groq documents limited reliability/
 | Photos or Videos | Yes | No | No | Meal photo selected for optional AI estimation |
 | Audio Data | Yes | No | No | Voice clip recorded for optional transcription; transcript may enter optional workout parsing when local matching cannot resolve it |
 | Other User Content | Yes | No | No | Free-form workout/meal input sent for optional parsing |
+| Purchase History | Yes | Yes | No | Subscription status and billing-period dates returned by Apple's authenticated server API and field-validated to provide Reploom Pro; exchange transaction IDs and deterministic app-account tokens are not written to D1 |
+| User ID | Yes | Yes | No | One-way HMAC-derived subscriber key used to share and enforce quota across the Apple subscription |
+| Product Interaction | Yes | Yes | No | Aggregate successful credits/photos, weighted provider attempts/photo attempts, one-way HMAC request key, request type/cost/status, billing reset time, and Apple-test UTC-day safety aggregate; no AI content |
 
 HealthKit records read on device are not collected by Reploom and are not transmitted to the
-Worker or Groq. V1 does not create or submit a leaderboard handle or identifier. Public ranking
+Worker or Groq. The subscription build does not create or submit a leaderboard handle. Public ranking
 routes return `410 Gone`; `/rank/delete` accepts an existing random TestFlight deletion token only
 when that user explicitly removes the old row, and does not retain a new copy of the token.
 

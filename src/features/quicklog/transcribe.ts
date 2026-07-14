@@ -3,7 +3,10 @@ import {
   createUploadTask,
   type FileSystemUploadResult,
 } from 'expo-file-system/legacy';
-import { REPLOOM_CLIENT_HEADERS } from './config';
+import { authorizedAiUpload } from '@/features/subscription/workerClient';
+
+// Includes native multipart upload time plus the Worker's bounded 6.5s provider call.
+export const TRANSCRIBE_UPLOAD_TIMEOUT_MS = 16_000;
 
 // Upload a recorded audio file to the proxy's /transcribe (Groq whisper-large-v3) → text.
 // Uses expo-file-system's native multipart upload (NOT RN FormData — the {uri} file-part shape
@@ -17,12 +20,27 @@ export async function transcribeAudio(
   signal?: AbortSignal,
 ): Promise<string> {
   if (signal?.aborted) throw new Error('transcribe cancelled');
+  const res = await authorizedAiUpload(endpoint, (headers) =>
+    uploadAudioOnce(uri, endpoint, headers, language, signal),
+  );
+  const data = JSON.parse(res.body) as { text?: string };
+  return String(data?.text ?? '').trim();
+}
+
+async function uploadAudioOnce(
+  uri: string,
+  endpoint: string,
+  headers: Record<string, string>,
+  language?: string,
+  signal?: AbortSignal,
+): Promise<FileSystemUploadResult> {
+  if (signal?.aborted) throw new Error('transcribe cancelled');
   const task = createUploadTask(`${endpoint.replace(/\/$/, '')}/transcribe`, uri, {
     httpMethod: 'POST',
     uploadType: FileSystemUploadType.MULTIPART,
     fieldName: 'file',
     mimeType: 'audio/m4a',
-    headers: REPLOOM_CLIENT_HEADERS,
+    headers,
     parameters: language ? { language } : undefined,
   });
   let timedOut = false;
@@ -33,7 +51,7 @@ export async function transcribeAudio(
   const timer = setTimeout(() => {
     timedOut = true;
     cancel();
-  }, 8000);
+  }, TRANSCRIBE_UPLOAD_TIMEOUT_MS);
   let res: FileSystemUploadResult | null | undefined;
   try {
     res = await task.uploadAsync();
@@ -49,9 +67,5 @@ export async function transcribeAudio(
   if (timedOut) throw new Error('transcribe timed out');
   if (signal?.aborted) throw new Error('transcribe cancelled');
   if (!res) throw new Error('transcribe cancelled');
-  if (res.status < 200 || res.status >= 300) {
-    throw new Error(`HTTP ${res.status} ${(res.body ?? '').slice(0, 140)}`);
-  }
-  const data = JSON.parse(res.body) as { text?: string };
-  return String(data?.text ?? '').trim();
+  return res;
 }

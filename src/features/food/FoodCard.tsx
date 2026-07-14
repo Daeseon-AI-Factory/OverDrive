@@ -1,6 +1,6 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
@@ -10,6 +10,14 @@ import type { FoodItemInput, FoodMealBatch, FoodSource } from '@/db/repos/foodRe
 import { classifyEvent } from '@/features/juice/classifyEvent';
 import { useJuice } from '@/features/juice/JuiceProvider';
 import { QUICKLOG_ENDPOINT } from '@/features/quicklog/config';
+import { useSubscription, type AiAccessDecision } from '@/features/subscription/SubscriptionProvider';
+import {
+  AiApiError,
+  isAttemptLimitError,
+  isQuotaError,
+  isRemoteAiConsentError,
+  isSubscriptionRequiredError,
+} from '@/features/subscription/workerClient';
 import { downscaleForUpload } from '@/lib/image';
 import { deleteAppCacheFile } from '@/lib/temporaryFiles';
 import { hasCurrentRemoteAiConsent } from '@/lib/settings';
@@ -38,10 +46,12 @@ export function FoodCard() {
   const accent = useAccent();
   const proteinTargetG = useSettingsStore((s) => s.proteinTargetG);
   const remoteAiAllowed = useSettingsStore((s) => hasCurrentRemoteAiConsent(s.remoteAiConsent));
+  const { requestAiAccess, showAiAccessError } = useSubscription();
   const [today, setToday] = useState({ kcal: 0, proteinG: 0, entries: 0 });
   const [latestMeal, setLatestMeal] = useState<FoodMealBatch | null>(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [hint, setHint] = useState<string | null>(null); // failure hints (warning text)
   const [confirm, setConfirm] = useState<string | null>(null); // "what the AI logged" echo (positive text)
   const [undoMeal, setUndoMeal] = useState<{ batch: FoodMealBatch; autoCompletedProtein: boolean } | null>(null);
@@ -64,6 +74,8 @@ export function FoodCard() {
         'Remote AI is off — enable it in Settings before estimating a meal.',
       ),
     });
+  const subscriptionRequired = () => t('food.subscriptionRequired');
+  const quotaReached = () => t('food.quotaReached');
   const saveFailed = () =>
     t('food.saveFailed', {
       defaultValue: dv(
@@ -71,6 +83,32 @@ export function FoodCard() {
         "Couldn't save that meal. Nothing was added — try again.",
       ),
     });
+
+  const accessFailure = (access: AiAccessDecision) => {
+    setHint(
+      access === 'quota' || access === 'data_deleted'
+        ? quotaReached()
+        : access === 'unavailable'
+          ? aiUnavailable()
+          : subscriptionRequired(),
+    );
+  };
+
+  const remoteFailure = (error: unknown) => {
+    if (isRemoteAiConsentError(error)) {
+      setHint(aiConsentRequired());
+    } else if (isQuotaError(error) || (error instanceof AiApiError && error.code === 'data_deleted_until_reset')) {
+      showAiAccessError(error);
+      setHint(quotaReached());
+    } else if (isAttemptLimitError(error)) {
+      showAiAccessError(error);
+      setHint(aiUnavailable());
+    } else if (isSubscriptionRequiredError(error)) {
+      setHint(subscriptionRequired());
+    } else {
+      setHint(aiOffline());
+    }
+  };
 
   const reload = useCallback(async () => {
     const [nextToday, nextLatestMeal] = await Promise.all([getFoodToday(db), getLatestFoodBatch(db)]);
@@ -127,7 +165,7 @@ export function FoodCard() {
 
   const submit = async () => {
     const value = text.trim();
-    if (!value || busy) return;
+    if (!value || busyRef.current) return;
     if (!remoteAiAllowed) {
       setHint(aiConsentRequired());
       return;
@@ -136,13 +174,20 @@ export function FoodCard() {
       setHint(aiUnavailable()); // no AI in this build — say so, don't blame the user's wording
       return;
     }
+    busyRef.current = true;
     setBusy(true);
-    setHint(null);
-    setConfirm(null);
-    setUndoMeal(null);
     try {
+      const access = await requestAiAccess('food_text');
+      if (access !== 'allowed') {
+        accessFailure(access);
+        return;
+      }
+      setHint(null);
+      setConfirm(null);
+      setUndoMeal(null);
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 9000);
+      // Worker provider work is capped at 7s; the client deadline includes transport/D1 margin.
+      const timer = setTimeout(() => ctrl.abort(), 12_000);
       let items;
       try {
         items = await parseFoodText(value, QUICKLOG_ENDPOINT, ctrl.signal);
@@ -154,16 +199,17 @@ export function FoodCard() {
       } catch {
         setHint(saveFailed());
       }
-    } catch {
-      setHint(aiOffline()); // network/proxy failure ≠ parse failure — don't tell the user to reword
+    } catch (error) {
+      remoteFailure(error); // network/proxy failure ≠ parse failure — don't tell the user to reword
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
 
   /** Photo — snap/pick a meal photo → Worker vision → logged. */
   const onPhoto = async () => {
-    if (busy) return;
+    if (busyRef.current) return;
     if (!remoteAiAllowed) {
       setHint(aiConsentRequired());
       return;
@@ -172,35 +218,51 @@ export function FoodCard() {
       setHint(aiUnavailable());
       return;
     }
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 }).catch(() => null);
-    if (!res || res.canceled || !res.assets?.[0]?.uri) return;
-    const pickedUri = res.assets[0].uri;
+    busyRef.current = true;
+    let pickedUri: string | null = null;
     let uploadUri: string | null = null;
     setBusy(true);
-    setHint(null);
-    setConfirm(null);
-    setUndoMeal(null);
     try {
-      uploadUri = await downscaleForUpload(pickedUri);
+      // Subscription/quota preflight intentionally precedes the system photo picker. A blocked
+      // request never receives photo-library access and never creates a temporary image.
+      const access = await requestAiAccess('food_photo');
+      if (access !== 'allowed') {
+        accessFailure(access);
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 }).catch(() => null);
+      if (!res || res.canceled || !res.assets?.[0]?.uri) return;
+      pickedUri = res.assets[0].uri;
+      setHint(null);
+      setConfirm(null);
+      setUndoMeal(null);
+      try {
+        uploadUri = await downscaleForUpload(pickedUri);
+      } catch {
+        setHint(t('food.photoPrepareFailed'));
+        return;
+      }
       const items = await parseFoodPhoto(uploadUri, QUICKLOG_ENDPOINT);
       try {
         await logItems(items, 'photo');
       } catch {
         setHint(saveFailed());
       }
-    } catch {
-      setHint(aiOffline());
+    } catch (error) {
+      remoteFailure(error);
     } finally {
       const temporaryUris = [...new Set([pickedUri, uploadUri].filter((uri): uri is string => !!uri))];
       const cleaned = await Promise.all(temporaryUris.map((uri) => deleteAppCacheFile(uri)));
       if (cleaned.some((ok) => !ok)) console.error('[privacy] temporary meal photo could not be removed');
+      busyRef.current = false;
       setBusy(false);
     }
   };
 
   /** Latest meal repeat — entirely local and routed through the same save/refresh/discipline tail. */
   const repeatLatest = async () => {
-    if (!latestMeal || busy) return;
+    if (!latestMeal || busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     setHint(null);
     setConfirm(null);
@@ -210,14 +272,16 @@ export function FoodCard() {
     } catch {
       setHint(saveFailed());
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
 
   /** Undo only the batch written by the latest successful action; derived protein state follows. */
   const undoLatestSave = async () => {
-    if (!undoMeal || busy) return;
+    if (!undoMeal || busyRef.current) return;
     const target = undoMeal;
+    busyRef.current = true;
     setBusy(true);
     setHint(null);
     try {
@@ -236,6 +300,7 @@ export function FoodCard() {
     } catch {
       setHint(t('food.undoFailed'));
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
