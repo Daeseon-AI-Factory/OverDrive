@@ -1,0 +1,36 @@
+---
+title: "카탈로그의 출처 확인과 사람 검토를 분리했다"
+date: "2026-07-14"
+project: "OverDrive"
+kind: "decision"
+visibility: "public"
+language: "ko"
+summary: "사람 편집 검토 증거가 없는 factual dataset을 reviewed로 부르지 않고, source_checked와 human_reviewed를 계약·Schema·D1에서 구분했다."
+tags: ["exercise-catalog", "provenance", "evidence", "licensing", "taxonomy"]
+---
+
+운동 카탈로그의 첫 factual dataset은 출처를 대조할 수 있지만 사람 편집자가 승인했다는 증거는 아직 없다. 기존 계약의 단일 `reviewed` 상태는 자동/에이전트 source check를 사람 검토처럼 읽히게 만들 수 있었다. 이는 데이터 정확도와 별개인 증거 정직성 문제다.
+
+세 선택지를 비교했다. 단일 `reviewed`를 유지하면 구현은 단순하지만 검토 주체를 숨긴다. 사람 검토 전에는 어떤 행도 publish하지 않으면 표현은 엄격하지만 중립적 이름·장비·taxonomy 작업까지 불필요하게 막힌다. `source_checked`와 `human_reviewed`를 분리하면 필드가 늘지만 실제 확보한 증거만 주장할 수 있다. 세 번째를 채택했다.
+
+`source_checked`는 `source_comparison`, 수행 role, evidence artifact, 시각을 기록한다. 이것은 사람이 승인했다는 뜻이 아니다. `human_reviewed`는 `human_editorial_review`와 실제 승인 artifact가 필요하다. Licensed import는 Schema와 D1에서 `human_reviewed`를 강제하고, 적어도 하나의 명시적 라이선스가 없으면 거부한다. Instructional·medical·diagnostic 콘텐츠는 계속 v1 비목표이며, 향후 추가하려면 별도 계약과 사람 검토가 필요하다.
+
+실제 헬스장 데이터가 흔한 항목을 `other`로 잃지 않도록 bounded taxonomy도 보정했다. Equipment는 kettlebell, trap bar, EZ curl bar, 주요 press/squat/leg machine, elliptical, stair climber, pool을 포함한 32개 enum이다. Movement는 carry, swim, step, rotation/anti-rotation/anti-lateral-flexion을 포함한 32개 enum이다. 자유 문자열로 풀지는 않았다.
+
+예상 실패와 방어는 다음과 같다.
+
+- agent source check를 human review로 올릴 수 있다. 상태·방법 pairing과 evidence invariant로 거부한다.
+- licensed row가 license 없이 들어올 수 있다. Schema `contains`와 D1 publication gate로 거부한다.
+- 흔한 운동이 계속 `other`에 몰릴 수 있다. dataset validation에서 `other` 비율을 관찰하고, 새 enum은 실제 반복 사례와 계약 amendment가 있을 때만 추가한다.
+
+사람 편집 승인 artifact가 생긴 행만 `human_reviewed`로 승격한다. Higher-risk content가 필요해지면 v1을 늘리지 않고 새 IP/검토 계약을 먼저 만든다. Enum의 실제 반복 누락이 확인되지 않으면 현재 32+32 bounded vocabulary를 유지한다.
+
+검증 수준:
+
+- 기능 검증: Draft 2020-12 Schema에서 source/method pairing, licensed human review와 non-null license 조건을 실행했고 D1 SQL을 in-memory SQLite로 파싱했다.
+- 품질 검증: 요청된 장비 11개와 movement 6개가 포함되고 각 enum이 32개로 bounded인지 검사했다.
+- 제품/워크플로 검증: factual dataset과 사람 검토 workflow가 아직 없으므로 미검증이다.
+
+구현 커밋: `ae64d0123eb4113af6e4a5e161eb47d723845f15`.
+
+되돌리려면 위 amendment와 이 로그를 revert한다. 이전 단일 `reviewed` 계약으로 돌아가는 것은 증거 과장을 재도입하므로, 대안은 계약 전체를 중단하고 bundled seed만 유지하는 것이다. 운영 코드와 데이터는 변경하지 않았다.
