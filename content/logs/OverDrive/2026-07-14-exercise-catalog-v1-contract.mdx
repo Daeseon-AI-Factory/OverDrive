@@ -1,0 +1,56 @@
+---
+title: "운동 카탈로그 v1의 독립 배포 경계를 동결했다"
+date: "2026-07-14"
+project: "OverDrive"
+kind: "decision"
+visibility: "public"
+language: "ko"
+summary: "기존 32개 운동 ID와 로컬 기록을 보존하면서, 운동 카탈로그를 AI·구독 서비스와 분리해 버전·검증·롤백 가능한 계약으로 만들었다."
+tags: ["exercise-catalog", "search", "d1", "worker", "privacy", "ip"]
+---
+
+## 맥락과 제약
+
+운동 탐색은 앱에 내장된 32개 seed와 각 화면의 로컬 분류에 의존했다. 이름·별칭·부위 분류를 고치려면 앱 릴리스가 필요했고, 검색과 AI 후보가 같은 정본을 쓴다는 계약도 없었다. 반면 현재 `overdrive-quicklog` Worker는 AI·구독 권한을 함께 담당하고 Apple entitlement secret 5개 없이는 안전하게 승격할 수 없다. 카탈로그 하나를 배포하려고 이 서비스를 건드리면 라이브 AI와 구독까지 같은 실패 반경에 들어간다.
+
+우선순위는 (1) 기존 로그와 32개 ID 보존, (2) 카탈로그 배포 격리, (3) 오프라인 검색 지속, (4) 자체 작성 메타데이터와 행 단위 출처·라이선스, (5) 최소 텔레메트리였다. 새 의존성, 앱/Worker 코드, D1 마이그레이션, 실제 배포는 이번 범위에서 제외했다.
+
+## 검토한 선택지
+
+1. 32개 seed를 그대로 둔다. 운영 자원은 늘지 않지만 수정·별칭·버전·검증 파이프라인이 생기지 않는다.
+2. `/catalog/v1`을 `overdrive-quicklog`에 붙이고 D1도 공유한다. 자원은 적지만 Apple secret과 AI/구독 릴리스가 카탈로그 변경에 결합된다.
+3. 앱 번들 정적 파일만 쓴다. 안전한 오프라인 기준점이지만 데이터 수정마다 앱 심사가 필요하다.
+4. 전용 catalog Worker와 전용 D1을 둔다. 자원 하나씩이 늘지만 secret·마이그레이션·배포·롤백 경계를 독립시킬 수 있다.
+
+4번을 채택했고 3번은 항상 남는 폴백으로 유지했다. 전용 서비스는 compact JSON 원문 바이트를 그대로 저장·전송하고 그 바이트의 SHA-256을 헤더와 ETag에 쓴다. 그래서 새 JSON canonicalization 의존성이 필요 없다.
+
+## 동결한 계약
+
+- 기존 32개 stable ID는 영구 보존하며 rename/reuse/remove하지 않는다.
+- 이름과 헬스장 별칭은 `en/ko/es/zh-Hans`별로 독립 작성하고, 운동 type/bodyweight, 장비, 움직임, 난이도, 10개 신체 부위, 기본 기록 처방을 명시한다.
+- 검색은 NFKC·소문자·문자/숫자 보존 뒤 exact → prefix → substring → 제한적 Levenshtein 순이다. 길이 4–6은 거리 1, 7 이상은 거리 2만 허용하고 짧은 질의에는 오타 허용을 하지 않는다.
+- `GET /catalog/v1`은 최대 512행/512KiB의 단일 버전 snapshot이며 강한 ETag, 버전, checksum, 304를 지원한다.
+- 앱은 새 snapshot을 비활성 SQLite 영역에서 검증한 뒤 원자적으로 전환한다. 실패하면 이전 cache → bundled snapshot → 기존 seed 순으로 폴백한다.
+- 기존 ad-hoc 운동은 유지한다. 32개 ID만 기존 row와 동일 매핑하고, 새 canonical은 opaque bridge row를 써서 로컬 row를 덮어쓰지 않는다.
+- 텔레메트리는 zero-result의 버전/화면/locale/latency bucket과 선택된 canonical ID만 허용한다. 검색어, 사용자·기기 ID, 중량, 사진, 건강 텍스트, 로컬 운동은 수집하지 않는다.
+- 설명·이미지·코칭 문구는 v1에 넣지 않는다. OpenStax의 비상업/동일조건 콘텐츠와 라이선스가 행마다 다른 wger 일괄 가져오기는 금지하고, 모든 행에 출처·라이선스 검증을 둔다.
+
+## 실패 예측과 전환 조건
+
+- 잘못된 taxonomy가 나오면 ingest를 닫고 이전 channel pointer로 되돌린다.
+- 원격 payload가 깨지면 활성 cache를 유지하고 번들/seed로 내려간다.
+- catalog 변경이 quick-log 경로나 secret을 건드리면 CI에서 거부한다.
+- canonical과 local ID가 충돌하면 자동 병합하지 않고 별도 bridge를 만든다.
+- 라이선스가 불명확하거나 표현물을 복사한 행은 publish하지 않는다.
+
+전용 Worker+D1의 격리·캐시 폴백 검증 전에는 remote activation을 하지 않는다. clean install에서 폴백을 재현하지 못하거나 validation failure가 0.1%를 넘으면 bundled-only로 되돌린다. semantic/LLM 검색은 개인정보 없는 zero-result 집계가 alias+bounded typo 검색의 부족을 입증할 때만 새 계약으로 재검토한다.
+
+## 검증 수준과 되돌림
+
+- 기능 검증: Draft 2020-12 metaschema 검사, 문서 링크/code-fence 검사, `src/db/seed.ts`와 호환 매니페스트의 32개 ID·순서 exact 비교가 통과했다.
+- 품질 검증: 계약이 요구 필드, bounded typo 규칙, payload bound/checksum, D1 정규화, cache fallback, IP·telemetry invariant와 역전 경로를 명시하는지 diff로 점검했다.
+- 제품/워크플로 검증: 아직 미검증이다. 실제 dataset·Worker·앱 구현과 실사용 검색이 없으므로 운동 탐색이 빨라졌다고 판단하지 않는다.
+
+구현 커밋: `f249b44d2d6212b17a371fe38950198a3b331489`.
+
+계약만 되돌리려면 위 커밋과 이 로그 커밋을 revert한다. 운영 데이터는 변경하지 않았다. 배포 후 잘못된 release는 immutable row를 보존한 채 `catalog_channel('v1')`만 이전 version으로 돌린다.
