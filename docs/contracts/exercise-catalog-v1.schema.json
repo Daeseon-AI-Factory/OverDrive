@@ -83,6 +83,9 @@
       "enum": [
         "barbell",
         "dumbbell",
+        "kettlebell",
+        "trap_bar",
+        "ez_curl_bar",
         "bench",
         "rack",
         "pull_up_bar",
@@ -91,11 +94,19 @@
         "lat_pulldown_machine",
         "leg_press_machine",
         "leg_curl_machine",
+        "leg_extension_machine",
+        "hack_squat_machine",
+        "chest_press_machine",
+        "shoulder_press_machine",
+        "pec_deck_machine",
         "calf_raise_machine",
         "smith_machine",
         "treadmill",
+        "elliptical_machine",
+        "stair_climber",
         "bicycle",
         "rowing_machine",
+        "pool",
         "jump_rope",
         "mat",
         "weight_plate",
@@ -144,8 +155,14 @@
         "shoulder_external_rotation",
         "trunk_flexion",
         "trunk_anti_extension",
+        "trunk_rotation",
+        "trunk_anti_rotation",
+        "trunk_anti_lateral_flexion",
+        "loaded_carry",
         "locomotion_run",
         "locomotion_walk",
+        "locomotion_swim",
+        "step",
         "cycle",
         "row_erg",
         "jump",
@@ -228,15 +245,19 @@
       "required": [
         "classification",
         "reviewStatus",
+        "reviewMethod",
         "reviewedByRole",
+        "reviewEvidence",
         "reviewedAt",
         "containsThirdPartyCopy",
         "sources"
       ],
       "properties": {
         "classification": {"enum": ["original_editorial", "public_facts", "licensed"]},
-        "reviewStatus": {"const": "reviewed"},
+        "reviewStatus": {"enum": ["source_checked", "human_reviewed"]},
+        "reviewMethod": {"enum": ["source_comparison", "human_editorial_review"]},
         "reviewedByRole": {"type": "string", "minLength": 1, "maxLength": 80},
+        "reviewEvidence": {"type": "string", "minLength": 1, "maxLength": 200},
         "reviewedAt": {"type": "string", "format": "date-time"},
         "containsThirdPartyCopy": {"const": false},
         "sources": {
@@ -245,7 +266,35 @@
           "maxItems": 8,
           "items": {"$ref": "#/$defs/source"}
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"reviewStatus": {"const": "source_checked"}}, "required": ["reviewStatus"]},
+          "then": {"properties": {"reviewMethod": {"const": "source_comparison"}}}
+        },
+        {
+          "if": {"properties": {"reviewStatus": {"const": "human_reviewed"}}, "required": ["reviewStatus"]},
+          "then": {"properties": {"reviewMethod": {"const": "human_editorial_review"}}}
+        },
+        {
+          "if": {"properties": {"classification": {"const": "licensed"}}, "required": ["classification"]},
+          "then": {
+            "properties": {
+              "reviewStatus": {"const": "human_reviewed"},
+              "reviewMethod": {"const": "human_editorial_review"},
+              "sources": {
+                "contains": {
+                  "type": "object",
+                  "required": ["license"],
+                  "properties": {
+                    "license": {"type": "string", "minLength": 1}
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "exercise": {
       "type": "object",
