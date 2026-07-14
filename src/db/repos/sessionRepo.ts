@@ -3,6 +3,15 @@ import { nowIso, todayLocal } from '../../lib/date';
 import { newUuid } from '../uuid';
 import { LOCAL_USER_ID, type DayType, type SessionSource, type WorkoutSessionRow } from '../types';
 
+/** Preserve a durable session's original clock anchor; only corrupt legacy rows use the fallback. */
+export function sessionStartedAtMs(
+  session: Pick<WorkoutSessionRow, 'started_at'>,
+  fallbackMs: number = Date.now(),
+): number {
+  const parsed = Date.parse(session.started_at);
+  return Number.isFinite(parsed) ? parsed : fallbackMs;
+}
+
 export async function startSession(
   db: SQLiteDatabase,
   input: { dayType: DayType; source?: SessionSource; date?: string; userId?: string },

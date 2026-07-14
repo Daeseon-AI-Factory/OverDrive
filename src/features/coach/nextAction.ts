@@ -76,7 +76,13 @@ export type NextAction =
       /** Sits at 0 once the window elapsed — NEVER a scold (§9), just "ready when you are". */
       restRemainSec: number;
     }
-  | { kind: 'session_idle'; suggestion: SetSuggestion | null; idleSec: number }
+  | {
+      kind: 'session_idle';
+      suggestion: SetSuggestion | null;
+      idleSec: number;
+      /** Stable identity for this idle episode (last set, or session start before the first set). */
+      idleAnchorAt: number;
+    }
   | { kind: 'wrap_up'; setsDone: number; sessionActive: boolean };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -195,7 +201,9 @@ export function computeNextAction(input: NextActionInput): NextAction {
   const sinceSec = Math.max(0, Math.floor((now - anchor) / 1000));
   const suggestion = deriveSuggestion(input);
 
-  if (sinceSec > idleAfterSec) return { kind: 'session_idle', suggestion, idleSec: sinceSec };
+  if (sinceSec > idleAfterSec) {
+    return { kind: 'session_idle', suggestion, idleSec: sinceSec, idleAnchorAt: anchor };
+  }
 
   return {
     kind: 'resting',

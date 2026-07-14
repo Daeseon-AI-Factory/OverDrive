@@ -38,7 +38,8 @@ interface SessionState {
    */
   lastSetAt: number | null;
   start: (id: string, cpAtStart: number, silent?: boolean) => void;
-  resume: (id: string, cpAtStart: number, setCount: number, volumeKg: number) => void;
+  /** Rehydrate a durable session without rewriting its original timer anchor. */
+  resume: (id: string, cpAtStart: number, startedAt: number, setCount: number, volumeKg: number) => void;
   tryBeginLogWrite: () => boolean;
   endLogWrite: () => void;
   tryBeginFinish: () => boolean;
@@ -76,10 +77,10 @@ export const useSessionStore = create<SessionState>((set) => ({
       ritual: silent ? null : { id: ++ritualId, kind: 'enter' },
       lastSetAt: null,
     }),
-  resume: (id, cpAtStart, setCount, volumeKg) =>
+  resume: (id, cpAtStart, startedAt, setCount, volumeKg) =>
     set({
       activeSessionId: id,
-      startedAt: Date.now(),
+      startedAt,
       setCount,
       volumeKg,
       cpAtStart,

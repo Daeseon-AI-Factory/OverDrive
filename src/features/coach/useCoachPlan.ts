@@ -7,18 +7,19 @@ import type { ExerciseRow } from '@/db/types';
 import { useSessionStore } from '@/features/forge/sessionStore';
 import { useTodayProgram } from '@/features/program/useProgram';
 import { todayLocal } from '@/lib/date';
+import { deriveCoachStrengthSnapshot, type CurrentSessionLastSet } from './coachSnapshot';
 import { computeNextAction, type CoachLastSet, type NextAction } from './nextAction';
 
 interface CoachDb {
   loaded: boolean;
   /** Sets/pieces logged TODAY per exercise (strength set_log counts + cardio piece counts). */
   setsToday: Record<string, number>;
-  /** Most recent set per exercise (today's first, else all-time) — suggestion prefill. */
+  /** Most recent relevant set per exercise (active exercise is pinned to the active session). */
   lastSetByExercise: Record<string, CoachLastSet | undefined>;
-  /** Exercise of today's most recent set (derived from set_log — not mirrored in any store). */
-  lastExerciseId: string | null;
-  /** logged_at of today's most recent set, epoch ms — the DB-side rest anchor (survives restarts). */
-  lastLoggedAtMs: number | null;
+  /** Session id used to build currentSessionLastSet; guards against an async stale snapshot. */
+  snapshotSessionId: string | null;
+  /** Exact active-session set/exercise/rest anchor; completed same-day sessions cannot replace it. */
+  currentSessionLastSet: CurrentSessionLastSet | null;
   exerciseById: Map<string, ExerciseRow>;
   cardioExerciseIds: ReadonlySet<string>;
 }
@@ -27,8 +28,8 @@ const EMPTY: CoachDb = {
   loaded: false,
   setsToday: {},
   lastSetByExercise: {},
-  lastExerciseId: null,
-  lastLoggedAtMs: null,
+  snapshotSessionId: null,
+  currentSessionLastSet: null,
   exerciseById: new Map(),
   cardioExerciseIds: new Set(),
 };
@@ -67,6 +68,7 @@ export function useCoachPlan(): CoachPlan {
   const buildSnapshot = useCallback(async (): Promise<CoachDb> => {
     const date = todayLocal();
     const sets = await getSetsWithDateSince(db, date); // today only, chronological within the day
+    const strength = deriveCoachStrengthSnapshot(sets, activeSessionId);
     const slotIds = slots.map((s) => s.exerciseId);
     const ids = Array.from(new Set([...slotIds, ...sets.map((s) => s.exercise_id)]));
 
@@ -81,19 +83,8 @@ export function useCoachPlan(): CoachPlan {
     const cardioIds = ids.filter((id) => exerciseById.get(id)?.type === 'cardio');
     const cardioCounts = await getCardioCountsForModalitiesOnDate(db, cardioIds, date);
 
-    const setsToday: Record<string, number> = { ...cardioCounts };
-    const lastSetByExercise: Record<string, CoachLastSet | undefined> = {};
-    let lastExerciseId: string | null = null;
-    let lastLoggedAtMs: number | null = null;
-    for (const s of sets) {
-      setsToday[s.exercise_id] = (setsToday[s.exercise_id] ?? 0) + 1;
-      lastSetByExercise[s.exercise_id] = { weightKg: s.weight, reps: s.reps }; // chronological → last wins
-      const at = Date.parse(s.logged_at);
-      if (Number.isFinite(at) && (lastLoggedAtMs == null || at >= lastLoggedAtMs)) {
-        lastLoggedAtMs = at;
-        lastExerciseId = s.exercise_id;
-      }
-    }
+    const setsToday: Record<string, number> = { ...cardioCounts, ...strength.setsToday };
+    const lastSetByExercise = strength.lastSetByExercise;
 
     // History prefill for programmed strength exercises not yet trained today (≤ slots.length
     // point lookups, only on save/focus/program change — never on the logging path).
@@ -110,13 +101,13 @@ export function useCoachPlan(): CoachPlan {
       loaded: true,
       setsToday,
       lastSetByExercise,
-      lastExerciseId,
-      lastLoggedAtMs,
+      snapshotSessionId: activeSessionId,
+      currentSessionLastSet: strength.currentSessionLastSet,
       exerciseById,
       cardioExerciseIds: new Set(cardioIds),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- slotsKey is the content-stable proxy for slots
-  }, [db, slotsKey]);
+  }, [activeSessionId, db, slotsKey]);
 
   // Re-derive after every save/undo (setCount), session change, and on focus. Failures keep the
   // previous snapshot — the coach card degrades to stale-but-sane rather than erroring.
@@ -152,9 +143,11 @@ export function useCoachPlan(): CoachPlan {
   const compute = useCallback(
     (now: number): NextAction => {
       const active = activeSessionId != null;
+      const currentSessionLastSet =
+        active && state.snapshotSessionId === activeSessionId ? state.currentSessionLastSet : null;
       // Live store anchor (exact save moment) wins over the DB timestamp when newer — covers the
       // window where the post-save re-query hasn't landed yet; a resumed session falls back to DB.
-      const dbAnchor = state.lastLoggedAtMs;
+      const dbAnchor = currentSessionLastSet?.loggedAtMs ?? null;
       const lastSetAt =
         storeLastSetAt != null && (dbAnchor == null || storeLastSetAt > dbAnchor) ? storeLastSetAt : dbAnchor;
       return computeNextAction({
@@ -163,7 +156,7 @@ export function useCoachPlan(): CoachPlan {
           active,
           startedAt,
           lastSetAt: active ? lastSetAt : null,
-          lastExerciseId: active ? state.lastExerciseId : null,
+          lastExerciseId: active ? (currentSessionLastSet?.exerciseId ?? null) : null,
         },
         day: { isRestDay, slots },
         setsToday: state.setsToday,
