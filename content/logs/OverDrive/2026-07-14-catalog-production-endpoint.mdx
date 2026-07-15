@@ -1,0 +1,22 @@
+---
+title: "운영 카탈로그 D1과 read-only Worker를 공개했다"
+date: "2026-07-14"
+project: "OverDrive"
+kind: "tech-retro"
+visibility: "public"
+language: "ko"
+summary: "정본 운동 카탈로그를 production D1 channel에 게시하고 live endpoint를 모든 앱 빌드 profile에 연결했다."
+tags: ["cloudflare-d1", "cloudflare-workers", "exercise-catalog", "release"]
+---
+
+전용 D1 `overdrive-catalog`을 ENAM에 만들었다. database ID는 `4bf0e085-56d8-405e-a7a7-333d5eeff03f`다. 검증된 migration 66 queries를 file-ingestion으로 적용한 bookmark는 `00000001-00000013-000050a9-c20f154611920b6c91b5ad987f904cff`다. 정본 draft 760 queries를 적용한 bookmark는 `00000001-00000045-000050a9-b1d5a8260b2650b80b3ddca2abe4f011`이다.
+
+remote admin verify는 64행, 66,654 bytes, generation 752, 빈 channel, checksum `sha256:43491e64b66fbd16f87325d8e8ea9e5d2325d888b71c700b61b80da19566604a`를 읽었다. fixed timestamp `1783987201234`로 release `1.0.0`을 published로 바꾸고 `v1` channel을 설정했다. Wrangler progress-prefix parser를 보정한 뒤 같은 publish를 재시도해 admin 자체 post-readback까지 종료 코드 0으로 마쳤다.
+
+Worker version `e19c7975-be71-456b-95cf-400c43703b2f`를 `catalog-v1-20260714`, source `0e782dd`로 처음 배포했다. public URL은 `https://overdrive-catalog.daeseon.workers.dev/catalog/v1`이다. deployment 직후 첫 GET 한 건은 Cloudflare 1104를 반환했다. 공식 문서상 일반 app exception과 다른 기타 runtime 11xx 범주이며, transient tail에는 이후 같은 version 요청이 `Ok`로 기록됐다. remote preview와 뒤따른 live 요청들이 모두 성공해 전파 중 일시 오류로 추론하지만 Cloudflare 내부 원인은 확인하지 못했다.
+
+안정화 뒤 live 200 body는 66,654 bytes이며 로컬 정본과 byte-for-byte, SHA-256이 일치했다. `Content-Length`, `X-Catalog-Bytes`, checksum, version, strong ETag, `no-transform` cache directive를 확인했다. canonical `If-None-Match`는 bodyless 304를 반환했다. `/catalog/v1/publish`는 404, 같은 catalog route POST는 405와 `Allow: GET`이었다. version readback에는 fetch handler와 `CATALOG_DB` 하나만 있고 secret·cron·outbound binding은 없다.
+
+모든 EAS build profile과 `.env.example`에 live endpoint를 넣었다. 앱은 remote가 꺼지거나 실패해도 검증된 SQLite→bundle→seed fallback을 유지한다. 이 커밋은 endpoint build configuration의 기능 검증까지다. 실제 Release simulator에서 production endpoint activation과 foreground 기록을 함께 수행한 제품·워크플로 검증은 다음 단계다.
+
+구현 커밋은 `2f7d398`이다. 이 서비스는 첫 production version이라 이전 Worker version rollback target이 없다. 앱이 아직 이 endpoint를 포함한 build로 배포되지 않았고 bundled fallback이 있으므로 이상 시 endpoint configuration을 revert해 새 build에서 remote refresh를 끄거나 Worker를 비공개화한다. 이후 Worker 변경부터는 현재 version ID를 명시 rollback target으로 사용한다.

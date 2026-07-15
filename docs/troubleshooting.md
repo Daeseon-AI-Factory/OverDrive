@@ -699,3 +699,12 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 0e782dd
 - **Verification**: 전체 앱 64 suites / 458 tests, Worker 86/86, strict TypeScript, lint를 통과했다. remote-dev 200은 chunked 상태에서도 `X-Catalog-Bytes: 66654`, exact checksum, weak ETag를 보존했고 body는 정본과 byte-for-byte 같았다. 정본 strong `If-None-Match` 재요청은 bodyless 304와 strong ETag, 같은 custom metadata를 반환했다.
 - **Pattern**: application byte integrity는 CDN이 바꿀 수 있는 transport framing header에 의존하지 않는다. custom metadata와 payload checksum을 검증하고 standard ETag의 weak comparison 의미를 수용한다.
+
+## 첫 catalog Worker 배포 직후 1104가 한 번 발생하고 전파 뒤 정상화됐다
+
+- **Symptom**: `overdrive-catalog` 첫 deployment 직후 live GET 한 건이 HTTP 500, body `error code: 1104`를 반환했다. 같은 version에 transient tail을 연결한 뒤 재요청은 200이었고 이후 원본·304·차단 route 검증도 연속 성공했다.
+- **Cause**: 공식 Workers 오류 문서는 1104를 일반적인 app exception으로 분류하지 않고 기타 11xx runtime 문제로 분류한다. tail에는 후속 요청의 `Ok`만 있었고 같은 code/D1/config의 remote preview와 이후 live 요청은 성공했으므로, 확인 가능한 범위에서는 최초 service deployment 전파 중 일시 runtime failure로 추론한다. 정확한 내부 원인은 Cloudflare 외부 상태라 미확인이다.
+- **Fix**: 첫 500을 성공으로 덮지 않고 live 상태를 재읽고 transient tail에서 한 요청을 재현했다. 이후 exact body·headers·conditional request·method/path 차단을 다시 통과한 뒤에만 모든 EAS profile의 `EXPO_PUBLIC_CATALOG_ENDPOINT`를 `https://overdrive-catalog.daeseon.workers.dev/catalog/v1`로 설정했다.
+- **Commit**: 2f7d398
+- **Verification**: D1 `4bf0e085-56d8-405e-a7a7-333d5eeff03f`는 migration 66와 draft import 760 queries 뒤 version `1.0.0`, generation 752, published channel, exact checksum으로 readback됐다. Worker version `e19c7975-be71-456b-95cf-400c43703b2f`의 live 200은 66,654 bytes이며 정본과 `cmp`·SHA-256 일치, conditional GET은 bodyless 304, publish-looking GET은 404, POST는 405였다. version readback은 D1 binding 하나와 fetch handler만 표시했다.
+- **Pattern**: 신규 Worker의 첫 배포 응답 하나만으로 성공·실패를 확정하지 않는다. 전파 직후 오류는 tail과 같은-version 반복 요청으로 분리하고, 앱 endpoint는 안정된 live 계약을 전부 재검증한 뒤에만 넣는다.
