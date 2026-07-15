@@ -719,3 +719,16 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 2187079
 - **Verification**: 전체 Jest 64 suites / 458 tests, catalog 39/39, Worker 86/86, strict TypeScript, lint, `git diff --check`가 통과했다. 수정 Release 앱의 SQLite는 schema 8 / `integrity_check=ok`, 기존 5/1/20/1/3 보존, active `1.0.0`, bundled 66,654 bytes, exact checksum, exercise/cache/bridge 64, localization/alias 256, equipment 76, region 97을 반환했다. body map·검색·기록 실제 터치와 원본 screenshot 품질은 아직 이 항목의 완료 범위가 아니다.
 - **Pattern**: native module의 `BufferSource` 타입 선언만 믿고 Node mock을 넓게 만들지 않는다. 플랫폼 문서가 TypedArray를 요구하면 test double도 같은 런타임 경계를 거부하고, release build의 실제 DB side effect까지 확인한다.
+
+## 철회된 App Store 버전이 최신 구독 후보 대신 Build 13을 가리켰다
+
+- **Symptom**: App Store Connect Version 1.0은 `DEVELOPER_REJECTED` 상태에서 Build 13 관계를 유지했고, 최신 후보 Build 15는 `VALID`였지만 version 관계가 없었다. 같은 시점의 구독은 `MISSING_METADATA`, review screenshot 관계는 `data:null`이었다. Build 15 Release simulator에서 실제 터치로 연 paywall은 15초 뒤에도 다음 문구를 표시했다.
+  ```text
+  Loading the App Store price…
+  Subscription unavailable
+  ```
+- **Cause**: 무료 Build 13 제출을 의도적으로 철회한 뒤 replacement submission을 만들지 않아 이전 build 관계가 남았다. 구독 쪽은 production entitlement Worker와 필수 secret 5개가 없고, 심사용 paywall screenshot도 아직 없었다. 맥의 기존 ASC API key 두 개는 Sandbox의 존재하지 않는 transaction에 authenticated `4040010`을 반환했지만 production StoreKit API에는 둘 다 HTTP 401을 반환해 production IAP key로 검증되지 않았다.
+- **Fix**: App Store Connect API로 Version 1.0의 build 관계를 Build 15 `7123db21-dbc0-4126-8f30-5a7105278602`로 교체하고 handoff/checklist의 live 상태를 갱신했다. 비기능 구독을 포함한 새 review submission은 만들지 않았고, loading/unavailable screenshot도 업로드하지 않았다.
+- **Commit**: bf4a133e8082dd411aff41109cf9db00575b431c
+- **Verification**: build relationship PATCH는 HTTP 204였고 후속 `/build` readback은 Build 15, `version=15`, `VALID`, `expired=false`였다. subscription은 계속 `MISSING_METADATA`, review screenshot은 `data:null`, replacement review submission은 0개다. Function 검증은 Build 관계 교체와 readback까지다. Quality 검증은 문서 diff와 `git diff --check`까지이며 결제 품질을 뜻하지 않는다. Product/workflow 검증은 실제 구매·entitlement·restore가 막혀 있어 미완료다.
+- **Pattern**: 바이너리 업로드, version-build 관계, 첫 subscription 선택, review submission은 서로 다른 외부 상태다. 각 관계를 독립적으로 readback하고 결제 후 entitlement가 실제로 발급되기 전에는 제출 완료로 합치지 않는다.
