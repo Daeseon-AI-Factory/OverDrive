@@ -21,6 +21,14 @@ contract before one transaction changes a draft to `published` and updates the `
 pointer. Rollback updates only that pointer to a previous published version; the migration prevents
 published payload/projection mutation and deletion.
 
+The normalized projection stores the bounded `counting_convention` enum. Provenance is also
+fail-closed: an `unreviewed` row must be `original_editorial` with method `none`, null reviewer,
+evidence, and timestamp, and it cannot receive a row source. Source-checked and human-reviewed rows
+must carry review identity and at least one exercise-specific source before publication; licensed
+rows additionally require human review and a non-empty recorded license. General program/safety
+references do not belong in `catalog_source` unless they were actually used for a row-specific
+comparison.
+
 Run all Worker tests from the parent directory:
 
 ```sh

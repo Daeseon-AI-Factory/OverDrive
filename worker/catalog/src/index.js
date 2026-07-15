@@ -56,6 +56,17 @@ async function sha256Hex(bytes) {
   return hex(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)));
 }
 
+function isUtcSecondTimestamp(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/u.test(value)) {
+    return false;
+  }
+  const parsed = Date.parse(value);
+  return (
+    Number.isFinite(parsed)
+    && new Date(parsed).toISOString() === `${value.slice(0, -1)}.000Z`
+  );
+}
+
 function hasExpectedEnvelope(bytes, row) {
   let payload;
   try {
@@ -73,8 +84,7 @@ function hasExpectedEnvelope(bytes, row) {
     && payload.schemaVersion === SCHEMA_VERSION
     && payload.schemaVersion === row.schema_version
     && payload.catalogVersion === row.version
-    && typeof payload.effectiveAt === 'string'
-    && Number.isFinite(Date.parse(payload.effectiveAt))
+    && isUtcSecondTimestamp(payload.effectiveAt)
     && payload.defaultLocale === 'en'
     && Array.isArray(payload.supportedLocales)
     && payload.supportedLocales.length === 4

@@ -39,23 +39,53 @@ CREATE TABLE catalog_exercise (
   difficulty TEXT NOT NULL CHECK (difficulty IN ('beginner', 'intermediate', 'advanced')),
   default_sets INTEGER NOT NULL CHECK (default_sets BETWEEN 1 AND 20),
   tracking_mode TEXT NOT NULL,
+  counting_convention TEXT NOT NULL
+    CHECK (counting_convention IN ('total', 'per_side', 'not_applicable')),
   target_unit TEXT,
   target_low REAL,
   target_high REAL,
   provenance_classification TEXT NOT NULL
     CHECK (provenance_classification IN ('original_editorial', 'public_facts', 'licensed')),
-  review_status TEXT NOT NULL CHECK (review_status IN ('source_checked', 'human_reviewed')),
-  review_method TEXT NOT NULL CHECK (review_method IN ('source_comparison', 'human_editorial_review')),
-  reviewed_by_role TEXT NOT NULL,
-  review_evidence TEXT NOT NULL,
-  reviewed_at_ms INTEGER NOT NULL,
+  review_status TEXT NOT NULL
+    CHECK (review_status IN ('unreviewed', 'source_checked', 'human_reviewed')),
+  review_method TEXT NOT NULL
+    CHECK (review_method IN ('none', 'source_comparison', 'human_editorial_review')),
+  reviewed_by_role TEXT,
+  review_evidence TEXT,
+  reviewed_at_ms INTEGER,
   contains_third_party_copy INTEGER NOT NULL CHECK (contains_third_party_copy = 0),
   CHECK (effective_to_ms IS NULL OR effective_to_ms > effective_from_ms),
   CHECK (target_low IS NULL OR target_low >= 0),
   CHECK (target_high IS NULL OR target_high >= target_low),
   CHECK (
-    (review_status = 'source_checked' AND review_method = 'source_comparison') OR
-    (review_status = 'human_reviewed' AND review_method = 'human_editorial_review')
+    (
+      review_status = 'unreviewed' AND
+      provenance_classification = 'original_editorial' AND
+      review_method = 'none' AND
+      reviewed_by_role IS NULL AND
+      review_evidence IS NULL AND
+      reviewed_at_ms IS NULL
+    ) OR
+    (
+      review_status = 'source_checked' AND
+      review_method = 'source_comparison' AND
+      reviewed_by_role IS NOT NULL AND
+      length(reviewed_by_role) > 0 AND
+      review_evidence IS NOT NULL AND
+      length(review_evidence) > 0 AND
+      reviewed_at_ms IS NOT NULL AND
+      reviewed_at_ms > 0
+    ) OR
+    (
+      review_status = 'human_reviewed' AND
+      review_method = 'human_editorial_review' AND
+      reviewed_by_role IS NOT NULL AND
+      length(reviewed_by_role) > 0 AND
+      review_evidence IS NOT NULL AND
+      length(review_evidence) > 0 AND
+      reviewed_at_ms IS NOT NULL AND
+      reviewed_at_ms > 0
+    )
   ),
   CHECK (provenance_classification <> 'licensed' OR review_status = 'human_reviewed'),
   PRIMARY KEY (version, id),
@@ -125,6 +155,47 @@ CREATE TABLE catalog_source (
   FOREIGN KEY (version, exercise_id) REFERENCES catalog_exercise(version, id)
 );
 
+-- Unreviewed rows have no exercise-specific citation. General program/safety references live
+-- outside these normalized row tables and cannot be used to manufacture source_checked status.
+CREATE TRIGGER catalog_source_unreviewed_insert_forbidden
+BEFORE INSERT ON catalog_source
+WHEN EXISTS (
+  SELECT 1
+  FROM catalog_exercise
+  WHERE version = NEW.version
+    AND id = NEW.exercise_id
+    AND review_status = 'unreviewed'
+)
+BEGIN
+  SELECT RAISE(ABORT, 'unreviewed_catalog_exercise_cannot_have_sources');
+END;
+
+CREATE TRIGGER catalog_source_unreviewed_retarget_forbidden
+BEFORE UPDATE OF version, exercise_id ON catalog_source
+WHEN EXISTS (
+  SELECT 1
+  FROM catalog_exercise
+  WHERE version = NEW.version
+    AND id = NEW.exercise_id
+    AND review_status = 'unreviewed'
+)
+BEGIN
+  SELECT RAISE(ABORT, 'unreviewed_catalog_exercise_cannot_have_sources');
+END;
+
+CREATE TRIGGER catalog_exercise_unreviewed_with_sources_forbidden
+BEFORE UPDATE OF review_status, review_method, reviewed_by_role, review_evidence, reviewed_at_ms
+ON catalog_exercise
+WHEN NEW.review_status = 'unreviewed'
+  AND EXISTS (
+    SELECT 1
+    FROM catalog_source
+    WHERE version = OLD.version AND exercise_id = OLD.id
+  )
+BEGIN
+  SELECT RAISE(ABORT, 'remove_catalog_sources_before_marking_unreviewed');
+END;
+
 CREATE INDEX catalog_search_name
   ON catalog_localization(version, locale, normalized_display_name);
 CREATE INDEX catalog_search_alias
@@ -149,6 +220,43 @@ WHEN
   (OLD.state = 'withdrawn' AND NEW.state <> 'withdrawn')
 BEGIN
   SELECT RAISE(ABORT, 'invalid_catalog_release_state_transition');
+END;
+
+CREATE TRIGGER catalog_release_publish_requires_complete_provenance
+BEFORE UPDATE OF state ON catalog_release
+WHEN OLD.state = 'draft' AND NEW.state = 'published'
+  AND EXISTS (
+    SELECT 1
+    FROM catalog_exercise AS exercise
+    WHERE exercise.version = OLD.version
+      AND (
+        (
+          exercise.review_status = 'unreviewed'
+          AND EXISTS (
+            SELECT 1 FROM catalog_source AS source
+            WHERE source.version = exercise.version AND source.exercise_id = exercise.id
+          )
+        ) OR
+        (
+          exercise.review_status IN ('source_checked', 'human_reviewed')
+          AND NOT EXISTS (
+            SELECT 1 FROM catalog_source AS source
+            WHERE source.version = exercise.version AND source.exercise_id = exercise.id
+          )
+        ) OR
+        (
+          exercise.provenance_classification = 'licensed'
+          AND NOT EXISTS (
+            SELECT 1 FROM catalog_source AS source
+            WHERE source.version = exercise.version
+              AND source.exercise_id = exercise.id
+              AND length(trim(source.license)) > 0
+          )
+        )
+      )
+  )
+BEGIN
+  SELECT RAISE(ABORT, 'catalog_release_has_incomplete_provenance');
 END;
 
 CREATE TRIGGER catalog_release_published_payload_immutable

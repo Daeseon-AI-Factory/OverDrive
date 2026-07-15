@@ -249,6 +249,25 @@ test('fails closed for checksum mismatch, TEXT storage, invalid UTF-8, or envelo
   }
 });
 
+test('fails closed for date-only, timezone-free, or calendar-normalized effectiveAt values', async () => {
+  for (const effectiveAt of [
+    '2026-07-14',
+    '2026-07-14T00:00:00',
+    '2026-02-30T00:00:00Z',
+  ]) {
+    const bytes = compactBytes({ effectiveAt });
+    const response = await worker.fetch(request(), {
+      CATALOG_DB: catalogDb(releaseRow({
+        payload_json: bytes,
+        payload_bytes: bytes.byteLength,
+        checksum_hex: checksum(bytes),
+      })),
+    });
+    assert.equal(response.status, 503, effectiveAt);
+    assert.equal(response.headers.get('cache-control'), 'no-store', effectiveAt);
+  }
+});
+
 test('catalog source is read-only, isolated from QuickLog, secrets, telemetry, cookies, and outbound fetch', () => {
   assert.doesNotMatch(source, /\b(?:INSERT|UPDATE|DELETE|REPLACE)\b/u);
   assert.doesNotMatch(source, /(?:GROQ|APPLE|ENTITLEMENT|AI_RATE_LIMITER|overdrive-quicklog)/u);
