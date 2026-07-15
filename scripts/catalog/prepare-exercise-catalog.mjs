@@ -6,6 +6,7 @@ import {
   buildCoverageMatrix,
   checksumForRaw,
   normalizeSearchV1,
+  parseLegacySeedContract,
   validateCatalog,
 } from './catalog-validation.mjs';
 
@@ -137,7 +138,7 @@ async function expectedArtifacts() {
     readFile(PATHS.compatibility, 'utf8').then(JSON.parse),
     readFile(PATHS.seed, 'utf8'),
   ]);
-  const seedIds = [...seedSource.matchAll(/\bid:\s*'([^']+)'/g)].map((match) => match[1]);
+  const seedContract = parseLegacySeedContract(seedSource);
   const snapshot = buildCatalogSnapshot();
   const raw = Buffer.from(JSON.stringify(snapshot), 'utf8');
   const checksum = checksumForRaw(raw);
@@ -147,7 +148,7 @@ async function expectedArtifacts() {
     schema,
     compatibility,
     referenceContext: REFERENCE_CONTEXT,
-    seedIds,
+    seedContract,
     raw,
     sidecar,
   });

@@ -11,8 +11,11 @@ Frozen: `2026-07-14T19:37:51Z`
 Pre-release amendment: `2026-07-14` — provenance now distinguishes genuinely
 unreviewed rows from source-checked rows; equipment alternatives may not be
 encoded as optional supplements; and prescriptions carry an explicit counting
-convention. No catalog v1 release had been published before this amendment, so
-the schema remains `1.0.0`.
+convention. A second pre-release correction preserves frozen umbrella identities,
+uses filterable equipment-capability tokens where a concrete product would be
+too narrow, and separates the 64-row curated artifact from the 512-row snapshot
+contract. No catalog v1 release had been published before these amendments, so
+the schema and every initial row remain at revision `1`.
 
 This document is the normative boundary shared by catalog curation, the catalog
 Worker/D1 service, and app-side cache/search work. The JSON Schema at
@@ -128,7 +131,11 @@ validate against the machine-readable schema and every invariant in section 10.
 - `id` is an original ASCII lowercase snake-case identifier, at most 64 characters.
 - An ID is immutable, globally unique, never reassigned, and never reused after retirement.
 - The 32 shipped IDs are frozen exactly by the compatibility registry. Renaming is display-only.
-- `recordRevision` starts at `1` and increases when any semantic field changes.
+- `recordRevision` starts at `1` when an ID first appears in a published release.
+  It counts published semantic row revisions, not draft commits. Because no v1
+  catalog was published before the pre-release corrections, every initial row
+  remains revision `1`. After first publication, a semantic change to an existing
+  ID must increment the prior published revision.
 - `status` is `active`, `deprecated`, or `retired`. Public snapshots never contain draft rows.
 - A deprecated row remains resolvable for history/search and may name an active `replacementId`.
 - A retired row remains resolvable for historic logs but is excluded from browse and new selection.
@@ -150,8 +157,11 @@ an empty primary list when a region claim would be misleading.
 
 The full frozen equipment, movement-pattern, difficulty, exercise-type,
 tracking-mode, and target-unit enums are in the JSON Schema. `isBodyweight` is
-orthogonal to `exerciseType` and does not mean that no equipment is required
-(for example, a pull-up bar can still be required).
+orthogonal to `exerciseType` and records the baseline movement/logging property;
+it does not mean that equipment or optional external load is impossible (for
+example, a pull-up bar can still be required). The frozen 32 preserve the seed
+value exactly because the current app uses it to choose workout-entry and weight
+semantics, including for cardio equipment such as cycling and rowing.
 
 Every entry in `equipment.required` is conjunctive: all listed items are needed
 for that canonical exercise identity. `equipment.optional` contains only
@@ -160,6 +170,41 @@ a mat or external load). It must never encode mutually exclusive substitutes
 such as outdoor route versus treadmill, dumbbell versus kettlebell, or free bar
 versus guided-bar machine. Those are distinct implementations and need distinct
 canonical rows.
+
+Equipment values are either concrete inventory classes or explicit, filterable
+capabilities. `leg_curl_station` means a fixed-resistance station that supports
+loaded knee flexion, across seated or lying station variants;
+`dual_fly_machine` means a reversible fly station with a rear-delt path;
+`rear_foot_support` resolves to a stable bench, box, or platform;
+`upper_back_support` resolves to a stable bench, box, or padded station; and
+`external_resistance` resolves to at least one available load source such as a
+barbell, dumbbell, plate, band, or dedicated machine. A detailed equipment
+filter must resolve every required capability through a reviewed local inventory
+mapping and exclude the row when it cannot prove that mapping. Capability tokens
+are requirements, not permission to treat mutually exclusive products as
+optional substitutes.
+
+`external_resistance` is the sole frozen-umbrella exception to the general ban
+on substitute equipment: it is an explicit required capability satisfied by any
+one reviewed load source in its mapping, not an `optional` list and not a claim
+that all load sources are required. It may appear only on the frozen compatibility
+rows that need to preserve the app's existing loaded-log semantics. New rows must
+name concrete implementation equipment instead.
+
+The frozen 32 IDs are compatibility umbrellas where the shipped seed did not
+encode an exact implementation. Their seed-level generic display identity is
+preserved while metadata supplies the narrowest honest execution boundary:
+`leg_curl` requires a `leg_curl_station`; `bulgarian_split_squat` requires
+rear-foot support plus external resistance; `standing_calf_raise` requires
+external resistance; and `hip_thrust` requires upper-back support plus external
+resistance. Those loaded capability boundaries preserve the frozen seed's
+`isBodyweight: false` logging behavior without choosing barbell versus dumbbell
+versus another load source. `zone2_run`, `hiit_intervals`, and `incline_walk` retain
+equipment-free/bodyweight-compatible defaults instead of pretending that one
+route, machine, or interval modality defines the umbrella. A concrete alternate
+implementation needs a new non-frozen ID; it must not silently narrow a frozen
+display name. This exception is limited to the frozen compatibility set and does
+not relax exact-implementation taxonomy for new rows.
 
 Primary regions are the intended targets or prime movers. Secondary regions are
 limited to direct, meaningful training targets, not incidental stabilization or
@@ -178,6 +223,14 @@ for non-repetition modalities such as open-ended cardio. The catalog must not
 publish a new strength duration/distance prescription until the app's strength
 log can persist that measure honestly; the frozen legacy `plank` row remains the
 only v1 exception.
+
+Generic dumbbell and hammer curls use `per_side`: simultaneous and alternating
+execution both complete the same target on each arm. Seated trunk rotation also
+uses `per_side`, so a set is not complete after repetitions on only one side.
+Once an ID has been published, `countingConvention` is immutable: historic
+`set_log` rows do not store catalog revision, so changing it would reinterpret
+old repetitions. A different counting convention requires a new canonical ID,
+the old row's normal deprecation/replacement path, and no history rewrite.
 
 ## 4. Deterministic ordering and search
 
@@ -238,7 +291,7 @@ Workers and clients must not rely on object-key serialization order.
 - `X-Catalog-Checksum`: `sha256:` plus lowercase SHA-256 of the exact response-body bytes.
 - `Cache-Control: public, max-age=300, stale-while-revalidate=86400`.
 - Matching `If-None-Match` returns `304` with no body and the same version/cache headers.
-- A release contains at most 512 exercises and at most 524,288 uncompressed UTF-8 bytes.
+- A release contains 32 to 512 exercises and at most 524,288 uncompressed UTF-8 bytes.
 - v1 is an atomic, unpaginated snapshot. Crossing either bound requires a new reviewed contract, not silent truncation.
 - Errors use `Cache-Control: no-store`; an unavailable new release must not replace the last valid one.
 
@@ -258,6 +311,9 @@ The existing AI request projection remains independently bounded: at most 64
 candidate exercises, at most four names per exercise, and at most 60 characters
 per name. Projection is deterministic from the normalized search result; the
 catalog endpoint must never be forwarded wholesale to the AI Worker.
+The initial curated `1.0.0` artifact contains exactly 64 rows, but 64 is not a
+snapshot-contract maximum; a larger valid snapshot is projected down to at most
+64 AI candidates by the client/AI boundary.
 
 ## 6. Dedicated D1 schema proposal
 
@@ -411,9 +467,10 @@ Fetch/activation sequence:
 4. In one SQLite transaction, mark the new snapshot active and retain the previous valid snapshot.
 5. On any network/parse/validation/activation failure, leave the active snapshot untouched.
 
-Read fallback order is: newest valid active cache, bundled snapshot, then the
-existing seeded `exercise` rows. A bad remote response can therefore reduce
-freshness but cannot empty search or block logging.
+Read fallback order is: newest valid active cache, retained previous valid cache
+(including after channel-pointer rollback), bundled snapshot, then the existing
+seeded `exercise` rows. A bad remote response can therefore reduce freshness but
+cannot empty search or block logging.
 
 The existing `exercise` table remains the foreign-key bridge for programs and
 `set_log`. A separate cache mapping stores `catalog_id -> exercise.id`:
@@ -437,8 +494,9 @@ videos. A citation is evidence for a classification; it is not permission to
 copy expressive content.
 
 Every exercise has an explicit `classification` and an honest review status.
-Only a row that was actually compared against exercise-specific sources has
-ordered source records and evidence:
+An `unreviewed` row has exactly zero row-level source records. Only a row that
+was actually compared against exercise-specific sources has one or more ordered
+source records and evidence:
 
 - `original_editorial`: internally authored factual classification/name/alias;
 - `public_facts`: classifications checked against public scientific or official guidance; or
@@ -482,6 +540,14 @@ Names and gym colloquialisms must be written independently and carry their actua
 `unreviewed`, `source_checked`, or `human_reviewed` status in each locale. Translating
 proprietary wording does not make it original.
 
+Non-frozen canonical IDs, display names, and aliases fail closed on the reviewed
+eponym/protected-name denylist, including `Arnold`, `CrossFit`, and `Tabata` after
+search normalization. A familiar `Trap-Bar Deadlift` alias is retained only as
+an explicitly reviewed search bridge to neutral canonical ID `hex_bar_deadlift`
+and equipment `hex_bar`; it does not control the canonical display or taxonomy.
+The assisted pull-up aliases likewise preserve the overhand pull-up grip and do
+not merge the distinct chin-up identity.
+
 ## 9. Privacy-minimal search telemetry
 
 Telemetry is optional and off the catalog GET path. If enabled, only these
@@ -512,7 +578,7 @@ A release is rejected unless all checks pass:
 3. Stored compact payload bytes, checksum, ETag derivation, item count, and uncompressed byte count match.
 4. All 32 compatibility IDs exist exactly once; no ID was renamed, reused, or removed.
 5. IDs match the frozen pattern; display order is unique; the array has canonical order.
-6. Revisions increase on semantic changes; effective windows are valid and non-overlapping for an ID.
+6. Revisions count published semantic row changes: initial unpublished rows stay at `1`, while a post-publication semantic change increments the prior published revision; effective windows are valid and non-overlapping for an ID.
 7. Required locales exist; names/aliases meet length limits and normalize non-empty.
 8. Names and aliases are unique within an exercise/locale after `search-v1` normalization.
 9. Cross-exercise normalized-name collisions have an explicit ambiguity review; none is silently discarded.
@@ -520,15 +586,15 @@ A release is rejected unless all checks pass:
 11. Equipment, movement, difficulty, type, tracking, target, and region values use frozen enums.
 12. Prescription ranges are finite/non-negative, `low <= high`, and mode/unit compatible.
 13. Replacement IDs exist, are not retired, do not self-reference, and form no cycle.
-14. Every row has an honest status/method/role/evidence record; unreviewed rows have no row sources or review identity, and source-checking never claims human approval.
+14. Every row has an honest status/method/role/evidence record; unreviewed rows have exactly zero row sources or review identity, reviewed rows have at least one ordered source, and source-checking never claims human approval.
 15. Licensed imports have a compatible explicit license and `human_reviewed` evidence.
 16. No description/media/proprietary copy or fabricated user/seed/test record is represented as factual production data.
 17. The deterministic AI candidate projection stays within 64 rows, four names per row, and 60 characters per name.
 18. Normalization and bounded-typo conformance vectors agree in ingestion, Worker, app, and tests.
-19. Required equipment is conjunctive; optional equipment is supplemental and never a substitute implementation.
-20. Counting convention is explicit; per-side targets are identified consistently and unsupported strength duration/distance rows are rejected.
+19. Required equipment is conjunctive; optional equipment is supplemental and never a substitute implementation. Only frozen rows may use the explicit `external_resistance` any-of capability through its reviewed inventory mapping.
+20. Counting convention is explicit; per-side targets are identified consistently, a published ID cannot change counting convention without a new replacement ID, and unsupported strength duration/distance rows are rejected.
 21. Secondary regions follow the direct-training rubric and never exceed three.
-22. All timestamps use timezone-qualified RFC 3339 syntax and represent real calendar instants.
+22. All timestamps use exact UTC-second syntax `YYYY-MM-DDTHH:mm:ssZ` with no offset or fractional seconds and represent real calendar instants without date normalization.
 
 Release tooling must fail closed and print stable ID plus field path for every
 error. Validation occurs before any channel-pointer update.

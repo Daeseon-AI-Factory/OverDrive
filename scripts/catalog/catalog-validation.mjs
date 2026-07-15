@@ -56,32 +56,41 @@ const CARDIO_SOURCE_URLS = [
 const PER_SIDE_IDS = new Set([
   'db_curl',
   'bulgarian_split_squat',
+  'hammer_curl',
   'single_arm_db_row',
   'walking_lunge',
   'step_platform_step_up',
   'dead_bug',
   'side_plank_hip_lift',
   'cable_anti_rotation_press',
+  'seated_trunk_rotation',
   'dumbbell_suitcase_march',
   'dumbbell_single_leg_hip_hinge',
 ]);
-const NON_FROZEN_FORBIDDEN_TOKENS = [
-  'Arnold',
-  'Pallof',
-  'Russian',
-  'Farmer',
-  'StepMill',
-  'OpenStax',
+const NON_FROZEN_FORBIDDEN_IDENTITY_TOKENS = [
+  'arnold',
+  'pallof',
+  'russian',
+  'farmer',
+  'stepmill',
+  'openstax',
   'wger',
-  'Pec Deck',
-  'Hack Squat',
-  'EZ-Bar',
-  'Smith Machine',
-  'Romanian',
+  'pecdeck',
+  'hacksquat',
+  'ezbar',
+  'smithmachine',
+  'romanian',
   'rumano',
   '루마니안',
   '罗马尼亚',
+  'crossfit',
+  'tabata',
 ];
+const FROZEN_ONLY_CAPABILITY_EQUIPMENT = new Set([
+  'rear_foot_support',
+  'upper_back_support',
+  'external_resistance',
+]);
 
 export class CatalogValidationError extends Error {
   constructor(path, message) {
@@ -180,6 +189,17 @@ export function checksumForRaw(raw) {
   return `sha256:${createHash('sha256').update(raw).digest('hex')}`;
 }
 
+export function parseLegacySeedContract(seedSource) {
+  check(typeof seedSource === 'string', 'src/db/seed.ts', 'must be source text');
+  return [...seedSource.matchAll(
+    /\{\s*id:\s*'([^']+)'[\s\S]*?type:\s*'(strength|cardio)'[\s\S]*?is_bodyweight:\s*(true|false)\s*\}/g,
+  )].map((match) => ({
+    id: match[1],
+    exerciseType: match[2],
+    isBodyweight: match[3] === 'true',
+  }));
+}
+
 export function buildCoverageMatrix(snapshot, schema) {
   const equipmentIds = schema.$defs.equipmentId.enum;
   const movementPatterns = schema.$defs.movementPattern.enum;
@@ -246,7 +266,7 @@ function validatePrescription(prescription, exercise, path) {
     (prescription.countingConvention === 'per_side') === PER_SIDE_IDS.has(exercise.id),
     `${path}.countingConvention`,
     PER_SIDE_IDS.has(exercise.id)
-      ? 'this unilateral row must use per_side'
+      ? 'this row must use per_side so the set is complete only after both sides reach the target'
       : 'this row is not in the canonical per-side set',
   );
   if (prescription.target === null) {
@@ -410,6 +430,24 @@ function validateExercise(exercise, index, schema, searchTermsByLocale) {
   }
   const equipmentOverlap = exercise.equipment.required.filter((id) => exercise.equipment.optional.includes(id));
   check(equipmentOverlap.length === 0, `${path}.equipment`, `required/optional overlap: ${equipmentOverlap.join(', ')}`);
+  if (index >= 32) {
+    for (const role of ['required', 'optional']) {
+      for (const equipmentId of exercise.equipment[role]) {
+        check(
+          !FROZEN_ONLY_CAPABILITY_EQUIPMENT.has(equipmentId),
+          `${path}.equipment.${role}`,
+          `${equipmentId} is a frozen-umbrella capability; new rows require exact implementation equipment`,
+        );
+      }
+    }
+  }
+  if (exercise.exerciseType === 'strength' && exercise.isBodyweight === false) {
+    check(
+      exercise.equipment.required.length >= 1,
+      `${path}.equipment.required`,
+      'non-bodyweight strength rows must require concrete equipment or a capability setup',
+    );
+  }
   enumValue(exercise.movementPattern, schema.$defs.movementPattern.enum, `${path}.movementPattern`);
   enumValue(exercise.difficulty, DIFFICULTIES, `${path}.difficulty`);
 
@@ -484,6 +522,7 @@ function validateConformanceVectors(snapshot) {
 
 function validateCanonicalEditorialDecisions(snapshot) {
   const byId = new Map(snapshot.exercises.map((exercise) => [exercise.id, exercise]));
+  const frozenIds = new Set(snapshot.exercises.slice(0, 32).map((exercise) => exercise.id));
   const requireRow = (id) => {
     const exercise = byId.get(id);
     check(exercise, `catalog.exercise.${id}`, 'required canonical row is missing');
@@ -491,50 +530,58 @@ function validateCanonicalEditorialDecisions(snapshot) {
   };
   const exactEquipment = (id, required, optional = []) => {
     const exercise = requireRow(id);
+    const boundary = frozenIds.has(id) ? 'frozen umbrella boundary' : 'exact implementation';
     check(
       JSON.stringify(exercise.equipment.required) === JSON.stringify(required),
       `catalog.exercise.${id}.equipment.required`,
-      `must be ${required.join(', ') || 'empty'} for this exact implementation`,
+      `must be ${required.join(', ') || 'empty'} for this ${boundary}`,
     );
     check(
       JSON.stringify(exercise.equipment.optional) === JSON.stringify(optional),
       `catalog.exercise.${id}.equipment.optional`,
-      `must contain only supplemental equipment: ${optional.join(', ') || 'empty'}`,
+      `must contain only supplemental equipment for this ${boundary}: ${optional.join(', ') || 'empty'}`,
     );
   };
 
   check(requireRow('leg_press').movementPattern === 'squat', 'catalog.exercise.leg_press.movementPattern', 'must be squat');
   check(requireRow('dips').movementPattern === 'vertical_push', 'catalog.exercise.dips.movementPattern', 'must be vertical_push');
 
-  exactEquipment('barbell_bench_press', ['barbell', 'bench', 'rack']);
+  exactEquipment('barbell_bench_press', ['barbell', 'bench'], ['rack']);
   exactEquipment('barbell_back_squat', ['barbell', 'rack']);
-  exactEquipment('standing_calf_raise', ['calf_raise_machine']);
-  exactEquipment('hip_thrust', ['barbell', 'bench']);
+  exactEquipment('leg_curl', ['leg_curl_station']);
+  exactEquipment('bulgarian_split_squat', ['rear_foot_support', 'external_resistance']);
+  exactEquipment('standing_calf_raise', ['external_resistance']);
+  exactEquipment('hip_thrust', ['upper_back_support', 'external_resistance']);
   exactEquipment('zone2_run', []);
-  exactEquipment('hiit_intervals', ['bodyweight_space']);
+  exactEquipment('hiit_intervals', []);
+  exactEquipment('incline_walk', []);
   exactEquipment('kettlebell_goblet_squat', ['kettlebell']);
   exactEquipment('machine_chest_fly', ['chest_fly_machine']);
-  exactEquipment('machine_rear_delt_fly', ['chest_fly_machine']);
+  exactEquipment('machine_rear_delt_fly', ['dual_fly_machine']);
   exactEquipment('rotating_dumbbell_press', ['dumbbell']);
   exactEquipment('angled_bar_curl', ['angled_curl_bar']);
   exactEquipment('sled_squat_machine', ['sled_squat_machine']);
   exactEquipment('step_platform_step_up', ['step_platform'], ['dumbbell']);
+  exactEquipment('hex_bar_deadlift', ['hex_bar']);
   exactEquipment('dumbbell_suitcase_march', ['dumbbell']);
   exactEquipment('dumbbell_single_leg_hip_hinge', ['dumbbell']);
 
   const expectedEnglishDisplayNames = {
-    leg_curl: 'Machine Leg Curl',
-    bulgarian_split_squat: 'Dumbbell Rear-Foot-Elevated Split Squat',
-    standing_calf_raise: 'Machine Standing Calf Raise',
-    hip_thrust: 'Barbell Hip Thrust',
-    zone2_run: 'Outdoor Zone 2 Run',
-    hiit_intervals: 'Bodyweight HIIT Session',
+    db_curl: 'Dumbbell Curl',
+    leg_curl: 'Leg Curl',
+    bulgarian_split_squat: 'Bulgarian Split Squat',
+    standing_calf_raise: 'Standing Calf Raise',
+    hammer_curl: 'Hammer Curl',
+    hip_thrust: 'Hip Thrust',
+    zone2_run: 'Zone 2 Run',
+    hiit_intervals: 'HIIT Intervals',
     machine_chest_fly: 'Machine Chest Fly',
     rotating_dumbbell_press: 'Standing Rotating Dumbbell Press',
     machine_rear_delt_fly: 'Machine Rear Delt Fly',
     kettlebell_goblet_squat: 'Kettlebell Goblet Squat',
     sled_squat_machine: 'Sled Squat Machine',
     step_platform_step_up: 'Step-Platform Step-Up',
+    hex_bar_deadlift: 'Hex-Bar Deadlift',
     seated_calf_raise: 'Machine Seated Calf Raise',
     side_plank_hip_lift: 'Side-Plank Hip Lift',
     cable_anti_rotation_press: 'Cable Anti-Rotation Press',
@@ -543,18 +590,39 @@ function validateCanonicalEditorialDecisions(snapshot) {
     dumbbell_single_leg_hip_hinge: 'Dumbbell Single-Leg Hip Hinge',
   };
   for (const [id, expectedName] of Object.entries(expectedEnglishDisplayNames)) {
+    const boundary = frozenIds.has(id) ? 'preserve the frozen umbrella identity' : 'name the exact implementation';
     check(
       requireRow(id).localizations.en.displayName === expectedName,
       `catalog.exercise.${id}.localizations.en.displayName`,
-      `must name the exact implementation as ${expectedName}`,
+      `must ${boundary} as ${expectedName}`,
     );
   }
 
   const hiit = requireRow('hiit_intervals');
   check(hiit.exerciseType === 'cardio', 'catalog.exercise.hiit_intervals.exerciseType', 'must be cardio');
-  check(hiit.isBodyweight === true, 'catalog.exercise.hiit_intervals.isBodyweight', 'must identify the bodyweight modality');
+  check(hiit.isBodyweight === true, 'catalog.exercise.hiit_intervals.isBodyweight', 'must preserve the frozen seed compatibility flag without narrowing the identity');
   check(hiit.movementPattern === 'interval_mixed', 'catalog.exercise.hiit_intervals.movementPattern', 'must be interval_mixed');
   check(hiit.defaultPrescription.trackingMode === 'duration', 'catalog.exercise.hiit_intervals.defaultPrescription.trackingMode', 'must match the current cardio logger');
+
+  check(requireRow('bulgarian_split_squat').isBodyweight === false, 'catalog.exercise.bulgarian_split_squat.isBodyweight', 'frozen bridge must preserve loaded-log semantics');
+  check(requireRow('standing_calf_raise').isBodyweight === false, 'catalog.exercise.standing_calf_raise.isBodyweight', 'frozen bridge must preserve loaded-log semantics');
+  check(requireRow('hip_thrust').isBodyweight === false, 'catalog.exercise.hip_thrust.isBodyweight', 'loaded setup capability must remain consistent with the non-bodyweight flag');
+
+  check(
+    requireRow('assisted_pull_up').localizations.en.aliases.includes('Band-Assisted Overhand Pull-Up'),
+    'catalog.exercise.assisted_pull_up.localizations.en.aliases',
+    'must preserve the pull-up grip instead of merging an assisted chin-up',
+  );
+  check(
+    !requireRow('assisted_pull_up').localizations.en.aliases.includes('Assisted Chin-Up'),
+    'catalog.exercise.assisted_pull_up.localizations.en.aliases',
+    'must not merge a chin-up into the pull-up identity',
+  );
+  check(
+    requireRow('hex_bar_deadlift').localizations.en.aliases.includes('Trap-Bar Deadlift'),
+    'catalog.exercise.hex_bar_deadlift.localizations.en.aliases',
+    'must retain the familiar Trap-Bar search alias on the neutral canonical identity',
+  );
 
   check(
     requireRow('hanging_leg_raise').localizations.es.aliases.includes('Elevación colgada de piernas'),
@@ -586,7 +654,7 @@ function validateCanonicalEditorialDecisions(snapshot) {
     'sled_squat_machine',
     'walking_lunge',
     'step_platform_step_up',
-    'trap_bar_deadlift',
+    'hex_bar_deadlift',
     'kettlebell_swing',
     'dead_bug',
     'side_plank_hip_lift',
@@ -601,12 +669,32 @@ function validateCanonicalEditorialDecisions(snapshot) {
     );
   }
 
-  for (const legacyId of ['arnold_press', 'pec_deck_fly', 'rear_delt_fly', 'ez_bar_curl', 'goblet_squat', 'hack_squat', 'step_up', 'side_plank', 'pallof_press', 'russian_twist', 'farmer_carry', 'single_leg_romanian_deadlift']) {
+  for (const legacyId of ['arnold_press', 'pec_deck_fly', 'rear_delt_fly', 'ez_bar_curl', 'goblet_squat', 'hack_squat', 'step_up', 'trap_bar_deadlift', 'side_plank', 'pallof_press', 'russian_twist', 'farmer_carry', 'single_leg_romanian_deadlift']) {
     check(!byId.has(legacyId), `catalog.exercise.${legacyId}`, 'non-frozen identity must use its neutral exact-implementation replacement');
   }
-  const nonFrozenText = JSON.stringify(snapshot.exercises.slice(32));
-  for (const token of NON_FROZEN_FORBIDDEN_TOKENS) {
-    check(!nonFrozenText.includes(token), 'catalog.exercises[32..]', `must not contain non-neutral token ${token}`);
+  for (const exercise of snapshot.exercises.slice(32)) {
+    const identityFields = [
+      [`catalog.exercise.${exercise.id}.id`, exercise.id],
+      ...exercise.equipment.required.map((value, index) => [`catalog.exercise.${exercise.id}.equipment.required[${index}]`, value]),
+      ...exercise.equipment.optional.map((value, index) => [`catalog.exercise.${exercise.id}.equipment.optional[${index}]`, value]),
+      ...LOCALES.flatMap((locale) => [
+        [`catalog.exercise.${exercise.id}.localizations.${locale}.displayName`, exercise.localizations[locale].displayName],
+        ...exercise.localizations[locale].aliases.map((value, index) => [
+          `catalog.exercise.${exercise.id}.localizations.${locale}.aliases[${index}]`,
+          value,
+        ]),
+      ]),
+    ];
+    for (const [path, value] of identityFields) {
+      const normalized = normalizeSearchV1(value);
+      for (const token of NON_FROZEN_FORBIDDEN_IDENTITY_TOKENS) {
+        check(
+          !normalized.includes(normalizeSearchV1(token)),
+          path,
+          `must not contain non-neutral or protected identity token ${token}`,
+        );
+      }
+    }
   }
 }
 
@@ -647,7 +735,7 @@ export function validateCatalog({
   schema,
   compatibility,
   referenceContext,
-  seedIds,
+  seedContract,
   raw,
   sidecar,
 }) {
@@ -660,7 +748,6 @@ export function validateCatalog({
   check(snapshot.searchNormalization === 'search-v1', 'catalog.searchNormalization', 'must be search-v1');
   check(Array.isArray(snapshot.exercises), 'catalog.exercises', 'must be an array');
   check(snapshot.exercises.length >= 32 && snapshot.exercises.length <= 512, 'catalog.exercises', 'must contain 32 to 512 rows');
-  check(snapshot.exercises.length <= 64, 'catalog.exercises', 'v1 bundled snapshot must fit the deterministic AI projection bound');
 
   validateReferenceContext(referenceContext);
 
@@ -679,7 +766,21 @@ export function validateCatalog({
   check(legacyIds.length === 32 && new Set(legacyIds).size === 32, 'compatibility.canonicalIds', 'must contain 32 unique IDs');
   check(JSON.stringify(ids.slice(0, 32)) === JSON.stringify(legacyIds), 'catalog.exercises[0..31]', 'must preserve exact legacy ID order');
   check(JSON.stringify(displayOrders.slice(0, 32)) === JSON.stringify(Array.from({ length: 32 }, (_, index) => index + 1)), 'catalog.exercises[0..31].displayOrder', 'must preserve displayOrder 1..32');
-  check(JSON.stringify(seedIds) === JSON.stringify(legacyIds), 'src/db/seed.ts', 'must match compatibility registry exactly');
+  check(Array.isArray(seedContract) && seedContract.length === 32, 'src/db/seed.ts', 'must expose 32 seed identity/type/bodyweight records');
+  check(JSON.stringify(seedContract.map(({ id }) => id)) === JSON.stringify(legacyIds), 'src/db/seed.ts', 'must match compatibility registry exactly');
+  for (const [index, seed] of seedContract.entries()) {
+    const exercise = snapshot.exercises[index];
+    check(
+      exercise.exerciseType === seed.exerciseType,
+      `catalog.exercise.${exercise.id}.exerciseType`,
+      `frozen bridge must preserve seed value ${seed.exerciseType}`,
+    );
+    check(
+      exercise.isBodyweight === seed.isBodyweight,
+      `catalog.exercise.${exercise.id}.isBodyweight`,
+      `frozen bridge must preserve seed value ${seed.isBodyweight}`,
+    );
+  }
 
   const exerciseById = new Map(snapshot.exercises.map((exercise) => [exercise.id, exercise]));
   for (const exercise of snapshot.exercises) {
@@ -705,4 +806,25 @@ export function validateCatalog({
     check(sidecar === `${checksum}\n`, 'catalog.sidecar', 'must be one checksum line with one trailing newline');
   }
   return { checksum, payloadBytes: canonicalRaw.byteLength, coverage };
+}
+
+export function validateCatalogTransition(previousSnapshot, nextSnapshot) {
+  check(isObject(previousSnapshot), 'previousCatalog', 'must be an object');
+  check(Array.isArray(previousSnapshot.exercises), 'previousCatalog.exercises', 'must be an array');
+  check(isObject(nextSnapshot), 'nextCatalog', 'must be an object');
+  check(Array.isArray(nextSnapshot.exercises), 'nextCatalog.exercises', 'must be an array');
+
+  const previousById = new Map(
+    previousSnapshot.exercises.map((exercise) => [exercise.id, exercise]),
+  );
+  for (const exercise of nextSnapshot.exercises) {
+    const previous = previousById.get(exercise.id);
+    if (!previous) continue;
+    check(
+      exercise.defaultPrescription?.countingConvention ===
+        previous.defaultPrescription?.countingConvention,
+      `catalog.exercise.${exercise.id}.defaultPrescription.countingConvention`,
+      'published countingConvention is immutable because historic set logs do not store catalog revision; publish a new ID and replacement instead',
+    );
+  }
 }

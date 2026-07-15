@@ -16,7 +16,7 @@
   "properties": {
     "schemaVersion": {"const": "1.0.0"},
     "catalogVersion": {"type": "string", "pattern": "^1\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
-    "effectiveAt": {"type": "string", "format": "date-time"},
+    "effectiveAt": {"$ref": "#/$defs/timestamp"},
     "defaultLocale": {"const": "en"},
     "supportedLocales": {
       "const": ["en", "ko", "es", "zh-Hans"]
@@ -30,9 +30,14 @@
     }
   },
   "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
     "timestampOrNull": {
       "oneOf": [
-        {"type": "string", "format": "date-time"},
+        {"$ref": "#/$defs/timestamp"},
         {"type": "null"}
       ]
     },
@@ -84,21 +89,25 @@
         "barbell",
         "dumbbell",
         "kettlebell",
-        "trap_bar",
+        "hex_bar",
         "angled_curl_bar",
         "bench",
+        "rear_foot_support",
+        "upper_back_support",
+        "external_resistance",
         "rack",
         "pull_up_bar",
         "dip_bars",
         "cable_machine",
         "lat_pulldown_machine",
         "leg_press_machine",
-        "leg_curl_machine",
+        "leg_curl_station",
         "leg_extension_machine",
         "sled_squat_machine",
         "chest_press_machine",
         "shoulder_press_machine",
         "chest_fly_machine",
+        "dual_fly_machine",
         "calf_raise_machine",
         "step_platform",
         "treadmill",
@@ -297,7 +306,7 @@
               "reviewMethod": {"const": "source_comparison"},
               "reviewedByRole": {"type": "string", "minLength": 1},
               "reviewEvidence": {"type": "string", "minLength": 1},
-              "reviewedAt": {"type": "string", "format": "date-time"},
+              "reviewedAt": {"$ref": "#/$defs/timestamp"},
               "sources": {"minItems": 1}
             }
           }
@@ -309,7 +318,7 @@
               "reviewMethod": {"const": "human_editorial_review"},
               "reviewedByRole": {"type": "string", "minLength": 1},
               "reviewEvidence": {"type": "string", "minLength": 1},
-              "reviewedAt": {"type": "string", "format": "date-time"},
+              "reviewedAt": {"$ref": "#/$defs/timestamp"},
               "sources": {"minItems": 1}
             }
           }
@@ -360,7 +369,7 @@
         "id": {"$ref": "#/$defs/exerciseId"},
         "recordRevision": {"type": "integer", "minimum": 1},
         "status": {"enum": ["active", "deprecated", "retired"]},
-        "effectiveFrom": {"type": "string", "format": "date-time"},
+        "effectiveFrom": {"$ref": "#/$defs/timestamp"},
         "effectiveTo": {"$ref": "#/$defs/timestampOrNull"},
         "replacementId": {"$ref": "#/$defs/idOrNull"},
         "displayOrder": {"type": "integer", "minimum": 1},

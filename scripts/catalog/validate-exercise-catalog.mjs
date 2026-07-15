@@ -2,7 +2,11 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { REFERENCE_CONTEXT } from './catalog-source.mjs';
-import { buildCoverageMatrix, validateCatalog } from './catalog-validation.mjs';
+import {
+  buildCoverageMatrix,
+  parseLegacySeedContract,
+  validateCatalog,
+} from './catalog-validation.mjs';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const path = (relative) => `${ROOT}${relative}`;
@@ -29,7 +33,17 @@ async function main() {
   const snapshot = JSON.parse(raw.toString('utf8'));
   const referenceContext = JSON.parse(referenceContextText);
   const coverage = JSON.parse(coverageText);
-  const seedIds = [...seedSource.matchAll(/\bid:\s*'([^']+)'/g)].map((match) => match[1]);
+  const seedContract = parseLegacySeedContract(seedSource);
+
+  if (snapshot.catalogVersion === '1.0.0' && snapshot.exercises.length !== 64) {
+    throw new Error('exercise-catalog-v1.json: initial curated v1.0.0 artifact must contain exactly 64 exercises');
+  }
+  if (
+    snapshot.catalogVersion === '1.0.0' &&
+    !snapshot.exercises.every((exercise) => exercise.recordRevision === 1)
+  ) {
+    throw new Error('exercise-catalog-v1.json: unpublished initial v1.0.0 rows must start at recordRevision 1');
+  }
 
   if (JSON.stringify(referenceContext) !== JSON.stringify(REFERENCE_CONTEXT)) {
     throw new Error('exercise-catalog-v1.reference-context.json: stale or edited outside the publisher');
@@ -39,7 +53,7 @@ async function main() {
     schema,
     compatibility,
     referenceContext,
-    seedIds,
+    seedContract,
     raw,
     sidecar,
   });

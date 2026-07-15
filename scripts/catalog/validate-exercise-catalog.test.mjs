@@ -3,15 +3,21 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { buildCatalogSnapshot, REFERENCE_CONTEXT } from './catalog-source.mjs';
-import { checksumForRaw, validateCatalog } from './catalog-validation.mjs';
+import {
+  checksumForRaw,
+  parseLegacySeedContract,
+  validateCatalog,
+  validateCatalogTransition,
+} from './catalog-validation.mjs';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
-const [schema, compatibility, seedSource] = await Promise.all([
+const [schema, compatibility, seedSource, contractText] = await Promise.all([
   readFile(`${ROOT}docs/contracts/exercise-catalog-v1.schema.json`, 'utf8').then(JSON.parse),
   readFile(`${ROOT}docs/contracts/exercise-catalog-v1-compatibility.json`, 'utf8').then(JSON.parse),
   readFile(`${ROOT}src/db/seed.ts`, 'utf8'),
+  readFile(`${ROOT}docs/exercise-catalog-v1.md`, 'utf8'),
 ]);
-const seedIds = [...seedSource.matchAll(/\bid:\s*'([^']+)'/g)].map((match) => match[1]);
+const seedContract = parseLegacySeedContract(seedSource);
 
 const inputFor = (snapshot, withBytes = false, referenceContext = REFERENCE_CONTEXT) => {
   const input = {
@@ -19,7 +25,7 @@ const inputFor = (snapshot, withBytes = false, referenceContext = REFERENCE_CONT
     schema,
     compatibility,
     referenceContext,
-    seedIds,
+    seedContract,
   };
   if (withBytes) {
     input.raw = Buffer.from(JSON.stringify(snapshot), 'utf8');
@@ -30,13 +36,47 @@ const inputFor = (snapshot, withBytes = false, referenceContext = REFERENCE_CONT
 
 const row = (snapshot, id) => snapshot.exercises.find((exercise) => exercise.id === id);
 
-test('canonical source satisfies the amended catalog invariants', () => {
+test('current curated release is exactly 64 unpublished revision-1 rows', () => {
   const snapshot = buildCatalogSnapshot();
   const result = validateCatalog(inputFor(snapshot, true));
   assert.equal(snapshot.exercises.length, 64);
+  assert.equal(snapshot.exercises.every((exercise) => exercise.recordRevision === 1), true);
   assert.equal(result.payloadBytes, Buffer.byteLength(JSON.stringify(snapshot), 'utf8'));
   assert.equal(snapshot.exercises.every((exercise) => exercise.provenance.reviewStatus === 'unreviewed'), true);
   assert.equal(snapshot.exercises.every((exercise) => exercise.provenance.sources.length === 0), true);
+  assert.equal(row(snapshot, 'db_curl').defaultPrescription.countingConvention, 'per_side');
+  assert.equal(row(snapshot, 'hammer_curl').defaultPrescription.countingConvention, 'per_side');
+  assert.equal(row(snapshot, 'seated_trunk_rotation').defaultPrescription.countingConvention, 'per_side');
+});
+
+test('generic v1 validator accepts a valid 65-row snapshot', () => {
+  const snapshot = structuredClone(buildCatalogSnapshot());
+  const extra = structuredClone(row(snapshot, 'cable_crunch'));
+  extra.id = 'fixture_sixty_fifth_exercise';
+  extra.displayOrder = 65;
+  extra.localizations = {
+    en: { displayName: 'Fixture Sixty-Fifth Exercise', aliases: ['Fixture Movement 65'] },
+    ko: { displayName: '검증용 육십오 번 운동', aliases: ['검증용 65 동작'] },
+    es: { displayName: 'Ejercicio de prueba sesenta y cinco', aliases: ['Movimiento de prueba 65'] },
+    'zh-Hans': { displayName: '验证用第六十五项运动', aliases: ['验证用65动作'] },
+  };
+  snapshot.exercises.push(extra);
+
+  assert.doesNotThrow(() => validateCatalog(inputFor(snapshot)));
+});
+
+test('schema and contract freeze exact timestamp and cache fallback semantics', () => {
+  assert.deepEqual(schema.$defs.timestamp, {
+    type: 'string',
+    format: 'date-time',
+    pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$',
+  });
+  assert.match(
+    contractText,
+    /newest valid active cache, retained previous valid cache[\s\S]*bundled snapshot[\s\S]*seeded `exercise` rows/,
+  );
+  assert.match(contractText, /An `unreviewed` row has exactly zero row-level source records/);
+  assert.match(contractText, /published semantic row revisions, not draft commits/);
 });
 
 test('validator alarms when a frozen legacy ID is renamed', () => {
@@ -100,13 +140,13 @@ test('validator alarms when optional equipment is used as a substitute implement
   assert.throws(() => validateCatalog(inputFor(snapshot)), /must contain only supplemental equipment/);
 });
 
-test('validator alarms when an exact machine implementation regresses to a generic display', () => {
+test('validator alarms when a frozen generic identity is narrowed to a machine display', () => {
   const snapshot = structuredClone(buildCatalogSnapshot());
   row(snapshot, 'standing_calf_raise').localizations.en = {
-    displayName: 'Standing Calf Raise',
-    aliases: ['Calf Raise Machine'],
+    displayName: 'Machine Standing Calf Raise',
+    aliases: ['Standing Calf Raise'],
   };
-  assert.throws(() => validateCatalog(inputFor(snapshot)), /must name the exact implementation/);
+  assert.throws(() => validateCatalog(inputFor(snapshot)), /preserve the frozen umbrella identity as Standing Calf Raise/);
 });
 
 test('validator alarms when HIIT modality and equipment become ambiguous', () => {
@@ -114,7 +154,32 @@ test('validator alarms when HIIT modality and equipment become ambiguous', () =>
   const hiit = row(snapshot, 'hiit_intervals');
   hiit.equipment.required = [];
   hiit.equipment.optional = ['treadmill', 'bicycle'];
-  assert.throws(() => validateCatalog(inputFor(snapshot)), /this exact implementation/);
+  assert.throws(() => validateCatalog(inputFor(snapshot)), /frozen umbrella boundary/);
+});
+
+test('validator enforces frozen bridge flags and capability boundaries', () => {
+  for (const [id, value] of [
+    ['bulgarian_split_squat', true],
+    ['standing_calf_raise', true],
+    ['cycling', false],
+    ['rowing', false],
+  ]) {
+    const snapshot = structuredClone(buildCatalogSnapshot());
+    row(snapshot, id).isBodyweight = value;
+    assert.throws(() => validateCatalog(inputFor(snapshot)), /frozen bridge must preserve seed value/);
+  }
+
+  const bulgarian = structuredClone(buildCatalogSnapshot());
+  row(bulgarian, 'bulgarian_split_squat').equipment.required = ['rear_foot_support'];
+  assert.throws(() => validateCatalog(inputFor(bulgarian)), /external_resistance/);
+
+  const hipThrust = structuredClone(buildCatalogSnapshot());
+  row(hipThrust, 'hip_thrust').equipment.required = ['upper_back_support'];
+  assert.throws(() => validateCatalog(inputFor(hipThrust)), /external_resistance/);
+
+  const nonFrozen = structuredClone(buildCatalogSnapshot());
+  row(nonFrozen, 'push_up').equipment.required = ['external_resistance'];
+  assert.throws(() => validateCatalog(inputFor(nonFrozen)), /frozen-umbrella capability/);
 });
 
 test('validator alarms on corrected movement regressions', () => {
@@ -130,7 +195,31 @@ test('validator alarms on corrected movement regressions', () => {
 test('validator alarms when a unilateral target loses per-side counting', () => {
   const snapshot = structuredClone(buildCatalogSnapshot());
   row(snapshot, 'single_arm_db_row').defaultPrescription.countingConvention = 'total';
-  assert.throws(() => validateCatalog(inputFor(snapshot)), /unilateral row must use per_side/);
+  assert.throws(() => validateCatalog(inputFor(snapshot)), /must use per_side/);
+});
+
+test('validator applies bilateral set completeness to seated trunk rotation', () => {
+  const snapshot = structuredClone(buildCatalogSnapshot());
+  row(snapshot, 'seated_trunk_rotation').defaultPrescription.countingConvention = 'total';
+  assert.throws(() => validateCatalog(inputFor(snapshot)), /set is complete only after both sides/);
+});
+
+test('validator applies per-side targets to generic dumbbell curl identities', () => {
+  for (const id of ['db_curl', 'hammer_curl']) {
+    const snapshot = structuredClone(buildCatalogSnapshot());
+    row(snapshot, id).defaultPrescription.countingConvention = 'total';
+    assert.throws(() => validateCatalog(inputFor(snapshot)), /set is complete only after both sides/);
+  }
+});
+
+test('published counting convention changes require a new replacement ID', () => {
+  const previous = buildCatalogSnapshot();
+  const next = structuredClone(previous);
+  row(next, 'db_curl').defaultPrescription.countingConvention = 'total';
+  assert.throws(
+    () => validateCatalogTransition(previous, next),
+    /published countingConvention is immutable.*new ID and replacement/,
+  );
 });
 
 test('validator alarms on a new strength duration or distance row unsupported by the logger', () => {
@@ -151,10 +240,25 @@ test('validator alarms when corrected aliases regress', () => {
   assert.throws(() => validateCatalog(inputFor(snapshot)), /corrected Chinese alias/);
 });
 
-test('validator alarms when a neutral non-frozen name regresses to an eponym', () => {
-  const snapshot = structuredClone(buildCatalogSnapshot());
-  row(snapshot, 'rotating_dumbbell_press').localizations.en.displayName = 'Arnold Press';
-  assert.throws(() => validateCatalog(inputFor(snapshot)), /must name the exact implementation/);
+test('validator scans non-frozen aliases for eponyms and protected marks', () => {
+  for (const token of ['Arnold', 'CrossFit', 'Tabata']) {
+    const snapshot = structuredClone(buildCatalogSnapshot());
+    row(snapshot, 'elliptical').localizations.en.aliases = [`${token} Conditioning`];
+    assert.throws(
+      () => validateCatalog(inputFor(snapshot)),
+      new RegExp(`protected identity token ${token.toLowerCase()}`, 'i'),
+    );
+  }
+});
+
+test('validator keeps pull-up grip and rear-delt equipment identities distinct', () => {
+  const chinUp = structuredClone(buildCatalogSnapshot());
+  row(chinUp, 'assisted_pull_up').localizations.en.aliases = ['Assisted Chin-Up'];
+  assert.throws(() => validateCatalog(inputFor(chinUp)), /must preserve the pull-up grip/);
+
+  const rearDelt = structuredClone(buildCatalogSnapshot());
+  row(rearDelt, 'machine_rear_delt_fly').equipment.required = ['chest_fly_machine'];
+  assert.throws(() => validateCatalog(inputFor(rearDelt)), /dual_fly_machine/);
 });
 
 test('validator rejects date-only, timezone-free, and calendar-normalized timestamps', () => {
