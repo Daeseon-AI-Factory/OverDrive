@@ -1,0 +1,18 @@
+---
+title: "카탈로그 데이터 정본과 delivery 기준선을 통합했다"
+date: "2026-07-14"
+project: "OverDrive"
+kind: "tech-retro"
+visibility: "public"
+language: "ko"
+summary: "운동 카탈로그 정본, 생성 산출물, 검증기를 D1 delivery 작업과 같은 통합 브랜치에 합쳤다."
+tags: ["exercise-catalog", "integration", "data-integrity", "release-safety"]
+---
+
+카탈로그 데이터 보정과 D1 delivery 보강은 공통 기준선 뒤에서 병렬로 진행됐다. 데이터 브랜치는 64개 운동의 source, schema, compact JSON, checksum, D1 draft SQL, 전이 validator를 갱신했고 delivery 브랜치는 별도의 read-only Worker와 저장 경계를 발전시켰다. 후속 publisher가 데이터 브랜치의 validator를 직접 사용하려면 두 계보를 먼저 한 HEAD에 모아야 했다.
+
+`codex/catalog-data`를 `codex/usability-cockpit`에 no-fast-forward로 병합했다. 구현 파일은 자동 통합됐고 `docs/troubleshooting.md`만 충돌했다. 이 파일은 양쪽 모두 append-only 운영 증거였으므로 한 버전을 택하지 않았다. 기존 D1 BLOB·published 불변 기록과 새 identity·bounded import 기록을 순서대로 모두 보존했다.
+
+통합 뒤 `npm run catalog:validate`를 다시 실행했다. prepare check, release validator, 적대적 Node 테스트 39개가 통과했고 정본은 64행, compact UTF-8 66,654 bytes, checksum `sha256:43491e64b66fbd16f87325d8e8ea9e5d2325d888b71c700b61b80da19566604a`로 일치했다. 이는 데이터 통합의 기능 검증이다. Worker publisher와 앱 client는 아직 각각 작업 중이므로 통합 시점에 원격 D1, 실제 UI 품질, 제품 워크플로 성공을 주장하지 않는다.
+
+병합 커밋은 `18043ab`이다. 되돌릴 때는 이 merge commit을 revert해 데이터 계보만 통합 브랜치에서 제거할 수 있다. 원격 publish는 이 커밋에서 수행하지 않았으므로 외부 상태 rollback은 없다.

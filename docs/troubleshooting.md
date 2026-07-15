@@ -645,3 +645,12 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: `389a3e3ee6c4cc9269ef4934fc13a952868ec3ff`
 - **Verification**: `catalog:validate` 39/39, Jest 55 suites / 369 tests, strict TypeScript, zero-warning lint, `git diff --check`가 통과했다. 생성 SQL은 760 statements, 최대 49,353 bytes, BLOB 청크 24,576 / 24,576 / 17,502 bytes였다. Node SQLite에서 exact BLOB·draft 재실행·published/withdrawn 불변을 검증했고, Wrangler 4.110 local file import를 두 번 적용한 뒤 `blob` 66,654 bytes, 64 exercise rows, `foreign_key_check` 0을 확인했다. 생성 checksum은 `sha256:43491e64b66fbd16f87325d8e8ea9e5d2325d888b71c700b61b80da19566604a`다. 네 locale의 사람 편집 검토와 실제 앱 검색·기록 흐름은 미검증이다.
 - **Pattern**: revision이 없는 과거 로그가 참조하는 카탈로그 ID는 입력 의미를 같은 ID에서 바꾸지 않는다. 원격 DB import는 payload 정확성뿐 아니라 statement 크기, 재실행, published 불변을 같은 생성기와 테스트에서 잠근다.
+
+## 카탈로그 데이터와 delivery 브랜치의 기록이 병합 시 충돌했다
+
+- **Symptom**: `codex/catalog-data`를 delivery 작업이 있는 `codex/usability-cockpit`에 병합할 때 `docs/troubleshooting.md`에서 content conflict가 발생했다.
+- **Cause**: 두 브랜치가 공통 기준선 뒤에 각각 카탈로그 데이터 보정과 D1 delivery 경계를 기록하면서 같은 파일 끝에 새 항목을 추가했다. 구현 파일 충돌은 없었지만 append-only 로그의 삽입 위치가 겹쳤다.
+- **Fix**: D1 BLOB·불변 게시 경계와 정본 identity·bounded import 기록을 모두 보존해 충돌을 해소하고, 데이터 source·schema·생성 산출물·검증기를 delivery 브랜치에 하나의 merge commit으로 통합했다.
+- **Commit**: 18043ab
+- **Verification**: 통합 HEAD에서 `npm run catalog:validate` 39/39가 통과했고 64행, 66,654 bytes, `sha256:43491e64b66fbd16f87325d8e8ea9e5d2325d888b71c700b61b80da19566604a`를 다시 읽었다. Worker·클라이언트·원격 D1·Release simulator 검증은 이 merge 자체의 완료 범위가 아니다.
+- **Pattern**: append-only 운영 로그가 충돌하면 한쪽을 선택하지 말고 두 원인·수정·검증 기록을 모두 보존한 뒤 통합 정본을 다시 검증한다.
