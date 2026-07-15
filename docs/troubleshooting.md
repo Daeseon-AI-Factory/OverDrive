@@ -547,6 +547,7 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: `app.json`에 `ios.buildNumber: "13"`을 추가해 Expo 정본에 출시 빌드 번호를 고정했다. 배포 인증서·프로비저닝 변경은 외부 credential 조치이므로 이 커밋 범위에 포함하지 않았다.
 - **Commit**: 122e4da
 - **Verification**: `expo config`가 version `1.0`, buildNumber `13`, bundle ID `ai.daeseon.reploom`을 반환했고 Xcode Release build settings의 `CURRENT_PROJECT_VERSION`도 `13`이었다. 두 번째 로컬 아카이브는 성공했으며 아카이브와 앱의 최종 `CFBundleVersion`이 모두 `13`이었다. PrivacyInfo 파싱과 은퇴 라우트 무검출, 기대 client marker 검출은 통과했다. App Store 배포용 export는 배포 인증서·Cloud Signing 권한 부재로 실패했으므로 Apple 업로드와 심사 요청은 하지 않았다.
+- **Follow-up (`c98e021`)**: 같은 추적 설정에서 build number를 15로 올린 뒤 archive와 IPA, 최종 Release simulator 앱이 모두 `CFBundleVersion=15`를 반환했다. Apple validation과 upload가 성공했고 App Store Connect build `7123db21-dbc0-4126-8f30-5a7105278602`은 `VALID` / `APP_STORE_ELIGIBLE` / Internal `IN_BETA_TESTING`으로 읽혔다. App Store version 1.0은 Build 13에 계속 연결돼 있고 기존 review item은 `REMOVED`이므로 App Review 재요청은 하지 않았다.
 - **Pattern**: Expo 네이티브 프로젝트의 출시 번호는 일회성 Xcode 명령이 아니라 추적되는 Expo 설정에 고정하고, 아카이브 안의 최종 앱 `Info.plist`를 다시 읽어 확인한다.
 
 ## App Store 출시 문서의 계획 상태가 실제 서버 상태보다 뒤처졌다

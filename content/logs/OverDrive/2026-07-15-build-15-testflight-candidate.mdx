@@ -1,0 +1,20 @@
+---
+title: "Build 15를 실제 기록 흐름과 TestFlight에서 검증했다"
+date: "2026-07-15"
+project: "OverDrive"
+kind: "tech-retro"
+visibility: "public"
+language: "ko"
+summary: "출시 번호를 15로 올리고 realistic seed, Apple 서버 검증, TestFlight processing을 서로 다른 증거로 닫았다."
+tags: ["ios", "testflight", "release", "simulator-qa"]
+---
+
+`app.json`의 iOS build number를 14에서 15로 올렸다. 구현 커밋은 `c98e021`이다. Expo public config, 생성된 native project, Release archive와 최종 IPA의 `Info.plist`를 각각 다시 읽어 bundle `ai.daeseon.reploom`, version `1.0`, build `15`, minimum iOS `16.4`, iPhone-only를 확인했다. IPA는 35,692,630 bytes이고 SHA-256은 `69cd59077d4b93f80cc36b5ce5e9ae774d15c8f2b1113801cf3e7c6bdeda2936`이다.
+
+Function 검증은 realistic schema-v8 SQLite seed를 유지한 Release simulator에서 했다. 수동 식사 `QA Bowl / 640 kcal / 42g`을 실제 터치로 저장해 food row가 3→4가 되는 것을 읽고, Undo 뒤 4→3과 해당 행 0개를 확인했다. 최종 Build 15 앱을 같은 seed 위에 덮어설치한 뒤 Explore에서 가슴 부위를 실제 터치해 Chest 추천과 Barbell Bench Press를 확인했다. 설치 뒤에도 workout 5 / open 1 / set 20 / cardio 1 / food 3, `integrity_check=ok`, foreign-key 오류 0이 유지됐다.
+
+Quality 검증은 strict TypeScript, lint, 앱 Jest 64 suites / 458 tests, catalog 39/39, Worker 86/86, `git diff --check`를 통과했다. 카탈로그는 64 exercises, 66,654 bytes, SHA-256 `43491e64b66fbd16f87325d8e8ea9e5d2325d888b71c700b61b80da19566604a`로 다시 확인했다. 첫 simulator build는 `libtool write64()`의 `errno=28`로 실패했지만, 이번 작업의 오래된 임시 DerivedData만 정리해 21 GiB를 확보한 뒤 같은 source와 설정으로 Release build가 성공했다. 제품 결함으로 기록하지 않는다.
+
+Apple 서버의 `altool --validate-app`은 오류 없이 통과했고 동일 IPA 업로드도 성공했다. App Store Connect build ID와 delivery UUID는 `7123db21-dbc0-4126-8f30-5a7105278602`이며 `VALID`, `APP_STORE_ELIGIBLE`, Internal group `IN_BETA_TESTING`으로 읽혔다. 외부 TestFlight는 `READY_FOR_BETA_SUBMISSION`이고 beta review 관계는 없다. App Store version 1.0은 계속 `DEVELOPER_REJECTED`이며 Build 13에 연결돼 있고, 완료된 기존 review item은 `REMOVED`다. 따라서 Build 15 업로드를 App Review 재요청으로 표현하지 않는다.
+
+Product/workflow 검증은 simulator에서 빠른 운동 탐색, 수동 식사 저장·실행취소, seed 보존까지다. 실제 Apple 구독 구매·복원·갱신·환불은 검증하지 않았다. 상품 `ai.daeseon.reploom.pro.monthly.v1`의 metadata와 entitlement 비밀키, production subscription Worker/Cron이 준비되기 전에는 Pro 문구를 production Pages나 App Store 설명으로 승격하지 않고 App Review도 요청하지 않는다. Build 15에 문제가 생기면 TestFlight의 이전 VALID Build 14로 내부 테스트를 되돌릴 수 있으며, 소스 rollback은 `c98e021`의 build-number 변경을 revert한다.
