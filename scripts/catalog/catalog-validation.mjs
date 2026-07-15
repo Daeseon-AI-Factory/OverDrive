@@ -54,9 +54,7 @@ const CARDIO_SOURCE_URLS = [
   'https://odphp.health.gov/paguidelines/second-edition/pdf/Physical_Activity_Guidelines_2nd_edition.pdf',
 ];
 const PER_SIDE_IDS = new Set([
-  'db_curl',
   'bulgarian_split_squat',
-  'hammer_curl',
   'single_arm_db_row',
   'walking_lunge',
   'step_platform_step_up',
@@ -91,6 +89,27 @@ const FROZEN_ONLY_CAPABILITY_EQUIPMENT = new Set([
   'upper_back_support',
   'external_resistance',
 ]);
+const V1_KG_ONLY_OPTIONAL_LOAD_EQUIPMENT = new Set([
+  'barbell',
+  'dumbbell',
+  'kettlebell',
+  'hex_bar',
+  'angled_curl_bar',
+  'weight_plate',
+  'external_resistance',
+]);
+const LOG_IDENTITY_FIELDS = [
+  ['exerciseType', (exercise) => exercise.exerciseType],
+  ['isBodyweight', (exercise) => exercise.isBodyweight],
+  ['defaultPrescription.trackingMode', (exercise) => exercise.defaultPrescription?.trackingMode],
+  ['defaultPrescription.countingConvention', (exercise) => exercise.defaultPrescription?.countingConvention],
+  ['defaultPrescription.target.unit', (exercise) => exercise.defaultPrescription?.target?.unit ?? null],
+];
+const STATUS_TRANSITIONS = {
+  active: new Set(['active', 'deprecated']),
+  deprecated: new Set(['deprecated', 'retired']),
+  retired: new Set(['retired']),
+};
 
 export class CatalogValidationError extends Error {
   constructor(path, message) {
@@ -145,6 +164,20 @@ function timestamp(value, path, nullable = false) {
     path,
     'must represent a real calendar instant without date normalization',
   );
+}
+
+function semverV1(value, path) {
+  check(typeof value === 'string', path, 'must be a v1 SemVer string');
+  const match = /^1\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.exec(value);
+  check(match, path, 'must be canonical v1 SemVer');
+  return [1, Number(match[1]), Number(match[2])];
+}
+
+function compareSemver(left, right) {
+  for (let index = 0; index < 3; index += 1) {
+    if (left[index] !== right[index]) return left[index] - right[index];
+  }
+  return 0;
 }
 
 export function normalizeSearchV1(value) {
@@ -394,7 +427,7 @@ function validateLocalization(localization, path) {
   return normalized;
 }
 
-function validateExercise(exercise, index, schema, searchTermsByLocale) {
+function validateExercise(exercise, index, schema, searchTermsByLocale, snapshotEffectiveAt) {
   const path = `exercises[${index}]`;
   exactKeys(exercise, EXERCISE_KEYS, path);
   check(/^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/.test(exercise.id), `${path}.id`, 'must be lowercase snake-case');
@@ -403,8 +436,25 @@ function validateExercise(exercise, index, schema, searchTermsByLocale) {
   enumValue(exercise.status, ['active', 'deprecated', 'retired'], `${path}.status`);
   timestamp(exercise.effectiveFrom, `${path}.effectiveFrom`);
   timestamp(exercise.effectiveTo, `${path}.effectiveTo`, true);
-  check(exercise.status === 'active', `${path}.status`, 'initial bundled snapshot contains active rows only');
-  check(exercise.effectiveTo === null && exercise.replacementId === null, path, 'active initial rows must have null effectiveTo/replacementId');
+  check(
+    Date.parse(exercise.effectiveFrom) <= Date.parse(snapshotEffectiveAt),
+    `${path}.effectiveFrom`,
+    'must not be later than the containing release',
+  );
+  if (exercise.status === 'active') {
+    check(exercise.effectiveTo === null, `${path}.effectiveTo`, 'active rows must have no end time');
+    check(exercise.replacementId === null, `${path}.replacementId`, 'active rows must not redirect');
+  } else if (exercise.status === 'deprecated') {
+    check(exercise.effectiveTo === null, `${path}.effectiveTo`, 'deprecated rows remain current until retired');
+  } else {
+    check(exercise.effectiveTo !== null, `${path}.effectiveTo`, 'retired rows must have an end time');
+    check(
+      Date.parse(exercise.effectiveTo) > Date.parse(exercise.effectiveFrom) &&
+        Date.parse(exercise.effectiveTo) <= Date.parse(snapshotEffectiveAt),
+      `${path}.effectiveTo`,
+      'must be after effectiveFrom and no later than the containing release',
+    );
+  }
   check(exercise.displayOrder === index + 1, `${path}.displayOrder`, 'must be contiguous canonical order');
 
   exactKeys(exercise.localizations, LOCALES, `${path}.localizations`);
@@ -437,6 +487,15 @@ function validateExercise(exercise, index, schema, searchTermsByLocale) {
           !FROZEN_ONLY_CAPABILITY_EQUIPMENT.has(equipmentId),
           `${path}.equipment.${role}`,
           `${equipmentId} is a frozen-umbrella capability; new rows require exact implementation equipment`,
+        );
+      }
+    }
+    if (exercise.isBodyweight) {
+      for (const equipmentId of exercise.equipment.optional) {
+        check(
+          !V1_KG_ONLY_OPTIONAL_LOAD_EQUIPMENT.has(equipmentId),
+          `${path}.equipment.optional`,
+          `${equipmentId} advertises optional mass that the v1 kg-only bodyweight logger cannot persist honestly`,
         );
       }
     }
@@ -561,8 +620,10 @@ function validateCanonicalEditorialDecisions(snapshot) {
   exactEquipment('rotating_dumbbell_press', ['dumbbell']);
   exactEquipment('angled_bar_curl', ['angled_curl_bar']);
   exactEquipment('sled_squat_machine', ['sled_squat_machine']);
-  exactEquipment('step_platform_step_up', ['step_platform'], ['dumbbell']);
+  exactEquipment('walking_lunge', ['bodyweight_space']);
+  exactEquipment('step_platform_step_up', ['step_platform']);
   exactEquipment('hex_bar_deadlift', ['hex_bar']);
+  exactEquipment('glute_bridge', ['bodyweight_space'], ['mat']);
   exactEquipment('dumbbell_suitcase_march', ['dumbbell']);
   exactEquipment('dumbbell_single_leg_hip_hinge', ['dumbbell']);
 
@@ -619,10 +680,44 @@ function validateCanonicalEditorialDecisions(snapshot) {
     'must not merge a chin-up into the pull-up identity',
   );
   check(
-    requireRow('hex_bar_deadlift').localizations.en.aliases.includes('Trap-Bar Deadlift'),
+    JSON.stringify(requireRow('hex_bar_deadlift').localizations.en.aliases) ===
+      JSON.stringify(['Trap-Bar Deadlift']),
     'catalog.exercise.hex_bar_deadlift.localizations.en.aliases',
-    'must retain the familiar Trap-Bar search alias on the neutral canonical identity',
+    'the sole trap-bar token exception must be the familiar English Trap-Bar Deadlift alias',
   );
+
+  let trapBarTokenCount = 0;
+  for (const exercise of snapshot.exercises) {
+    const identityFields = [
+      [`catalog.exercise.${exercise.id}.id`, exercise.id],
+      ...exercise.equipment.required.map((value, index) => [
+        `catalog.exercise.${exercise.id}.equipment.required[${index}]`,
+        value,
+      ]),
+      ...exercise.equipment.optional.map((value, index) => [
+        `catalog.exercise.${exercise.id}.equipment.optional[${index}]`,
+        value,
+      ]),
+      ...LOCALES.flatMap((locale) => [
+        [`catalog.exercise.${exercise.id}.localizations.${locale}.displayName`, exercise.localizations[locale].displayName],
+        ...exercise.localizations[locale].aliases.map((value, index) => [
+          `catalog.exercise.${exercise.id}.localizations.${locale}.aliases[${index}]`,
+          value,
+        ]),
+      ]),
+    ];
+    for (const [path, value] of identityFields) {
+      if (!normalizeSearchV1(value).includes('trapbar')) continue;
+      trapBarTokenCount += 1;
+      check(
+        path === 'catalog.exercise.hex_bar_deadlift.localizations.en.aliases[0]' &&
+          value === 'Trap-Bar Deadlift',
+        path,
+        'trap-bar tokens are forbidden outside the sole familiar English alias on hex_bar_deadlift',
+      );
+    }
+  }
+  check(trapBarTokenCount === 1, 'catalog.exercise.hex_bar_deadlift', 'must contain exactly one trap-bar token exception');
 
   check(
     requireRow('hanging_leg_raise').localizations.es.aliases.includes('Elevación colgada de piernas'),
@@ -741,7 +836,7 @@ export function validateCatalog({
 }) {
   exactKeys(snapshot, TOP_KEYS, 'catalog');
   check(snapshot.schemaVersion === '1.0.0', 'catalog.schemaVersion', 'must be 1.0.0');
-  check(/^1\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(snapshot.catalogVersion), 'catalog.catalogVersion', 'must be v1 SemVer');
+  semverV1(snapshot.catalogVersion, 'catalog.catalogVersion');
   timestamp(snapshot.effectiveAt, 'catalog.effectiveAt');
   check(snapshot.defaultLocale === 'en', 'catalog.defaultLocale', 'must be en');
   check(JSON.stringify(snapshot.supportedLocales) === JSON.stringify(LOCALES), 'catalog.supportedLocales', 'must be frozen locale order');
@@ -755,7 +850,7 @@ export function validateCatalog({
   const ids = [];
   const displayOrders = [];
   for (const [index, exercise] of snapshot.exercises.entries()) {
-    validateExercise(exercise, index, schema, searchTermsByLocale);
+    validateExercise(exercise, index, schema, searchTermsByLocale, snapshot.effectiveAt);
     ids.push(exercise.id);
     displayOrders.push(exercise.displayOrder);
   }
@@ -786,8 +881,18 @@ export function validateCatalog({
   for (const exercise of snapshot.exercises) {
     if (exercise.replacementId !== null) {
       const replacement = exerciseById.get(exercise.replacementId);
-      check(replacement && replacement.status !== 'retired', `exercise.${exercise.id}.replacementId`, 'must reference a non-retired row');
+      check(replacement?.status === 'active', `exercise.${exercise.id}.replacementId`, 'must reference an active row');
       check(replacement.id !== exercise.id, `exercise.${exercise.id}.replacementId`, 'must not self-reference');
+    }
+  }
+
+  for (const exercise of snapshot.exercises) {
+    const visited = new Set([exercise.id]);
+    let cursor = exercise;
+    while (cursor.replacementId !== null) {
+      check(!visited.has(cursor.replacementId), `exercise.${exercise.id}.replacementId`, 'must not form a replacement cycle');
+      visited.add(cursor.replacementId);
+      cursor = exerciseById.get(cursor.replacementId);
     }
   }
 
@@ -814,17 +919,101 @@ export function validateCatalogTransition(previousSnapshot, nextSnapshot) {
   check(isObject(nextSnapshot), 'nextCatalog', 'must be an object');
   check(Array.isArray(nextSnapshot.exercises), 'nextCatalog.exercises', 'must be an array');
 
-  const previousById = new Map(
-    previousSnapshot.exercises.map((exercise) => [exercise.id, exercise]),
+  timestamp(previousSnapshot.effectiveAt, 'previousCatalog.effectiveAt');
+  timestamp(nextSnapshot.effectiveAt, 'nextCatalog.effectiveAt');
+  const previousVersion = semverV1(previousSnapshot.catalogVersion, 'previousCatalog.catalogVersion');
+  const nextVersion = semverV1(nextSnapshot.catalogVersion, 'nextCatalog.catalogVersion');
+  check(
+    compareSemver(nextVersion, previousVersion) > 0,
+    'nextCatalog.catalogVersion',
+    'must be strictly newer than the prior published version',
   );
+  check(
+    Date.parse(nextSnapshot.effectiveAt) > Date.parse(previousSnapshot.effectiveAt),
+    'nextCatalog.effectiveAt',
+    'must be later than the prior published release',
+  );
+
+  const previousById = new Map(previousSnapshot.exercises.map((exercise) => [exercise.id, exercise]));
+  const nextById = new Map(nextSnapshot.exercises.map((exercise) => [exercise.id, exercise]));
+  check(previousById.size === previousSnapshot.exercises.length, 'previousCatalog.exercises.id', 'IDs must be unique');
+  check(nextById.size === nextSnapshot.exercises.length, 'nextCatalog.exercises.id', 'IDs must be unique');
+
+  for (const previous of previousSnapshot.exercises) {
+    check(nextById.has(previous.id), `catalog.exercise.${previous.id}`, 'published IDs must never be removed');
+  }
+
   for (const exercise of nextSnapshot.exercises) {
     const previous = previousById.get(exercise.id);
-    if (!previous) continue;
+    const path = `catalog.exercise.${exercise.id}`;
+    timestamp(exercise.effectiveFrom, `${path}.effectiveFrom`);
+    timestamp(exercise.effectiveTo, `${path}.effectiveTo`, true);
+
+    if (!previous) {
+      check(exercise.recordRevision === 1, `${path}.recordRevision`, 'new IDs must start at revision 1');
+      check(exercise.status === 'active', `${path}.status`, 'new IDs must enter the lifecycle as active');
+      check(exercise.effectiveTo === null, `${path}.effectiveTo`, 'new active IDs must not already be ended');
+      check(exercise.replacementId === null, `${path}.replacementId`, 'new active IDs must not redirect');
+      const effectiveFromMs = Date.parse(exercise.effectiveFrom);
+      check(
+        effectiveFromMs > Date.parse(previousSnapshot.effectiveAt) &&
+          effectiveFromMs <= Date.parse(nextSnapshot.effectiveAt),
+        `${path}.effectiveFrom`,
+        'new IDs must become effective after the prior release and no later than this release',
+      );
+      continue;
+    }
+
     check(
-      exercise.defaultPrescription?.countingConvention ===
-        previous.defaultPrescription?.countingConvention,
-      `catalog.exercise.${exercise.id}.defaultPrescription.countingConvention`,
-      'published countingConvention is immutable because historic set logs do not store catalog revision; publish a new ID and replacement instead',
+      exercise.effectiveFrom === previous.effectiveFrom,
+      `${path}.effectiveFrom`,
+      'is immutable after an ID is first published',
     );
+    for (const [field, read] of LOG_IDENTITY_FIELDS) {
+      check(
+        read(exercise) === read(previous),
+        `${path}.${field}`,
+        'published log identity is immutable because historic set logs do not store catalog revision; publish a new ID and replacement instead',
+      );
+    }
+
+    check(STATUS_TRANSITIONS[previous.status], `${path}.status`, `unknown prior status ${previous.status}`);
+    check(
+      STATUS_TRANSITIONS[previous.status].has(exercise.status),
+      `${path}.status`,
+      `invalid lifecycle transition ${previous.status} -> ${exercise.status}; use active -> deprecated -> retired`,
+    );
+    if (exercise.status === 'active') {
+      check(exercise.effectiveTo === null, `${path}.effectiveTo`, 'active rows must have no end time');
+      check(exercise.replacementId === null, `${path}.replacementId`, 'active rows must not redirect');
+    }
+    if (exercise.effectiveTo !== null) {
+      check(
+        Date.parse(exercise.effectiveTo) > Date.parse(exercise.effectiveFrom) &&
+          Date.parse(exercise.effectiveTo) <= Date.parse(nextSnapshot.effectiveAt),
+        `${path}.effectiveTo`,
+        'must be after effectiveFrom and no later than this release',
+      );
+    }
+    if (exercise.status === 'retired') {
+      check(exercise.effectiveTo !== null, `${path}.effectiveTo`, 'retired rows must have an end time');
+    }
+
+    const { recordRevision: _previousRevision, ...previousSemantic } = previous;
+    const { recordRevision: _nextRevision, ...nextSemantic } = exercise;
+    const changed = JSON.stringify(previousSemantic) !== JSON.stringify(nextSemantic);
+    if (changed) {
+      check(
+        exercise.recordRevision === previous.recordRevision + 1,
+        `${path}.recordRevision`,
+        'a semantic change must increment exactly one revision; jumps and stale revisions are forbidden',
+      );
+    } else {
+      check(
+        exercise.recordRevision === previous.recordRevision,
+        `${path}.recordRevision`,
+        'an unchanged row must keep the same revision',
+      );
+    }
   }
 }

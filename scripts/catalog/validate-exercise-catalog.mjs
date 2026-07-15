@@ -44,6 +44,17 @@ async function main() {
   ) {
     throw new Error('exercise-catalog-v1.json: unpublished initial v1.0.0 rows must start at recordRevision 1');
   }
+  if (
+    snapshot.catalogVersion === '1.0.0' &&
+    !snapshot.exercises.every(
+      (exercise) =>
+        exercise.status === 'active' &&
+        exercise.effectiveTo === null &&
+        exercise.replacementId === null,
+    )
+  ) {
+    throw new Error('exercise-catalog-v1.json: unpublished initial v1.0.0 rows must all be active');
+  }
 
   if (JSON.stringify(referenceContext) !== JSON.stringify(REFERENCE_CONTEXT)) {
     throw new Error('exercise-catalog-v1.reference-context.json: stale or edited outside the publisher');

@@ -240,7 +240,7 @@
       ]
     },
     "dumbbell": {
-      "count": 12,
+      "count": 10,
       "ids": [
         "incline_db_press",
         "lateral_raise",
@@ -250,8 +250,6 @@
         "rotating_dumbbell_press",
         "single_arm_db_row",
         "overhead_triceps_extension",
-        "walking_lunge",
-        "step_platform_step_up",
         "dumbbell_suitcase_march",
         "dumbbell_single_leg_hip_hinge"
       ]
@@ -458,9 +456,8 @@
       ]
     },
     "weight_plate": {
-      "count": 2,
+      "count": 1,
       "ids": [
-        "glute_bridge",
         "seated_trunk_rotation"
       ]
     },
@@ -713,7 +710,7 @@
   },
   "countingConventions": {
     "total": {
-      "count": 41,
+      "count": 43,
       "ids": [
         "barbell_bench_press",
         "incline_db_press",
@@ -722,6 +719,7 @@
         "pull_up",
         "barbell_row",
         "lat_pulldown",
+        "db_curl",
         "triceps_pushdown",
         "barbell_back_squat",
         "deadlift",
@@ -734,6 +732,7 @@
         "cable_fly",
         "dips",
         "face_pull",
+        "hammer_curl",
         "hip_thrust",
         "cable_crunch",
         "dumbbell_bench_press",
@@ -759,11 +758,9 @@
       ]
     },
     "per_side": {
-      "count": 12,
+      "count": 10,
       "ids": [
-        "db_curl",
         "bulgarian_split_squat",
-        "hammer_curl",
         "single_arm_db_row",
         "walking_lunge",
         "step_platform_step_up",

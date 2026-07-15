@@ -156,12 +156,16 @@ disjoint. Strength rows require at least one primary region; cardio rows may use
 an empty primary list when a region claim would be misleading.
 
 The full frozen equipment, movement-pattern, difficulty, exercise-type,
-tracking-mode, and target-unit enums are in the JSON Schema. `isBodyweight` is
-orthogonal to `exerciseType` and records the baseline movement/logging property;
-it does not mean that equipment or optional external load is impossible (for
-example, a pull-up bar can still be required). The frozen 32 preserve the seed
-value exactly because the current app uses it to choose workout-entry and weight
-semantics, including for cardio equipment such as cycling and rowing.
+tracking-mode, and target-unit enums are in the JSON Schema. For new exact rows,
+`isBodyweight` records the baseline logging property and is orthogonal to
+`exerciseType`; it does not mean that support equipment is impossible (for
+example, a pull-up bar can still be required). On the frozen 32 IDs, however,
+the field is a legacy bridge-compatibility value copied exactly from the shipped
+seed because the current app used it to choose workout-entry and weight
+semantics, including for cardio equipment such as cycling and rowing. It is not
+a reliable factual bodyweight or equipment-availability filter. App browse,
+recommendation, and equipment filtering must use the explicit taxonomy and
+equipment fields instead of inferring facts from this legacy boolean.
 
 Every entry in `equipment.required` is conjunctive: all listed items are needed
 for that canonical exercise identity. `equipment.optional` contains only
@@ -177,19 +181,30 @@ loaded knee flexion, across seated or lying station variants;
 `dual_fly_machine` means a reversible fly station with a rear-delt path;
 `rear_foot_support` resolves to a stable bench, box, or platform;
 `upper_back_support` resolves to a stable bench, box, or padded station; and
-`external_resistance` resolves to at least one available load source such as a
-barbell, dumbbell, plate, band, or dedicated machine. A detailed equipment
-filter must resolve every required capability through a reviewed local inventory
-mapping and exclude the row when it cannot prove that mapping. Capability tokens
-are requirements, not permission to treat mutually exclusive products as
-optional substitutes.
+`external_resistance` resolves to at least one available mass/load source whose
+entered value can be represented truthfully in the app's kg/lb field, such as a
+barbell, dumbbell, weight plate, or a reviewed machine load setting with a known
+mass conversion. It explicitly excludes resistance bands, assistance amounts,
+band colors/levels, and any tension estimate that cannot be entered honestly as
+kg/lb. A detailed equipment filter must resolve every required capability
+through a reviewed local inventory mapping and exclude the row when it cannot
+prove both availability and kg/lb representability. Capability tokens are
+requirements, not permission to treat mutually exclusive products as optional
+substitutes.
 
 `external_resistance` is the sole frozen-umbrella exception to the general ban
 on substitute equipment: it is an explicit required capability satisfied by any
-one reviewed load source in its mapping, not an `optional` list and not a claim
-that all load sources are required. It may appear only on the frozen compatibility
-rows that need to preserve the app's existing loaded-log semantics. New rows must
-name concrete implementation equipment instead.
+one reviewed, kg/lb-representable mass source in its mapping, not an `optional`
+list and not a claim that all load sources are required. It may appear only on
+the frozen compatibility rows that need to preserve the app's existing loaded-log
+semantics. New rows must name concrete implementation equipment instead.
+
+The v1 bodyweight logger cannot persist optional external mass independently
+from the baseline movement. Therefore a new `isBodyweight: true` row must not
+advertise an optional barbell, dumbbell, kettlebell, hex bar, angled bar, weight
+plate, or `external_resistance` capability. A loaded implementation needs a new
+exact ID until the logger has an explicit added-load model. Non-load supplements
+such as a mat remain valid optional equipment.
 
 The frozen 32 IDs are compatibility umbrellas where the shipped seed did not
 encode an exact implementation. Their seed-level generic display identity is
@@ -224,10 +239,12 @@ publish a new strength duration/distance prescription until the app's strength
 log can persist that measure honestly; the frozen legacy `plank` row remains the
 only v1 exception.
 
-Generic dumbbell and hammer curls use `per_side`: simultaneous and alternating
-execution both complete the same target on each arm. Seated trunk rotation also
-uses `per_side`, so a set is not complete after repetitions on only one side.
-Once an ID has been published, `countingConvention` is immutable: historic
+The frozen generic dumbbell- and hammer-curl IDs use `total`. Their shipped
+identity and historic logs do not establish whether a user performed simultaneous,
+alternating, or one-arm repetitions, so v1 must not retroactively reinterpret
+those counts as per-side. Seated trunk rotation uses `per_side`, so a set is not
+complete after repetitions on only one side. Once an ID has been published,
+`countingConvention` is immutable: historic
 `set_log` rows do not store catalog revision, so changing it would reinterpret
 old repetitions. A different counting convention requires a new canonical ID,
 the old row's normal deprecation/replacement path, and no history rewrite.
@@ -540,13 +557,15 @@ Names and gym colloquialisms must be written independently and carry their actua
 `unreviewed`, `source_checked`, or `human_reviewed` status in each locale. Translating
 proprietary wording does not make it original.
 
-Non-frozen canonical IDs, display names, and aliases fail closed on the reviewed
+Non-frozen canonical IDs, display names, and aliases fail closed on the enforced
 eponym/protected-name denylist, including `Arnold`, `CrossFit`, and `Tabata` after
-search normalization. A familiar `Trap-Bar Deadlift` alias is retained only as
-an explicitly reviewed search bridge to neutral canonical ID `hex_bar_deadlift`
-and equipment `hex_bar`; it does not control the canonical display or taxonomy.
-The assisted pull-up aliases likewise preserve the overhand pull-up grip and do
-not merge the distinct chin-up identity.
+search normalization. The exact English alias `Trap-Bar Deadlift` is the sole
+`trapbar` token exception and is retained only as a familiar search bridge on
+neutral canonical ID `hex_bar_deadlift` with equipment `hex_bar`; the row remains
+explicitly `unreviewed`, and the exception is not review evidence or approval.
+No ID, equipment value, display name, other locale, or other alias may contain a
+`trapbar` token. The assisted pull-up aliases likewise preserve the overhand
+pull-up grip and do not merge the distinct chin-up identity.
 
 ## 9. Privacy-minimal search telemetry
 
@@ -578,7 +597,7 @@ A release is rejected unless all checks pass:
 3. Stored compact payload bytes, checksum, ETag derivation, item count, and uncompressed byte count match.
 4. All 32 compatibility IDs exist exactly once; no ID was renamed, reused, or removed.
 5. IDs match the frozen pattern; display order is unique; the array has canonical order.
-6. Revisions count published semantic row changes: initial unpublished rows stay at `1`, while a post-publication semantic change increments the prior published revision; effective windows are valid and non-overlapping for an ID.
+6. Revisions count published semantic row changes: initial unpublished and newly introduced IDs start at `1`; an unchanged published row keeps its revision; every post-publication semantic change increments exactly the prior revision plus one, with no stale value or jump; `effectiveFrom` is immutable.
 7. Required locales exist; names/aliases meet length limits and normalize non-empty.
 8. Names and aliases are unique within an exercise/locale after `search-v1` normalization.
 9. Cross-exercise normalized-name collisions have an explicit ambiguity review; none is silently discarded.
@@ -591,10 +610,11 @@ A release is rejected unless all checks pass:
 16. No description/media/proprietary copy or fabricated user/seed/test record is represented as factual production data.
 17. The deterministic AI candidate projection stays within 64 rows, four names per row, and 60 characters per name.
 18. Normalization and bounded-typo conformance vectors agree in ingestion, Worker, app, and tests.
-19. Required equipment is conjunctive; optional equipment is supplemental and never a substitute implementation. Only frozen rows may use the explicit `external_resistance` any-of capability through its reviewed inventory mapping.
-20. Counting convention is explicit; per-side targets are identified consistently, a published ID cannot change counting convention without a new replacement ID, and unsupported strength duration/distance rows are rejected.
+19. Required equipment is conjunctive; optional equipment is supplemental and never a substitute implementation. Only frozen rows may use the explicit `external_resistance` any-of capability through a reviewed kg/lb-representable inventory mapping; band/assistance levels never satisfy it. New bodyweight rows do not advertise optional mass until the logger can persist added load honestly.
+20. Counting convention is explicit; per-side targets are identified consistently, and the frozen generic curl IDs remain `total`. A published ID cannot change exercise type, the legacy bodyweight bridge, tracking mode, counting convention, or target unit; identity changes require a new replacement ID. Unsupported strength duration/distance rows are rejected.
 21. Secondary regions follow the direct-training rubric and never exceed three.
 22. All timestamps use exact UTC-second syntax `YYYY-MM-DDTHH:mm:ssZ` with no offset or fractional seconds and represent real calendar instants without date normalization.
+23. Published IDs are never removed; lifecycle transitions only move `active` to `deprecated` to `retired`, retired IDs never reactivate, and new IDs become effective after the prior release and no later than the release that introduces them.
 
 Release tooling must fail closed and print stable ID plus field path for every
 error. Validation occurs before any channel-pointer update.

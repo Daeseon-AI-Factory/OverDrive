@@ -142,7 +142,7 @@ const ROWS = [
   row(
     'db_curl',
     loc('Dumbbell Curl', 'Alternating Dumbbell Curl', '덤벨 컬', '덤벨 이두 컬', 'Curl con mancuernas', 'Curl alterno con mancuernas', '哑铃弯举', '交替哑铃弯举'),
-    'strength', false, ['dumbbell'], [], 'elbow_flexion', 'beginner', ['biceps'], [], reps(3, 8, 12, 'per_side'),
+    'strength', false, ['dumbbell'], [], 'elbow_flexion', 'beginner', ['biceps'], [], reps(3, 8, 12),
   ),
   row(
     'triceps_pushdown',
@@ -212,7 +212,7 @@ const ROWS = [
   row(
     'hammer_curl',
     loc('Hammer Curl', 'Neutral-Grip Curl', '해머 컬', '뉴트럴 그립 컬', 'Curl martillo', 'Curl neutro', '锤式弯举', '中立握弯举'),
-    'strength', false, ['dumbbell'], [], 'elbow_flexion', 'beginner', ['biceps'], [], reps(3, 8, 12, 'per_side'),
+    'strength', false, ['dumbbell'], [], 'elbow_flexion', 'beginner', ['biceps'], [], reps(3, 8, 12),
   ),
   row(
     'hip_thrust',
@@ -352,16 +352,16 @@ const ROWS = [
   row(
     'walking_lunge',
     loc('Walking Lunge', 'Forward Walking Lunge', '워킹 런지', '걷는 런지', 'Zancada caminando', 'Estocada andando', '行走弓步', '走步箭蹲'),
-    'strength', true, ['bodyweight_space'], ['dumbbell'], 'lunge', 'beginner', ['quads', 'glutes'], [], reps(3, 8, 12, 'per_side'),
+    'strength', true, ['bodyweight_space'], [], 'lunge', 'beginner', ['quads', 'glutes'], [], reps(3, 8, 12, 'per_side'),
   ),
   row(
     'step_platform_step_up',
     loc('Step-Platform Step-Up', 'Platform Step-Up', '스텝 플랫폼 스텝업', '플랫폼 오르기', 'Subida a plataforma', 'Step-up en plataforma', '踏台阶', '平台踏步'),
-    'strength', true, ['step_platform'], ['dumbbell'], 'step', 'beginner', ['quads', 'glutes'], [], reps(3, 8, 12, 'per_side'),
+    'strength', true, ['step_platform'], [], 'step', 'beginner', ['quads', 'glutes'], [], reps(3, 8, 12, 'per_side'),
   ),
   row(
     'hex_bar_deadlift',
-    loc('Hex-Bar Deadlift', 'Trap-Bar Deadlift', '헥스바 데드리프트', '트랩바 데드', 'Peso muerto con barra hexagonal', 'Peso muerto trap bar', '六角杠硬拉', '六角杠铃硬拉'),
+    loc('Hex-Bar Deadlift', 'Trap-Bar Deadlift', '헥스바 데드리프트', '육각 바 데드리프트', 'Peso muerto con barra hexagonal', 'Peso muerto con hex bar', '六角杠硬拉', '六角杠铃硬拉'),
     'strength', false, ['hex_bar'], [], 'hinge', 'intermediate', ['glutes', 'quads', 'hamstrings'], [], reps(3, 5, 8),
   ),
   row(
@@ -372,7 +372,7 @@ const ROWS = [
   row(
     'glute_bridge',
     loc('Glute Bridge', 'Floor Hip Bridge', '글루트 브리지', '힙 브리지', 'Puente de glúteos', 'Puente de cadera', '臀桥', '地面臀桥'),
-    'strength', true, ['bodyweight_space'], ['mat', 'weight_plate'], 'hip_extension', 'beginner', ['glutes'], ['hamstrings'], reps(3, 10, 15),
+    'strength', true, ['bodyweight_space'], ['mat'], 'hip_extension', 'beginner', ['glutes'], ['hamstrings'], reps(3, 10, 15),
   ),
   row(
     'seated_calf_raise',

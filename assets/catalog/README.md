@@ -14,7 +14,11 @@ Generated artifacts:
 - `exercise-catalog-v1.generated.ts` — exact raw/checksum constants for the bundled app fallback.
 - `exercise-catalog-v1.coverage.json` — IDs behind each type, body region, equipment, movement-pattern, and counting-convention count.
 - `exercise-catalog-v1.reference-context.json` — general program/safety references; explicitly neither exercise-specific review nor human review.
-- `exercise-catalog-v1.d1.sql` — dedicated-D1 draft inserts only; it never updates `catalog_channel`.
+- `exercise-catalog-v1.d1.sql` — dedicated-D1 draft import only; it replaces an
+  existing draft in foreign-key-safe order, refuses to overwrite a published or
+  withdrawn release, patches the payload BLOB in bounded chunks, and never
+  updates `catalog_channel`. The execution path supplies the enclosing atomic
+  file import; this artifact contains no nested transaction statements.
 
 Regenerate and verify with:
 

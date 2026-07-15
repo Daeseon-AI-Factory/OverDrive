@@ -11,11 +11,14 @@ import {
 } from './catalog-validation.mjs';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
-const [schema, compatibility, seedSource, contractText] = await Promise.all([
+const sqlite = await import('node:sqlite').catch(() => null);
+const [schema, compatibility, seedSource, contractText, rawCatalog, d1DraftSql] = await Promise.all([
   readFile(`${ROOT}docs/contracts/exercise-catalog-v1.schema.json`, 'utf8').then(JSON.parse),
   readFile(`${ROOT}docs/contracts/exercise-catalog-v1-compatibility.json`, 'utf8').then(JSON.parse),
   readFile(`${ROOT}src/db/seed.ts`, 'utf8'),
   readFile(`${ROOT}docs/exercise-catalog-v1.md`, 'utf8'),
+  readFile(`${ROOT}assets/catalog/exercise-catalog-v1.json`),
+  readFile(`${ROOT}assets/catalog/exercise-catalog-v1.d1.sql`, 'utf8'),
 ]);
 const seedContract = parseLegacySeedContract(seedSource);
 
@@ -35,6 +38,89 @@ const inputFor = (snapshot, withBytes = false, referenceContext = REFERENCE_CONT
 };
 
 const row = (snapshot, id) => snapshot.exercises.find((exercise) => exercise.id === id);
+const asNextRelease = (previous, version = '1.0.1', effectiveAt = '2026-07-15T00:00:00Z') => {
+  const next = structuredClone(previous);
+  next.catalogVersion = version;
+  next.effectiveAt = effectiveAt;
+  return next;
+};
+
+const D1_FIXTURE_SCHEMA = `
+PRAGMA foreign_keys = ON;
+CREATE TABLE catalog_release (
+  version TEXT PRIMARY KEY,
+  schema_version TEXT,
+  effective_at_ms INTEGER,
+  checksum_hex TEXT,
+  item_count INTEGER,
+  payload_bytes INTEGER,
+  payload_json BLOB,
+  state TEXT,
+  created_at_ms INTEGER,
+  published_at_ms INTEGER
+);
+CREATE TABLE catalog_exercise (
+  version TEXT,
+  id TEXT,
+  record_revision INTEGER,
+  status TEXT,
+  effective_from_ms INTEGER,
+  effective_to_ms INTEGER,
+  replacement_id TEXT,
+  display_order INTEGER,
+  exercise_type TEXT,
+  is_bodyweight INTEGER,
+  movement_pattern TEXT,
+  difficulty TEXT,
+  default_sets INTEGER,
+  tracking_mode TEXT,
+  counting_convention TEXT,
+  target_unit TEXT,
+  target_low REAL,
+  target_high REAL,
+  provenance_classification TEXT,
+  review_status TEXT,
+  review_method TEXT,
+  reviewed_by_role TEXT,
+  review_evidence TEXT,
+  reviewed_at_ms INTEGER,
+  contains_third_party_copy INTEGER,
+  PRIMARY KEY (version, id),
+  FOREIGN KEY (version) REFERENCES catalog_release(version) ON DELETE CASCADE
+);
+CREATE TABLE catalog_localization (
+  version TEXT, exercise_id TEXT, locale TEXT, display_name TEXT, normalized_display_name TEXT,
+  PRIMARY KEY (version, exercise_id, locale),
+  FOREIGN KEY (version, exercise_id) REFERENCES catalog_exercise(version, id) ON DELETE CASCADE
+);
+CREATE TABLE catalog_alias (
+  version TEXT, exercise_id TEXT, locale TEXT, alias_order INTEGER, alias TEXT, normalized_alias TEXT,
+  PRIMARY KEY (version, exercise_id, locale, alias_order),
+  FOREIGN KEY (version, exercise_id) REFERENCES catalog_exercise(version, id) ON DELETE CASCADE
+);
+CREATE TABLE catalog_equipment (
+  version TEXT, exercise_id TEXT, role TEXT, equipment_order INTEGER, equipment_id TEXT,
+  PRIMARY KEY (version, exercise_id, role, equipment_order),
+  FOREIGN KEY (version, exercise_id) REFERENCES catalog_exercise(version, id) ON DELETE CASCADE
+);
+CREATE TABLE catalog_region (
+  version TEXT, exercise_id TEXT, role TEXT, region_order INTEGER, region_id TEXT,
+  PRIMARY KEY (version, exercise_id, role, region_order),
+  FOREIGN KEY (version, exercise_id) REFERENCES catalog_exercise(version, id) ON DELETE CASCADE
+);
+CREATE TABLE catalog_source (
+  version TEXT, exercise_id TEXT, source_order INTEGER, source_type TEXT, label TEXT, url TEXT,
+  license TEXT, accessed_at_ms INTEGER,
+  PRIMARY KEY (version, exercise_id, source_order),
+  FOREIGN KEY (version, exercise_id) REFERENCES catalog_exercise(version, id) ON DELETE CASCADE
+);
+`;
+
+function openD1Fixture() {
+  const db = new sqlite.DatabaseSync(':memory:');
+  db.exec(D1_FIXTURE_SCHEMA);
+  return db;
+}
 
 test('current curated release is exactly 64 unpublished revision-1 rows', () => {
   const snapshot = buildCatalogSnapshot();
@@ -44,8 +130,11 @@ test('current curated release is exactly 64 unpublished revision-1 rows', () => 
   assert.equal(result.payloadBytes, Buffer.byteLength(JSON.stringify(snapshot), 'utf8'));
   assert.equal(snapshot.exercises.every((exercise) => exercise.provenance.reviewStatus === 'unreviewed'), true);
   assert.equal(snapshot.exercises.every((exercise) => exercise.provenance.sources.length === 0), true);
-  assert.equal(row(snapshot, 'db_curl').defaultPrescription.countingConvention, 'per_side');
-  assert.equal(row(snapshot, 'hammer_curl').defaultPrescription.countingConvention, 'per_side');
+  assert.equal(snapshot.exercises.every((exercise) => exercise.status === 'active'), true);
+  assert.equal(snapshot.exercises.every((exercise) => exercise.effectiveTo === null), true);
+  assert.equal(snapshot.exercises.every((exercise) => exercise.replacementId === null), true);
+  assert.equal(row(snapshot, 'db_curl').defaultPrescription.countingConvention, 'total');
+  assert.equal(row(snapshot, 'hammer_curl').defaultPrescription.countingConvention, 'total');
   assert.equal(row(snapshot, 'seated_trunk_rotation').defaultPrescription.countingConvention, 'per_side');
 });
 
@@ -77,6 +166,8 @@ test('schema and contract freeze exact timestamp and cache fallback semantics', 
   );
   assert.match(contractText, /An `unreviewed` row has exactly zero row-level source records/);
   assert.match(contractText, /published semantic row revisions, not draft commits/);
+  assert.match(contractText, /resistance bands, assistance amounts,[\s\S]*cannot be entered honestly as[\s\S]*kg\/lb/);
+  assert.match(contractText, /legacy bridge-compatibility value[\s\S]*not[\s\S]*reliable factual bodyweight/);
 });
 
 test('validator alarms when a frozen legacy ID is renamed', () => {
@@ -138,6 +229,21 @@ test('validator alarms when optional equipment is used as a substitute implement
   const snapshot = structuredClone(buildCatalogSnapshot());
   row(snapshot, 'zone2_run').equipment.optional.push('treadmill');
   assert.throws(() => validateCatalog(inputFor(snapshot)), /must contain only supplemental equipment/);
+});
+
+test('validator rejects optional mass on new bodyweight rows until added load is persistable', () => {
+  for (const [id, equipmentId] of [
+    ['walking_lunge', 'dumbbell'],
+    ['step_platform_step_up', 'kettlebell'],
+    ['glute_bridge', 'weight_plate'],
+  ]) {
+    const snapshot = structuredClone(buildCatalogSnapshot());
+    row(snapshot, id).equipment.optional.push(equipmentId);
+    assert.throws(
+      () => validateCatalog(inputFor(snapshot)),
+      /v1 kg-only bodyweight logger cannot persist honestly/,
+    );
+  }
 });
 
 test('validator alarms when a frozen generic identity is narrowed to a machine display', () => {
@@ -204,22 +310,141 @@ test('validator applies bilateral set completeness to seated trunk rotation', ()
   assert.throws(() => validateCatalog(inputFor(snapshot)), /set is complete only after both sides/);
 });
 
-test('validator applies per-side targets to generic dumbbell curl identities', () => {
+test('validator preserves total counting on frozen generic curl identities', () => {
   for (const id of ['db_curl', 'hammer_curl']) {
     const snapshot = structuredClone(buildCatalogSnapshot());
-    row(snapshot, id).defaultPrescription.countingConvention = 'total';
-    assert.throws(() => validateCatalog(inputFor(snapshot)), /set is complete only after both sides/);
+    row(snapshot, id).defaultPrescription.countingConvention = 'per_side';
+    assert.throws(() => validateCatalog(inputFor(snapshot)), /not in the canonical per-side set/);
   }
 });
 
-test('published counting convention changes require a new replacement ID', () => {
+test('published counting convention changes require a new ID and replacement', () => {
   const previous = buildCatalogSnapshot();
-  const next = structuredClone(previous);
-  row(next, 'db_curl').defaultPrescription.countingConvention = 'total';
+  const next = asNextRelease(previous);
+  row(next, 'db_curl').defaultPrescription.countingConvention = 'per_side';
+  row(next, 'db_curl').recordRevision = 2;
   assert.throws(
     () => validateCatalogTransition(previous, next),
-    /published countingConvention is immutable.*new ID and replacement/,
+    /published log identity is immutable.*new ID and replacement/,
   );
+});
+
+test('transition freezes every historic log-identity field even with a revision bump', () => {
+  const mutations = [
+    ['exerciseType', (exercise) => { exercise.exerciseType = 'cardio'; }],
+    ['isBodyweight', (exercise) => { exercise.isBodyweight = true; }],
+    ['trackingMode', (exercise) => { exercise.defaultPrescription.trackingMode = 'duration'; }],
+    ['countingConvention', (exercise) => { exercise.defaultPrescription.countingConvention = 'per_side'; }],
+    ['target.unit', (exercise) => { exercise.defaultPrescription.target.unit = 'seconds'; }],
+  ];
+  for (const [field, mutate] of mutations) {
+    const previous = buildCatalogSnapshot();
+    const next = asNextRelease(previous);
+    const exercise = row(next, 'db_curl');
+    mutate(exercise);
+    exercise.recordRevision = 2;
+    assert.throws(
+      () => validateCatalogTransition(previous, next),
+      new RegExp(`${field.replace('.', '\\.')}.*published log identity is immutable`),
+    );
+  }
+});
+
+test('transition requires exact revision movement for changed and unchanged rows', () => {
+  const previous = buildCatalogSnapshot();
+
+  const stale = asNextRelease(previous);
+  row(stale, 'db_curl').localizations.en.displayName = 'Dumbbell Arm Curl';
+  assert.throws(() => validateCatalogTransition(previous, stale), /semantic change must increment exactly one/);
+
+  const jump = asNextRelease(previous);
+  row(jump, 'db_curl').localizations.en.displayName = 'Dumbbell Arm Curl';
+  row(jump, 'db_curl').recordRevision = 3;
+  assert.throws(() => validateCatalogTransition(previous, jump), /jumps and stale revisions are forbidden/);
+
+  const exact = asNextRelease(previous);
+  row(exact, 'db_curl').localizations.en.displayName = 'Dumbbell Arm Curl';
+  row(exact, 'db_curl').recordRevision = 2;
+  assert.doesNotThrow(() => validateCatalogTransition(previous, exact));
+
+  const unchangedBump = asNextRelease(previous);
+  row(unchangedBump, 'db_curl').recordRevision = 2;
+  assert.throws(() => validateCatalogTransition(previous, unchangedBump), /unchanged row must keep the same revision/);
+});
+
+test('transition enforces immutable effectiveFrom, strict SemVer, and monotonic release time', () => {
+  const previous = buildCatalogSnapshot();
+
+  const movedStart = asNextRelease(previous);
+  row(movedStart, 'db_curl').effectiveFrom = '2026-07-15T00:00:00Z';
+  row(movedStart, 'db_curl').recordRevision = 2;
+  assert.throws(() => validateCatalogTransition(previous, movedStart), /effectiveFrom: is immutable/);
+
+  assert.throws(
+    () => validateCatalogTransition(previous, asNextRelease(previous, '1.0.0')),
+    /catalogVersion: must be strictly newer/,
+  );
+  assert.throws(
+    () => validateCatalogTransition(previous, asNextRelease(previous, '1.00.1')),
+    /canonical v1 SemVer/,
+  );
+  assert.throws(
+    () => validateCatalogTransition(previous, asNextRelease(previous, '1.0.1', previous.effectiveAt)),
+    /effectiveAt: must be later/,
+  );
+});
+
+test('transition permits only active to deprecated to retired and never removes an ID', () => {
+  const active = buildCatalogSnapshot();
+  const deprecated = asNextRelease(active);
+  row(deprecated, 'db_curl').status = 'deprecated';
+  row(deprecated, 'db_curl').recordRevision = 2;
+  assert.doesNotThrow(() => validateCatalogTransition(active, deprecated));
+
+  const skipped = asNextRelease(active);
+  row(skipped, 'db_curl').status = 'retired';
+  row(skipped, 'db_curl').effectiveTo = skipped.effectiveAt;
+  row(skipped, 'db_curl').recordRevision = 2;
+  assert.throws(() => validateCatalogTransition(active, skipped), /active -> retired/);
+
+  const retired = asNextRelease(deprecated, '1.0.2', '2026-07-16T00:00:00Z');
+  row(retired, 'db_curl').status = 'retired';
+  row(retired, 'db_curl').effectiveTo = retired.effectiveAt;
+  row(retired, 'db_curl').recordRevision = 3;
+  assert.doesNotThrow(() => validateCatalogTransition(deprecated, retired));
+
+  const reactivated = asNextRelease(retired, '1.0.3', '2026-07-17T00:00:00Z');
+  row(reactivated, 'db_curl').status = 'active';
+  row(reactivated, 'db_curl').effectiveTo = null;
+  row(reactivated, 'db_curl').recordRevision = 4;
+  assert.throws(() => validateCatalogTransition(retired, reactivated), /retired -> active/);
+
+  const removed = asNextRelease(active);
+  removed.exercises = removed.exercises.filter((exercise) => exercise.id !== 'db_curl');
+  assert.throws(() => validateCatalogTransition(active, removed), /published IDs must never be removed/);
+});
+
+test('transition admits only revision-1 new IDs inside the release window', () => {
+  const previous = buildCatalogSnapshot();
+  const valid = asNextRelease(previous);
+  const added = structuredClone(row(valid, 'cable_crunch'));
+  added.id = 'fixture_new_release_exercise';
+  added.displayOrder = 65;
+  added.effectiveFrom = valid.effectiveAt;
+  valid.exercises.push(added);
+  assert.doesNotThrow(() => validateCatalogTransition(previous, valid));
+
+  const revisionJump = structuredClone(valid);
+  row(revisionJump, added.id).recordRevision = 2;
+  assert.throws(() => validateCatalogTransition(previous, revisionJump), /new IDs must start at revision 1/);
+
+  const backdated = structuredClone(valid);
+  row(backdated, added.id).effectiveFrom = previous.effectiveAt;
+  assert.throws(() => validateCatalogTransition(previous, backdated), /after the prior release/);
+
+  const future = structuredClone(valid);
+  row(future, added.id).effectiveFrom = '2026-07-16T00:00:00Z';
+  assert.throws(() => validateCatalogTransition(previous, future), /no later than this release/);
 });
 
 test('validator alarms on a new strength duration or distance row unsupported by the logger', () => {
@@ -251,6 +476,24 @@ test('validator scans non-frozen aliases for eponyms and protected marks', () =>
   }
 });
 
+test('validator permits exactly one trap-bar token without inventing review provenance', () => {
+  const snapshot = buildCatalogSnapshot();
+  const hexBar = row(snapshot, 'hex_bar_deadlift');
+  assert.deepEqual(hexBar.localizations.en.aliases, ['Trap-Bar Deadlift']);
+  assert.equal(hexBar.provenance.reviewStatus, 'unreviewed');
+  assert.equal(hexBar.provenance.reviewMethod, 'none');
+  assert.equal(hexBar.provenance.reviewEvidence, null);
+  assert.equal(hexBar.provenance.sources.length, 0);
+
+  const extraToken = structuredClone(snapshot);
+  row(extraToken, 'deadlift').localizations.en.aliases = ['Trap Bar Pull'];
+  assert.throws(() => validateCatalog(inputFor(extraToken)), /trap-bar tokens are forbidden outside/);
+
+  const localizedToken = structuredClone(snapshot);
+  row(localizedToken, 'hex_bar_deadlift').localizations.es.aliases = ['Peso muerto trap bar'];
+  assert.throws(() => validateCatalog(inputFor(localizedToken)), /trap-bar tokens are forbidden outside/);
+});
+
 test('validator keeps pull-up grip and rear-delt equipment identities distinct', () => {
   const chinUp = structuredClone(buildCatalogSnapshot());
   row(chinUp, 'assisted_pull_up').localizations.en.aliases = ['Assisted Chin-Up'];
@@ -269,6 +512,47 @@ test('validator rejects date-only, timezone-free, and calendar-normalized timest
   }
 });
 
+test('generic validator accepts valid deprecated and retired rows with active replacements', () => {
+  const deprecated = structuredClone(buildCatalogSnapshot());
+  deprecated.catalogVersion = '1.0.1';
+  deprecated.effectiveAt = '2026-07-15T00:00:00Z';
+  row(deprecated, 'db_curl').status = 'deprecated';
+  row(deprecated, 'db_curl').replacementId = 'angled_bar_curl';
+  row(deprecated, 'db_curl').recordRevision = 2;
+  assert.doesNotThrow(() => validateCatalog(inputFor(deprecated)));
+
+  const retired = structuredClone(deprecated);
+  retired.catalogVersion = '1.0.2';
+  retired.effectiveAt = '2026-07-16T00:00:00Z';
+  row(retired, 'db_curl').status = 'retired';
+  row(retired, 'db_curl').effectiveTo = retired.effectiveAt;
+  row(retired, 'db_curl').recordRevision = 3;
+  assert.doesNotThrow(() => validateCatalog(inputFor(retired)));
+});
+
+test('generic validator rejects invalid lifecycle shape and inactive replacement targets', () => {
+  const activeRedirect = structuredClone(buildCatalogSnapshot());
+  row(activeRedirect, 'db_curl').replacementId = 'angled_bar_curl';
+  assert.throws(() => validateCatalog(inputFor(activeRedirect)), /active rows must not redirect/);
+
+  const retiredWithoutEnd = structuredClone(buildCatalogSnapshot());
+  row(retiredWithoutEnd, 'db_curl').status = 'retired';
+  row(retiredWithoutEnd, 'db_curl').replacementId = 'angled_bar_curl';
+  assert.throws(() => validateCatalog(inputFor(retiredWithoutEnd)), /retired rows must have an end time/);
+
+  const futureStart = structuredClone(buildCatalogSnapshot());
+  row(futureStart, 'db_curl').effectiveFrom = '2026-07-15T00:00:00Z';
+  assert.throws(() => validateCatalog(inputFor(futureStart)), /must not be later than the containing release/);
+
+  const inactiveTarget = structuredClone(buildCatalogSnapshot());
+  inactiveTarget.catalogVersion = '1.0.1';
+  inactiveTarget.effectiveAt = '2026-07-15T00:00:00Z';
+  row(inactiveTarget, 'db_curl').status = 'deprecated';
+  row(inactiveTarget, 'db_curl').replacementId = 'angled_bar_curl';
+  row(inactiveTarget, 'angled_bar_curl').status = 'deprecated';
+  assert.throws(() => validateCatalog(inputFor(inactiveTarget)), /must reference an active row/);
+});
+
 test('validator alarms when equipment coverage silently disappears', () => {
   const snapshot = structuredClone(buildCatalogSnapshot());
   row(snapshot, 'swimming').equipment.required = ['other'];
@@ -281,3 +565,67 @@ test('validator alarms when raw bytes and sidecar are stale', () => {
   input.sidecar = `sha256:${'0'.repeat(64)}\n`;
   assert.throws(() => validateCatalog(input), /must be one checksum line/);
 });
+
+test('generated D1 draft import has no nested transaction and bounds every statement and BLOB chunk', () => {
+  assert.doesNotMatch(d1DraftSql, /^\s*(?:BEGIN|COMMIT|ROLLBACK)\b/im);
+  assert.match(d1DraftSql, new RegExp(`zeroblob\\(${rawCatalog.byteLength}\\)`));
+  const statements = d1DraftSql.split(';').map((value) => value.trim()).filter(Boolean);
+  assert.equal(Math.max(...statements.map((statement) => Buffer.byteLength(statement, 'utf8'))) < 80_000, true);
+  const blobChunks = [...d1DraftSql.matchAll(/X'([0-9a-f]+)'/g)].map((match) => match[1]);
+  assert.equal(blobChunks.length >= 2, true);
+  assert.equal(blobChunks.every((hex) => hex.length % 2 === 0 && hex.length / 2 <= 24 * 1024), true);
+  assert.equal(blobChunks.reduce((total, hex) => total + hex.length / 2, 0), rawCatalog.byteLength);
+});
+
+test(
+  'generated D1 draft import reconstructs exact BLOB bytes and is idempotent while draft',
+  { skip: sqlite === null },
+  () => {
+    const db = openD1Fixture();
+    try {
+      db.exec(d1DraftSql);
+      const release = db.prepare(
+        'SELECT checksum_hex, payload_bytes, payload_json, state FROM catalog_release WHERE version = ?',
+      ).get('1.0.0');
+      assert.equal(release.checksum_hex, checksumForRaw(rawCatalog).slice('sha256:'.length));
+      assert.equal(release.payload_bytes, rawCatalog.byteLength);
+      assert.equal(release.state, 'draft');
+      assert.deepEqual(Buffer.from(release.payload_json), rawCatalog);
+      assert.equal(db.prepare('SELECT COUNT(*) AS count FROM catalog_exercise').get().count, 64);
+
+      db.exec(d1DraftSql);
+      const reapplied = db.prepare(
+        'SELECT payload_json FROM catalog_release WHERE version = ?',
+      ).get('1.0.0');
+      assert.deepEqual(Buffer.from(reapplied.payload_json), rawCatalog);
+      assert.equal(db.prepare('SELECT COUNT(*) AS count FROM catalog_exercise').get().count, 64);
+      assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0);
+    } finally {
+      db.close();
+    }
+  },
+);
+
+test(
+  'generated D1 draft import fails closed without deleting children after publication or withdrawal',
+  { skip: sqlite === null },
+  () => {
+    for (const terminalState of ['published', 'withdrawn']) {
+      const db = openD1Fixture();
+      try {
+        db.exec(d1DraftSql);
+        const before = db.prepare('SELECT COUNT(*) AS count FROM catalog_exercise').get().count;
+        db.prepare('UPDATE catalog_release SET state = ? WHERE version = ?').run(terminalState, '1.0.0');
+        assert.throws(() => db.exec(d1DraftSql), /UNIQUE constraint failed/);
+        assert.equal(
+          db.prepare('SELECT state FROM catalog_release WHERE version = ?').get('1.0.0').state,
+          terminalState,
+        );
+        assert.equal(db.prepare('SELECT COUNT(*) AS count FROM catalog_exercise').get().count, before);
+        assert.equal(db.prepare('PRAGMA foreign_key_check').all().length, 0);
+      } finally {
+        db.close();
+      }
+    }
+  },
+);

@@ -85,6 +85,7 @@
       }
     },
     "equipmentId": {
+      "description": "Frozen equipment token. external_resistance is limited to reviewed mass/load sources whose values are truthfully representable in kg/lb; resistance bands, assistance, and band levels do not satisfy it.",
       "enum": [
         "barbell",
         "dumbbell",
