@@ -1,0 +1,18 @@
+---
+title: "Node에서만 통과하던 카탈로그 SHA 검증을 iOS 네이티브 경계에서 고쳤다"
+date: "2026-07-15"
+project: "OverDrive"
+kind: "tech-retro"
+visibility: "public"
+language: "ko"
+summary: "expo-crypto에 ArrayBuffer를 넘겨 Release 앱의 번들·원격 카탈로그가 모두 거부되던 문제를 TypedArray 계약과 실제 SQLite readback으로 수정했다."
+tags: ["expo-crypto", "ios", "sqlite", "data-integrity"]
+---
+
+카탈로그 정본·Worker·클라이언트 단위 테스트가 모두 통과한 상태에서 realistic DB seed를 가진 iOS Release 앱을 설치했다. schema는 6에서 8로 올라갔고 기존 workout 5회, 열린 세션 1개, set 20개, cardio 1개, food 3개는 보존됐지만 catalog channel과 normalized table은 전부 비어 있었다. 앱은 legacy 32행 seed로 계속 동작해 화면만 보면 실패를 알아채기 어려웠다.
+
+원인은 `sha256Hex`가 `Uint8Array.from(bytes).buffer`를 `expo-crypto`에 전달한 것이었다. Node mock은 ArrayBuffer를 허용했지만 iOS native module은 입력을 TypedArray로 cast한다. Release 로그의 `NotTypedArrayException`은 로컬 bundle과 production response가 같은 SHA 경계에서 모두 탈락했음을 보여 줬다.
+
+해시 입력을 `Uint8Array` 그대로 전달하고 네 catalog test mock도 TypedArray가 아니면 실패하도록 바꿨다. bundle fallback과 remote refresh의 오류 사유는 launch를 막지 않는 privacy-safe console 진단으로 남겼다. 사용자 입력이나 식별자는 로그에 넣지 않는다.
+
+구현 커밋은 `2187079`다. 전체 앱 Jest 64 suites / 458 tests, catalog validator 39/39, Worker 86/86, strict TypeScript, lint, diff 검사가 통과했다. 수정된 Release 앱을 같은 simulator data에 덮어설치한 뒤 schema 8, `integrity_check=ok`, 기존 5/1/20/1/3을 다시 확인했다. active catalog는 `1.0.0`, bundled source, 66,654 bytes, checksum `43491e64b66fbd16f87325d8e8ea9e5d2325d888b71c700b61b80da19566604a`였고 exercise/cache/bridge 64, localization/alias 256, equipment 76, region 97행이었다. 실제 body-map·검색·기록 터치와 스크린샷 품질 검증은 이 커밋 다음 단계다.

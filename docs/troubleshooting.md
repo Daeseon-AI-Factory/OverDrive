@@ -708,3 +708,12 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 2f7d398
 - **Verification**: D1 `4bf0e085-56d8-405e-a7a7-333d5eeff03f`는 migration 66와 draft import 760 queries 뒤 version `1.0.0`, generation 752, published channel, exact checksum으로 readback됐다. Worker version `e19c7975-be71-456b-95cf-400c43703b2f`의 live 200은 66,654 bytes이며 정본과 `cmp`·SHA-256 일치, conditional GET은 bodyless 304, publish-looking GET은 404, POST는 405였다. version readback은 D1 binding 하나와 fetch handler만 표시했다.
 - **Pattern**: 신규 Worker의 첫 배포 응답 하나만으로 성공·실패를 확정하지 않는다. 전파 직후 오류는 tail과 같은-version 반복 요청으로 분리하고, 앱 endpoint는 안정된 live 계약을 전부 재검증한 뒤에만 넣는다.
+
+## 카탈로그 테스트는 통과했지만 iOS Release에서 SHA 검증이 전부 실패했다
+
+- **Symptom**: realistic DB seed를 가진 Release simulator에서 schema 6→8 migration과 기존 workout 5 / open 1 / set 20 / cardio 1 / food 3 보존은 성공했지만 `catalog_cache_channel`, snapshot, normalized table이 모두 0행이었다. 앱은 legacy 32행 seed fallback으로 열려 startup failure가 UI에 드러나지 않았다.
+- **Cause**: `sha256Hex`가 `Uint8Array.from(bytes).buffer`를 `expo-crypto.digest`에 넘겼다. Node Jest mock은 ArrayBuffer를 받아 통과했지만 iOS native bridge는 세 번째 인수를 TypedArray로 cast하며 `NotTypedArrayException`을 냈다. 같은 검증 함수를 쓰는 bundled snapshot과 production fetch가 모두 거부됐다.
+- **Fix**: native digest 입력을 `Uint8Array` 자체로 바꾸고 네 catalog test mock이 TypedArray가 아닌 입력을 거부하게 했다. Boot remote refresh와 bundled fallback은 launch를 막지 않으면서 catalog/transport 오류 사유만 console에 남긴다. 사용자 데이터는 기록하지 않는다.
+- **Commit**: 2187079
+- **Verification**: 전체 Jest 64 suites / 458 tests, catalog 39/39, Worker 86/86, strict TypeScript, lint, `git diff --check`가 통과했다. 수정 Release 앱의 SQLite는 schema 8 / `integrity_check=ok`, 기존 5/1/20/1/3 보존, active `1.0.0`, bundled 66,654 bytes, exact checksum, exercise/cache/bridge 64, localization/alias 256, equipment 76, region 97을 반환했다. body map·검색·기록 실제 터치와 원본 screenshot 품질은 아직 이 항목의 완료 범위가 아니다.
+- **Pattern**: native module의 `BufferSource` 타입 선언만 믿고 Node mock을 넓게 만들지 않는다. 플랫폼 문서가 TypedArray를 요구하면 test double도 같은 런타임 경계를 거부하고, release build의 실제 DB side effect까지 확인한다.
