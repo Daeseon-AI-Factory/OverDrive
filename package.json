@@ -62,7 +62,9 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "catalog:prepare": "node scripts/catalog/prepare-exercise-catalog.mjs",
+    "catalog:validate": "node scripts/catalog/prepare-exercise-catalog.mjs --check && node scripts/catalog/validate-exercise-catalog.mjs && node --test scripts/catalog/validate-exercise-catalog.test.mjs"
   },
   "private": true
 }

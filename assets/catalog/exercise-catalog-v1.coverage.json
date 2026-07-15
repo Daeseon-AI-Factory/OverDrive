@@ -1,0 +1,792 @@
+{
+  "catalogVersion": "1.0.0",
+  "totalExercises": 64,
+  "legacyExercises": 32,
+  "exerciseTypes": {
+    "strength": {
+      "count": 53,
+      "ids": [
+        "barbell_bench_press",
+        "incline_db_press",
+        "overhead_press",
+        "lateral_raise",
+        "pull_up",
+        "barbell_row",
+        "lat_pulldown",
+        "db_curl",
+        "triceps_pushdown",
+        "barbell_back_squat",
+        "deadlift",
+        "romanian_deadlift",
+        "leg_press",
+        "leg_curl",
+        "bulgarian_split_squat",
+        "standing_calf_raise",
+        "hanging_leg_raise",
+        "plank",
+        "cable_fly",
+        "dips",
+        "face_pull",
+        "hammer_curl",
+        "hip_thrust",
+        "cable_crunch",
+        "dumbbell_bench_press",
+        "push_up",
+        "chest_press_machine",
+        "machine_chest_fly",
+        "rotating_dumbbell_press",
+        "shoulder_press_machine",
+        "machine_rear_delt_fly",
+        "assisted_pull_up",
+        "seated_cable_row",
+        "single_arm_db_row",
+        "straight_arm_pulldown",
+        "angled_bar_curl",
+        "overhead_triceps_extension",
+        "front_squat",
+        "kettlebell_goblet_squat",
+        "sled_squat_machine",
+        "leg_extension",
+        "walking_lunge",
+        "step_platform_step_up",
+        "hex_bar_deadlift",
+        "kettlebell_swing",
+        "glute_bridge",
+        "seated_calf_raise",
+        "dead_bug",
+        "side_plank_hip_lift",
+        "cable_anti_rotation_press",
+        "seated_trunk_rotation",
+        "dumbbell_suitcase_march",
+        "dumbbell_single_leg_hip_hinge"
+      ]
+    },
+    "cardio": {
+      "count": 11,
+      "ids": [
+        "outdoor_run",
+        "treadmill_run",
+        "zone2_run",
+        "hiit_intervals",
+        "cycling",
+        "rowing",
+        "jump_rope",
+        "incline_walk",
+        "stair_climber",
+        "elliptical",
+        "swimming"
+      ]
+    }
+  },
+  "bodyweight": {
+    "count": 20,
+    "ids": [
+      "pull_up",
+      "hanging_leg_raise",
+      "plank",
+      "dips",
+      "outdoor_run",
+      "treadmill_run",
+      "zone2_run",
+      "hiit_intervals",
+      "cycling",
+      "rowing",
+      "jump_rope",
+      "incline_walk",
+      "push_up",
+      "assisted_pull_up",
+      "walking_lunge",
+      "step_platform_step_up",
+      "glute_bridge",
+      "dead_bug",
+      "side_plank_hip_lift",
+      "swimming"
+    ]
+  },
+  "primaryBodyRegions": {
+    "chest": {
+      "count": 8,
+      "ids": [
+        "barbell_bench_press",
+        "incline_db_press",
+        "cable_fly",
+        "dips",
+        "dumbbell_bench_press",
+        "push_up",
+        "chest_press_machine",
+        "machine_chest_fly"
+      ]
+    },
+    "shoulders": {
+      "count": 6,
+      "ids": [
+        "overhead_press",
+        "lateral_raise",
+        "face_pull",
+        "rotating_dumbbell_press",
+        "shoulder_press_machine",
+        "machine_rear_delt_fly"
+      ]
+    },
+    "back": {
+      "count": 10,
+      "ids": [
+        "pull_up",
+        "barbell_row",
+        "lat_pulldown",
+        "deadlift",
+        "face_pull",
+        "machine_rear_delt_fly",
+        "assisted_pull_up",
+        "seated_cable_row",
+        "single_arm_db_row",
+        "straight_arm_pulldown"
+      ]
+    },
+    "biceps": {
+      "count": 3,
+      "ids": [
+        "db_curl",
+        "hammer_curl",
+        "angled_bar_curl"
+      ]
+    },
+    "triceps": {
+      "count": 3,
+      "ids": [
+        "triceps_pushdown",
+        "dips",
+        "overhead_triceps_extension"
+      ]
+    },
+    "core": {
+      "count": 8,
+      "ids": [
+        "hanging_leg_raise",
+        "plank",
+        "cable_crunch",
+        "dead_bug",
+        "side_plank_hip_lift",
+        "cable_anti_rotation_press",
+        "seated_trunk_rotation",
+        "dumbbell_suitcase_march"
+      ]
+    },
+    "glutes": {
+      "count": 15,
+      "ids": [
+        "barbell_back_squat",
+        "deadlift",
+        "romanian_deadlift",
+        "leg_press",
+        "bulgarian_split_squat",
+        "hip_thrust",
+        "front_squat",
+        "kettlebell_goblet_squat",
+        "sled_squat_machine",
+        "walking_lunge",
+        "step_platform_step_up",
+        "hex_bar_deadlift",
+        "kettlebell_swing",
+        "glute_bridge",
+        "dumbbell_single_leg_hip_hinge"
+      ]
+    },
+    "quads": {
+      "count": 10,
+      "ids": [
+        "barbell_back_squat",
+        "leg_press",
+        "bulgarian_split_squat",
+        "front_squat",
+        "kettlebell_goblet_squat",
+        "sled_squat_machine",
+        "leg_extension",
+        "walking_lunge",
+        "step_platform_step_up",
+        "hex_bar_deadlift"
+      ]
+    },
+    "hamstrings": {
+      "count": 6,
+      "ids": [
+        "deadlift",
+        "romanian_deadlift",
+        "leg_curl",
+        "hex_bar_deadlift",
+        "kettlebell_swing",
+        "dumbbell_single_leg_hip_hinge"
+      ]
+    },
+    "calves": {
+      "count": 2,
+      "ids": [
+        "standing_calf_raise",
+        "seated_calf_raise"
+      ]
+    }
+  },
+  "equipment": {
+    "barbell": {
+      "count": 7,
+      "ids": [
+        "barbell_bench_press",
+        "overhead_press",
+        "barbell_row",
+        "barbell_back_squat",
+        "deadlift",
+        "romanian_deadlift",
+        "front_squat"
+      ]
+    },
+    "dumbbell": {
+      "count": 10,
+      "ids": [
+        "incline_db_press",
+        "lateral_raise",
+        "db_curl",
+        "hammer_curl",
+        "dumbbell_bench_press",
+        "rotating_dumbbell_press",
+        "single_arm_db_row",
+        "overhead_triceps_extension",
+        "dumbbell_suitcase_march",
+        "dumbbell_single_leg_hip_hinge"
+      ]
+    },
+    "kettlebell": {
+      "count": 2,
+      "ids": [
+        "kettlebell_goblet_squat",
+        "kettlebell_swing"
+      ]
+    },
+    "hex_bar": {
+      "count": 1,
+      "ids": [
+        "hex_bar_deadlift"
+      ]
+    },
+    "angled_curl_bar": {
+      "count": 1,
+      "ids": [
+        "angled_bar_curl"
+      ]
+    },
+    "bench": {
+      "count": 4,
+      "ids": [
+        "barbell_bench_press",
+        "incline_db_press",
+        "dumbbell_bench_press",
+        "single_arm_db_row"
+      ]
+    },
+    "rear_foot_support": {
+      "count": 1,
+      "ids": [
+        "bulgarian_split_squat"
+      ]
+    },
+    "upper_back_support": {
+      "count": 1,
+      "ids": [
+        "hip_thrust"
+      ]
+    },
+    "external_resistance": {
+      "count": 3,
+      "ids": [
+        "bulgarian_split_squat",
+        "standing_calf_raise",
+        "hip_thrust"
+      ]
+    },
+    "rack": {
+      "count": 4,
+      "ids": [
+        "barbell_bench_press",
+        "overhead_press",
+        "barbell_back_squat",
+        "front_squat"
+      ]
+    },
+    "pull_up_bar": {
+      "count": 3,
+      "ids": [
+        "pull_up",
+        "hanging_leg_raise",
+        "assisted_pull_up"
+      ]
+    },
+    "dip_bars": {
+      "count": 1,
+      "ids": [
+        "dips"
+      ]
+    },
+    "cable_machine": {
+      "count": 7,
+      "ids": [
+        "triceps_pushdown",
+        "cable_fly",
+        "face_pull",
+        "cable_crunch",
+        "seated_cable_row",
+        "straight_arm_pulldown",
+        "cable_anti_rotation_press"
+      ]
+    },
+    "lat_pulldown_machine": {
+      "count": 1,
+      "ids": [
+        "lat_pulldown"
+      ]
+    },
+    "leg_press_machine": {
+      "count": 1,
+      "ids": [
+        "leg_press"
+      ]
+    },
+    "leg_curl_station": {
+      "count": 1,
+      "ids": [
+        "leg_curl"
+      ]
+    },
+    "leg_extension_machine": {
+      "count": 1,
+      "ids": [
+        "leg_extension"
+      ]
+    },
+    "sled_squat_machine": {
+      "count": 1,
+      "ids": [
+        "sled_squat_machine"
+      ]
+    },
+    "chest_press_machine": {
+      "count": 1,
+      "ids": [
+        "chest_press_machine"
+      ]
+    },
+    "shoulder_press_machine": {
+      "count": 1,
+      "ids": [
+        "shoulder_press_machine"
+      ]
+    },
+    "chest_fly_machine": {
+      "count": 1,
+      "ids": [
+        "machine_chest_fly"
+      ]
+    },
+    "dual_fly_machine": {
+      "count": 1,
+      "ids": [
+        "machine_rear_delt_fly"
+      ]
+    },
+    "calf_raise_machine": {
+      "count": 1,
+      "ids": [
+        "seated_calf_raise"
+      ]
+    },
+    "step_platform": {
+      "count": 1,
+      "ids": [
+        "step_platform_step_up"
+      ]
+    },
+    "treadmill": {
+      "count": 1,
+      "ids": [
+        "treadmill_run"
+      ]
+    },
+    "elliptical_machine": {
+      "count": 1,
+      "ids": [
+        "elliptical"
+      ]
+    },
+    "stair_climber": {
+      "count": 1,
+      "ids": [
+        "stair_climber"
+      ]
+    },
+    "bicycle": {
+      "count": 1,
+      "ids": [
+        "cycling"
+      ]
+    },
+    "rowing_machine": {
+      "count": 1,
+      "ids": [
+        "rowing"
+      ]
+    },
+    "pool": {
+      "count": 1,
+      "ids": [
+        "swimming"
+      ]
+    },
+    "jump_rope": {
+      "count": 1,
+      "ids": [
+        "jump_rope"
+      ]
+    },
+    "mat": {
+      "count": 5,
+      "ids": [
+        "plank",
+        "glute_bridge",
+        "dead_bug",
+        "side_plank_hip_lift",
+        "seated_trunk_rotation"
+      ]
+    },
+    "weight_plate": {
+      "count": 1,
+      "ids": [
+        "seated_trunk_rotation"
+      ]
+    },
+    "resistance_band": {
+      "count": 1,
+      "ids": [
+        "assisted_pull_up"
+      ]
+    },
+    "bodyweight_space": {
+      "count": 6,
+      "ids": [
+        "plank",
+        "push_up",
+        "walking_lunge",
+        "glute_bridge",
+        "dead_bug",
+        "side_plank_hip_lift"
+      ]
+    },
+    "other": {
+      "count": 0,
+      "ids": []
+    }
+  },
+  "movementPatterns": {
+    "horizontal_push": {
+      "count": 5,
+      "ids": [
+        "barbell_bench_press",
+        "incline_db_press",
+        "dumbbell_bench_press",
+        "push_up",
+        "chest_press_machine"
+      ]
+    },
+    "vertical_push": {
+      "count": 4,
+      "ids": [
+        "overhead_press",
+        "dips",
+        "rotating_dumbbell_press",
+        "shoulder_press_machine"
+      ]
+    },
+    "horizontal_pull": {
+      "count": 4,
+      "ids": [
+        "barbell_row",
+        "machine_rear_delt_fly",
+        "seated_cable_row",
+        "single_arm_db_row"
+      ]
+    },
+    "vertical_pull": {
+      "count": 4,
+      "ids": [
+        "pull_up",
+        "lat_pulldown",
+        "assisted_pull_up",
+        "straight_arm_pulldown"
+      ]
+    },
+    "squat": {
+      "count": 5,
+      "ids": [
+        "barbell_back_squat",
+        "leg_press",
+        "front_squat",
+        "kettlebell_goblet_squat",
+        "sled_squat_machine"
+      ]
+    },
+    "hinge": {
+      "count": 5,
+      "ids": [
+        "deadlift",
+        "romanian_deadlift",
+        "hex_bar_deadlift",
+        "kettlebell_swing",
+        "dumbbell_single_leg_hip_hinge"
+      ]
+    },
+    "lunge": {
+      "count": 2,
+      "ids": [
+        "bulgarian_split_squat",
+        "walking_lunge"
+      ]
+    },
+    "hip_extension": {
+      "count": 2,
+      "ids": [
+        "hip_thrust",
+        "glute_bridge"
+      ]
+    },
+    "hip_flexion": {
+      "count": 1,
+      "ids": [
+        "hanging_leg_raise"
+      ]
+    },
+    "knee_flexion": {
+      "count": 1,
+      "ids": [
+        "leg_curl"
+      ]
+    },
+    "knee_extension": {
+      "count": 1,
+      "ids": [
+        "leg_extension"
+      ]
+    },
+    "ankle_plantar_flexion": {
+      "count": 2,
+      "ids": [
+        "standing_calf_raise",
+        "seated_calf_raise"
+      ]
+    },
+    "elbow_flexion": {
+      "count": 3,
+      "ids": [
+        "db_curl",
+        "hammer_curl",
+        "angled_bar_curl"
+      ]
+    },
+    "elbow_extension": {
+      "count": 2,
+      "ids": [
+        "triceps_pushdown",
+        "overhead_triceps_extension"
+      ]
+    },
+    "shoulder_abduction": {
+      "count": 1,
+      "ids": [
+        "lateral_raise"
+      ]
+    },
+    "shoulder_horizontal_adduction": {
+      "count": 2,
+      "ids": [
+        "cable_fly",
+        "machine_chest_fly"
+      ]
+    },
+    "shoulder_external_rotation": {
+      "count": 1,
+      "ids": [
+        "face_pull"
+      ]
+    },
+    "trunk_flexion": {
+      "count": 1,
+      "ids": [
+        "cable_crunch"
+      ]
+    },
+    "trunk_anti_extension": {
+      "count": 2,
+      "ids": [
+        "plank",
+        "dead_bug"
+      ]
+    },
+    "trunk_rotation": {
+      "count": 1,
+      "ids": [
+        "seated_trunk_rotation"
+      ]
+    },
+    "trunk_anti_rotation": {
+      "count": 1,
+      "ids": [
+        "cable_anti_rotation_press"
+      ]
+    },
+    "trunk_anti_lateral_flexion": {
+      "count": 1,
+      "ids": [
+        "side_plank_hip_lift"
+      ]
+    },
+    "loaded_carry": {
+      "count": 1,
+      "ids": [
+        "dumbbell_suitcase_march"
+      ]
+    },
+    "locomotion_run": {
+      "count": 3,
+      "ids": [
+        "outdoor_run",
+        "treadmill_run",
+        "zone2_run"
+      ]
+    },
+    "locomotion_walk": {
+      "count": 2,
+      "ids": [
+        "incline_walk",
+        "elliptical"
+      ]
+    },
+    "locomotion_swim": {
+      "count": 1,
+      "ids": [
+        "swimming"
+      ]
+    },
+    "step": {
+      "count": 2,
+      "ids": [
+        "step_platform_step_up",
+        "stair_climber"
+      ]
+    },
+    "cycle": {
+      "count": 1,
+      "ids": [
+        "cycling"
+      ]
+    },
+    "row_erg": {
+      "count": 1,
+      "ids": [
+        "rowing"
+      ]
+    },
+    "jump": {
+      "count": 1,
+      "ids": [
+        "jump_rope"
+      ]
+    },
+    "interval_mixed": {
+      "count": 1,
+      "ids": [
+        "hiit_intervals"
+      ]
+    },
+    "other": {
+      "count": 0,
+      "ids": []
+    }
+  },
+  "countingConventions": {
+    "total": {
+      "count": 43,
+      "ids": [
+        "barbell_bench_press",
+        "incline_db_press",
+        "overhead_press",
+        "lateral_raise",
+        "pull_up",
+        "barbell_row",
+        "lat_pulldown",
+        "db_curl",
+        "triceps_pushdown",
+        "barbell_back_squat",
+        "deadlift",
+        "romanian_deadlift",
+        "leg_press",
+        "leg_curl",
+        "standing_calf_raise",
+        "hanging_leg_raise",
+        "plank",
+        "cable_fly",
+        "dips",
+        "face_pull",
+        "hammer_curl",
+        "hip_thrust",
+        "cable_crunch",
+        "dumbbell_bench_press",
+        "push_up",
+        "chest_press_machine",
+        "machine_chest_fly",
+        "rotating_dumbbell_press",
+        "shoulder_press_machine",
+        "machine_rear_delt_fly",
+        "assisted_pull_up",
+        "seated_cable_row",
+        "straight_arm_pulldown",
+        "angled_bar_curl",
+        "overhead_triceps_extension",
+        "front_squat",
+        "kettlebell_goblet_squat",
+        "sled_squat_machine",
+        "leg_extension",
+        "hex_bar_deadlift",
+        "kettlebell_swing",
+        "glute_bridge",
+        "seated_calf_raise"
+      ]
+    },
+    "per_side": {
+      "count": 10,
+      "ids": [
+        "bulgarian_split_squat",
+        "single_arm_db_row",
+        "walking_lunge",
+        "step_platform_step_up",
+        "dead_bug",
+        "side_plank_hip_lift",
+        "cable_anti_rotation_press",
+        "seated_trunk_rotation",
+        "dumbbell_suitcase_march",
+        "dumbbell_single_leg_hip_hinge"
+      ]
+    },
+    "not_applicable": {
+      "count": 11,
+      "ids": [
+        "outdoor_run",
+        "treadmill_run",
+        "zone2_run",
+        "hiit_intervals",
+        "cycling",
+        "rowing",
+        "jump_rope",
+        "incline_walk",
+        "stair_climber",
+        "elliptical",
+        "swimming"
+      ]
+    }
+  }
+}

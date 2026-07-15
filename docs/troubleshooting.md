@@ -631,3 +631,17 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: publisher는 compact UTF-8 JSON을 한 번만 직렬화해 byte binding으로 draft에 저장하고, 검증 후 새 version을 `published`로 전환한 다음 `catalog_channel('v1')` 포인터를 갱신해야 한다. 이미 게시한 payload를 고치지 말고 새 version을 발행한다. `worker/catalog/src/index.js`는 D1 BLOB의 ArrayBuffer·typed-array·byte-array readback만 허용하고 TEXT, checksum 불일치, unpublished row는 `Cache-Control: no-store` 503으로 닫는다.
 - **Commit**: 7509fe884f6b06f50b89f2c5512ee896242d9dc6
 - **Verification**: migration을 in-memory SQLite에 적용해 8 tables / 25 triggers / foreign-key 오류 0을 확인했다. v1 포인터를 `1.0.1`에서 `1.0.0`으로 되돌린 뒤 bad release를 `withdrawn`으로 전환하면 `v1|1.0.0`, `1.0.0|published`, `1.0.1|withdrawn`이 출력됐다. Worker 전체 테스트는 60/60, Wrangler local dry-run은 `CATALOG_DB` 하나만 포함해 통과했다. 실제 D1 생성·게시·배포는 하지 않았다.
+
+## 최초 운동 카탈로그가 과거 반복을 재해석하고 D1 import 한도를 넘을 수 있었다
+
+- **Symptom**: 최초 공개 전 draft의 정적 검토에서 아래 규칙이 그대로 고정돼 있었다. 동결 `db_curl`·`hammer_curl`은 이전 로그가 양쪽 반복을 별도로 저장했다는 근거 없이 `per_side`였고, 바디웨이트 행은 kg 로거가 정확히 저장할 수 없는 선택 중량을 광고했다. D1 draft는 명시 트랜잭션과 전체 payload 한 번의 hex literal을 사용했다.
+  ```text
+  reps(3, 8, 12, 'per_side')
+  'BEGIN IMMEDIATE;'
+  X'${raw.toString('hex')}'
+  ```
+- **Cause**: `scripts/catalog/catalog-source.mjs`와 `catalog-validation.mjs`가 미검증 좌우 반복 가정을 정본처럼 잠그고, frozen `isBodyweight`를 장비 사실과 로그 UX bridge로 분리하지 않았다. `prepare-exercise-catalog.mjs`는 Wrangler file-ingestion이 바깥 원자성 경계라는 사실과 statement 크기 한도를 산출물 규칙으로 인코딩하지 않았다. 전이 validator도 counting convention 하나만 동결해 다른 과거 로그 identity, revision jump, lifecycle 역행을 막지 못했다.
+- **Fix**: `scripts/catalog/catalog-source.mjs`에서 frozen curl을 `total`로 복원하고 `walking_lunge`, `step_platform_step_up`, `glute_bridge`의 optional mass를 제거했다. `docs/exercise-catalog-v1.md`와 JSON Schema는 `external_resistance`를 kg/lb로 정직하게 표현할 수 있는 질량으로 한정하고 band·assistance를 제외했다. `catalog-validation.mjs`는 log identity·SemVer·revision·lifecycle·replacement·effective window을 fail-closed로 검증한다. `prepare-exercise-catalog.mjs`는 draft인 경우만 FK 순서로 재생성하고, `zeroblob` 후 24 KiB 이하 청크로 payload를 복원하며, published/withdrawn 버전은 PK 충돌로 거부한다. 산출물·README·release-specific verifier·39개 적대적 테스트를 같이 갱신했다.
+- **Commit**: `389a3e3ee6c4cc9269ef4934fc13a952868ec3ff`
+- **Verification**: `catalog:validate` 39/39, Jest 55 suites / 369 tests, strict TypeScript, zero-warning lint, `git diff --check`가 통과했다. 생성 SQL은 760 statements, 최대 49,353 bytes, BLOB 청크 24,576 / 24,576 / 17,502 bytes였다. Node SQLite에서 exact BLOB·draft 재실행·published/withdrawn 불변을 검증했고, Wrangler 4.110 local file import를 두 번 적용한 뒤 `blob` 66,654 bytes, 64 exercise rows, `foreign_key_check` 0을 확인했다. 생성 checksum은 `sha256:43491e64b66fbd16f87325d8e8ea9e5d2325d888b71c700b61b80da19566604a`다. 네 locale의 사람 편집 검토와 실제 앱 검색·기록 흐름은 미검증이다.
+- **Pattern**: revision이 없는 과거 로그가 참조하는 카탈로그 ID는 입력 의미를 같은 ID에서 바꾸지 않는다. 원격 DB import는 payload 정확성뿐 아니라 statement 크기, 재실행, published 불변을 같은 생성기와 테스트에서 잠근다.

@@ -1,0 +1,44 @@
+{
+  "contextId": "catalog-v1-program-safety-context-2026-07-14",
+  "purpose": "program_and_safety_context_only",
+  "exerciseSpecificReview": false,
+  "humanReviewed": false,
+  "uses": [
+    "General resistance-training program and safety context.",
+    "General physical-activity and cardio program context."
+  ],
+  "limitations": [
+    "These references were not compared exercise by exercise and are not row citations.",
+    "They do not establish exercise-specific taxonomy, equipment, aliases, or prescriptions.",
+    "Descriptions, instructions, coaching text, medical or diagnostic claims, images, and video.",
+    "OpenStax content, wger bulk imports, and any proprietary exercise copy.",
+    "Human editorial approval or endorsement."
+  ],
+  "sources": {
+    "strength": [
+      {
+        "sourceType": "peer_reviewed",
+        "label": "American College of Sports Medicine Position Stand. Resistance Training Prescription for Muscle Function, Hypertrophy, and Physical Performance in Healthy Adults: An Overview of Reviews",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12965823/",
+        "license": null,
+        "accessedAt": "2026-07-14T00:00:00Z"
+      },
+      {
+        "sourceType": "peer_reviewed",
+        "label": "Resistance Exercise Training in Individuals With and Without Cardiovascular Disease: 2023 Update",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11209834/",
+        "license": null,
+        "accessedAt": "2026-07-14T00:00:00Z"
+      }
+    ],
+    "cardio": [
+      {
+        "sourceType": "official_guideline",
+        "label": "HHS Physical Activity Guidelines for Americans, 2nd Edition",
+        "url": "https://odphp.health.gov/paguidelines/second-edition/pdf/Physical_Activity_Guidelines_2nd_edition.pdf",
+        "license": null,
+        "accessedAt": "2026-07-14T00:00:00Z"
+      }
+    ]
+  }
+}
