@@ -583,6 +583,7 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: source `b9ddda1`에서 safe `33abed25-1f2e-497f-8580-72b29e267840`와 normal `dee65f64-88ee-491f-962f-f9b686bfd561`을 불변 업로드했다. safe와 normal을 각각 0%에서 smoke한 뒤 normal을 100%로 승격했다. Pages project `reploom`을 만들고 preview를 확인한 뒤 production `1798ec5a-4134-4b02-b553-b00f6ea7e720`을 배포했으며, HTTPS 검증 뒤 ASC URL 네 개를 입력했다. private 설문은 완료로 가장하지 않고 별도 gate로 남겼다.
 - **Commit**: 2929f54
 - **Verification**: Worker 테스트 14/14와 두 dry-run 통과. normal deployment `9c686a48-0b0f-4c52-b7cc-a3fac00c9c8f` 100% readback, live `/parse` 200, markerless 요청 403, legacy delete invalid input 400, normal/safe의 네 퇴역 경로 410을 확인했다. Cloudflare settings는 `logpush=false`, `observability=null`, tail consumer 없음이었다. Pages 5개 extensionless 경로는 HTTPS 200·redirect 없음·로컬 HTML과 SHA-256 일치했고 iPhone Safari에서 production Privacy를 육안 확인했다. ASC URL 네 개도 readback됐지만 Review item POST는 계속 409, item 0, submitted date null이므로 App Review는 제출되지 않았다.
+- **Follow-up (`aab300a`)**: Build 15의 catalog/manual-meal 정책 source는 production `b9ddda1`과 noindex preview `7f4560d` 뒤에 생겼으므로 두 deployment가 현재 tracked HTML과 같다고 표시하지 않았다. 새 source는 Pro entitlement가 production에서 동작하기 전까지 candidate-only이며, 이 세션의 Browser/Chrome 연결이 제공되지 않아 모바일/데스크톱 visual QA와 Pages 승격을 모두 열린 gate로 남겼다.
 - **Pattern**: 출시 서비스는 “배포했다”가 아니라 source hash, immutable normal/safe ID, traffic 비율, live 응답, rollback 명령, 스토어 readback을 함께 기록해야 한다. 공개 URL 완료가 private 법적 설문 완료를 대신하지 않는다.
 
 ## Wrangler remote D1 migration이 trigger 본문에서 `incomplete input`으로 중단됐다

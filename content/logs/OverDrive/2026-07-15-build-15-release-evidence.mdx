@@ -1,0 +1,20 @@
+---
+title: "Build 15 증거와 공개 승격 조건을 분리했다"
+date: "2026-07-15"
+project: "OverDrive"
+kind: "tech-retro"
+visibility: "public"
+language: "ko"
+summary: "TestFlight 성공, 실사용 simulator QA, 정책 후보와 아직 닫히지 않은 결제·개인정보 gate를 한 release ledger에 정리했다."
+tags: ["release-evidence", "app-store", "privacy", "quality-assurance"]
+---
+
+release-state 문서 커밋 `aab300a`는 Build 15의 서로 다른 검증 층을 합치지 않고 기록한다. Apple server validation과 TestFlight `VALID`, realistic seed를 쓴 Release simulator의 actual-touch flow, 로컬 test matrix는 각각 Function·Quality·Product/workflow 증거로 분리했다. 11개 원본 1320×2868 PNG와 파일별 SHA-256은 `docs/artifacts/release-qa-build-15/`에 보존했다.
+
+manual meal은 이름·kcal·protein 저장, visible confirmation, Undo, DB row 원복까지 확인했다. catalog UX는 sportswear avatar의 body-region touch, Chest recommendation, English/Korean alias, per-side/total counting, unsupported plank fail-closed, trap-bar Quick Log을 확인했다. 모든 QA write 뒤 verified baseline을 복원해 schema 8, workout/open/set/cardio/food `5/1/20/1/3`, catalog cache/bridge/localization/alias/equipment/region `64/64/256/256/76/97`, SQLite integrity `ok`, foreign-key 오류 0을 다시 읽었다.
+
+정책과 App Store description source에는 local manual meal과 public read-only catalog의 실제 데이터 경계를 반영했다. catalog GET은 workout, meal, HealthKit, subscription, AI input, app-generated identity를 보내지 않으며 실패해도 on-device fallback을 막지 않는다. Worker application observability는 꺼져 있지만 Cloudflare platform security metadata의 보관 경계는 App Privacy Publish 전에 별도로 확인하도록 남겼다.
+
+현재 website와 listing source는 candidate-only다. Apple subscription product가 `MISSING_METADATA`이고 entitlement secret 5개, production Worker/Cron, 실제 purchase/restore/renew/refund 증거가 없으므로 Pro를 운영 기능처럼 보이는 문구를 Pages production이나 App Store Connect로 승격하지 않았다. 기존 production은 source `b9ddda1`, 기존 noindex preview는 source `7f4560d`이며 2026-07-15 변경본과 byte-identical하지 않다. Browser/Chrome 연결도 이번 세션에 제공되지 않아 변경본 visual QA를 완료로 표시하지 않았다.
+
+Build 15는 Internal TestFlight에 있지만 version 1.0과 연결되지 않았고 App Review 재요청도 없다. version 1.0은 Build 13에 연결된 `DEVELOPER_REJECTED`, 이전 review submission은 `COMPLETE` / item `REMOVED`다. 다음 승격은 결제 backend, Apple key, privacy retention 판단, physical-device purchase/restore, current website mobile/desktop visual QA가 모두 닫힌 뒤 하나의 truthful submission으로 수행한다.
