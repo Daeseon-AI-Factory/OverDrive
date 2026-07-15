@@ -5,7 +5,7 @@
 
 ## 한 줄 상태
 
-무료 Build 13 심사는 Reploom Pro를 준비하기 위해 철회했다. **코드 후보 `c98e021`의 Build 15는 Apple validation/upload를 통과해 `VALID` / `APP_STORE_ELIGIBLE`이고 내부 TestFlight에서 `IN_BETA_TESTING`이며, 2026-07-15에 Version 1.0의 Build 관계도 Build 13에서 Build 15로 교체해 readback했다. production exercise catalog와 Release simulator 실사용 seed QA도 검증됐다.** 그러나 필수 Apple IAP/entitlement Worker secret 5개가 없어 subscription Worker·Cron·production traffic은 여전히 Build 13 세대다. 구독은 `MISSING_METADATA`이고 첫 subscription 선택과 App Review 재제출은 하지 않았다.
+무료 Build 13 심사는 Reploom Pro를 준비하기 위해 철회했다. **코드 후보 `c98e021`의 Build 15는 Apple validation/upload를 통과해 `VALID` / `APP_STORE_ELIGIBLE`이고 내부 TestFlight에서 `IN_BETA_TESTING`이며, 2026-07-15에 Version 1.0의 Build 관계도 Build 13에서 Build 15로 교체해 readback했다. Version 1.0은 교체 후 `PREPARE_FOR_SUBMISSION`이다. production exercise catalog와 Release simulator 실사용 seed QA도 검증됐다.** 그러나 필수 Apple IAP/entitlement Worker secret 5개가 없어 subscription Worker·Cron·production traffic은 여전히 Build 13 세대다. 구독은 `MISSING_METADATA`이고 첫 subscription 선택과 App Review 재제출은 하지 않았다.
 
 ## 이번 범위와 명시적 비범위
 
@@ -65,9 +65,9 @@
   `hasAccessToAllBuilds=true`이고 Build 15를 포함한다. Build 15는
   `internalBuildState=IN_BETA_TESTING`, `externalBuildState=READY_FOR_BETA_SUBMISSION`, beta App
   Review `data:null`이다. 외부 beta/App Review 제출 증거가 아니며 실제 기기 설치·결제 증거도 아니다.
-- Version 1.0은 `DEVELOPER_REJECTED`, manual release, `usesIdfa=false`, copyright
-  `2026 Daeseon Yoo`며 Build 15가 연결돼 있다. 첫 subscription은 아직 선택하지 않았고 새
-  review submission도 없다.
+- Version 1.0은 Build 15 관계 교체 뒤 `PREPARE_FOR_SUBMISSION`, manual release,
+  `usesIdfa=false`, copyright `2026 Daeseon Yoo`다. 첫 subscription은 아직 선택하지 않았고 새
+  review submission도 없다. 교체 전 철회 상태는 `DEVELOPER_REJECTED`였다.
 - Category: `HEALTH_AND_FITNESS`; content rights: `USES_THIRD_PARTY_CONTENT`
 - Age rating: global 4+, Health/Wellness yes, Age Assurance yes, Contests no, 나머지 공개 항목 none/no
 - Review contact·notes·demo-account-not-required 입력 및 readback 완료

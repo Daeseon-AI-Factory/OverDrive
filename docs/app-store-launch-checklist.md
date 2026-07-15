@@ -5,15 +5,16 @@ Updated: 2026-07-15. App Store Connect app `6786831176`, bundle `ai.daeseon.repl
 The original free Build 13 submission was accepted into the review queue and then deliberately
 withdrawn on 2026-07-13 after the decision to prepare Reploom Pro and server-enforced AI limits.
 Review submission `72f01614-39bb-4b0e-95e7-a3810e5fbb97` read back `COMPLETE`, its item `REMOVED`,
-and version 1.0 `DEVELOPER_REJECTED`. Build 13 remains valid as a binary rollback artifact but must
+and version 1.0 initially `DEVELOPER_REJECTED`. Build 13 remains valid as a binary rollback artifact but must
 not be resubmitted as the subscription release. Builds 14 and 15 are uploaded and read `VALID` /
 `APP_STORE_ELIGIBLE`; Build 15 is the current code candidate. Version 1.0 was changed from Build 13
-to Build 15 on 2026-07-15 and the relationship read back Build 15, but no replacement submission
-exists.
+to Build 15 on 2026-07-15 and the relationship read back Build 15. Version 1.0 then read back
+`PREPARE_FOR_SUBMISSION`, but no replacement submission exists.
 
 ## Verified before this release candidate
 
-- App Store version `1.0` reads `DEVELOPER_REJECTED` after the deliberate withdrawal.
+- App Store version `1.0` read `DEVELOPER_REJECTED` after the deliberate withdrawal and now reads
+  `PREPARE_FOR_SUBMISSION` after the Build 15 relationship change.
 - TestFlight build 12 is `VALID`, but it predates this compliance/usability release candidate and
   must not be selected for App Review.
 - TestFlight build 14 is `VALID` / `APP_STORE_ELIGIBLE`; it is not attached to version 1.0.
