@@ -17,8 +17,9 @@ jest.mock('expo-crypto', () => {
   };
   return {
     CryptoDigestAlgorithm: { SHA256: 'SHA256' },
-    digest: async (_algorithm: string, data: ArrayBuffer) => {
-      const hash = createHash('sha256').update(new Uint8Array(data)).digest();
+    digest: async (_algorithm: string, data: Uint8Array) => {
+      if (!(data instanceof Uint8Array)) throw new Error('native digest requires a TypedArray');
+      const hash = createHash('sha256').update(data).digest();
       return hash.buffer.slice(hash.byteOffset, hash.byteOffset + hash.byteLength);
     },
   };

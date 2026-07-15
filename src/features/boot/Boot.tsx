@@ -38,7 +38,16 @@ export function Boot({ children }: { children: React.ReactNode }) {
       // the logger cannot race a first-launch activation; a failed catalog layer still falls back
       // without stranding boot. The explicit finally wait also covers an unrelated hydration read
       // rejecting before Promise.all would otherwise wait for the catalog promise.
-      const catalogHydration = readCatalogViews(db).catch(() => null);
+      const catalogHydration = readCatalogViews(db).catch((error: unknown) => {
+        // Catalog failures must never strand launch, but silently discarding the reason makes a
+        // bad bundle or SQLite invariant impossible to distinguish from an intentionally disabled
+        // remote endpoint. Messages contain only catalog/transport diagnostics, never user data.
+        console.error(
+          '[catalog] local hydration failed',
+          error instanceof Error ? error.message : 'unknown catalog hydration error',
+        );
+        return null;
+      });
       try {
         // Independent reads run in parallel — first paint waits on no serial round-trips.
         const [settings, user, input, deprecatedAvatarFilesPurged, sensitiveTemporaryFilesPurged] = await Promise.all([
@@ -105,7 +114,18 @@ export function Boot({ children }: { children: React.ReactNode }) {
         setReady(true);
         // Remote freshness starts only after the local catalog is usable. It remains non-blocking
         // and its atomic writes are bounded by the connection timeout and chunked activation.
-        void refreshExerciseCatalog(db).catch(() => {});
+        void refreshExerciseCatalog(db)
+          .then((result) => {
+            if (result.status === 'failed') {
+              console.error('[catalog] remote refresh failed', result.error ?? 'unknown catalog refresh error');
+            }
+          })
+          .catch((error: unknown) => {
+            console.error(
+              '[catalog] remote refresh crashed',
+              error instanceof Error ? error.message : 'unknown catalog refresh error',
+            );
+          });
       });
     return () => {
       alive = false;

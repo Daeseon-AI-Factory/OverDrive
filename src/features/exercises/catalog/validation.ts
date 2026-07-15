@@ -64,7 +64,9 @@ export interface GeneratedBundledCatalogModule {
 }
 
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, Uint8Array.from(bytes).buffer);
+  // expo-crypto's native digest bridge requires a TypedArray. Passing its backing ArrayBuffer
+  // happens to work in Node/Web mocks but fails on iOS with NotTypedArrayException.
+  const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, Uint8Array.from(bytes));
   return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
 }
 

@@ -64,9 +64,14 @@ async function readCatalogViewsOnce(
     });
     const bundled = await readActiveCatalog(db);
     if (bundled) return { source: 'bundled', views: bundled.views };
-  } catch {
+  } catch (error: unknown) {
     // The bundled module is generated in a separate build track. A broken/missing asset must not
     // strand exercise logging; seed rows are the final offline baseline.
+    // Keep the fallback non-blocking while preserving a privacy-safe release diagnostic.
+    console.error(
+      '[catalog] bundled activation failed',
+      error instanceof Error ? error.message : 'unknown bundled catalog error',
+    );
   }
 
   const rows = await db.getAllAsync<ExerciseRow>('SELECT * FROM exercise');
