@@ -7,18 +7,19 @@ withdrawn on 2026-07-13 after the decision to prepare Reploom Pro and server-enf
 Review submission `72f01614-39bb-4b0e-95e7-a3810e5fbb97` read back `COMPLETE`, its item `REMOVED`,
 and version 1.0 `DEVELOPER_REJECTED`. Build 13 remains valid as a binary rollback artifact but must
 not be resubmitted as the subscription release. Builds 14 and 15 are uploaded and read `VALID` /
-`APP_STORE_ELIGIBLE`; Build 15 is the current code candidate. Neither newer build is attached to
-version 1.0, which still points to Build 13, and no replacement submission exists.
+`APP_STORE_ELIGIBLE`; Build 15 is the current code candidate. Version 1.0 was changed from Build 13
+to Build 15 on 2026-07-15 and the relationship read back Build 15, but no replacement submission
+exists.
 
 ## Verified before this release candidate
 
 - App Store version `1.0` reads `DEVELOPER_REJECTED` after the deliberate withdrawal.
 - TestFlight build 12 is `VALID`, but it predates this compliance/usability release candidate and
   must not be selected for App Review.
-- TestFlight build 14 is `VALID` / `APP_STORE_ELIGIBLE`; version 1.0 still points to Build 13.
+- TestFlight build 14 is `VALID` / `APP_STORE_ELIGIBLE`; it is not attached to version 1.0.
 - TestFlight build 15 (`7123db21-dbc0-4126-8f30-5a7105278602`) is `VALID` /
   `APP_STORE_ELIGIBLE`, minimum iOS 16.4, non-exempt encryption false, and internal
-  `IN_BETA_TESTING`. It has no App Store version relationship and is not an App Review submission.
+  `IN_BETA_TESTING`. Version 1.0 now points to it, but it is not an App Review submission.
 - Store-facing brand is Reploom; OverDrive remains only an internal repository/concept name.
 - Public ranking and remote photo-avatar entry points are removed from v1 UI.
 - Worker candidate source uses Groq only for optional workout text, audio, meal text, and selected meal photos.
@@ -198,7 +199,7 @@ exercise/cache-bridge/localization/alias/equipment/region counts read
 Scope fence: completed items below mean only the evidence named on that line (repository tests,
 local Release simulator, or an App Store Connect readback). The separate payment platform,
 Apple server credentials, cleanup cron deployment, production Worker traffic, real
-purchase/entitlement exchange, Build/version/subscription association, and App Review resubmission
+purchase/entitlement exchange, version/first-subscription association, and App Review resubmission
 are deferred and remain unchecked. Remote D1 and the Build 14/15 TestFlight uploads are completed only
 at the evidence levels named below.
 
@@ -220,7 +221,9 @@ at the evidence levels named below.
 - [ ] App Store Server API In-App Purchase key is generated once, stored only as Worker secrets, and
   its Key ID/Issuer/bundle/product environment is verified without printing the private key.
   Current Worker secret readback is missing all five required Apple IAP/entitlement names; only
-  the older `GROQ_API_KEY` and unused `GEMINI_API_KEY` names exist.
+  the older `GROQ_API_KEY` and unused `GEMINI_API_KEY` names exist. Both existing ASC API keys
+  authenticated a nonexistent Sandbox transaction as `4040010` but returned HTTP 401 from the
+  production StoreKit server, so neither is accepted as the production IAP key.
 - [ ] App Store Connect App Privacy answers include linked Product Interaction for successful-use,
   provider-attempt, request-state, period-reset, and Apple-test daily safety aggregates.
 - [ ] Before App Privacy Publish, confirm whether Cloudflare retains catalog-request platform
@@ -245,7 +248,9 @@ at the evidence levels named below.
 - [ ] Upload a truthful paywall review screenshot and set/read back both subscription-group and
   product localizations, product review note, availability, price, tax category, and state
   `READY_TO_SUBMIT`. The live screenshot relationship is `data:null`; the simulator capture that
-  says `Loading the App Store price…` / `Subscription unavailable` must not be submitted.
+  says `Loading the App Store price…` / `Subscription unavailable` must not be submitted. Build 15
+  live-product loading was repeated with the realistic seed and still showed the same state after
+  15 seconds.
 - [x] Historical Build 14 Apple validation and TestFlight upload succeeded; Build 14 resource
   `ad2c1d7a-74f9-4516-94be-0c3a226e15d6` reads `VALID` / `APP_STORE_ELIGIBLE`.
 - [x] Historical Build 14 is available to the one-tester `Internal` group and reads
@@ -258,8 +263,10 @@ at the evidence levels named below.
   `IN_BETA_TESTING`. External state is only `READY_FOR_BETA_SUBMISSION`; beta review is absent.
 - [ ] Install and launch Build 15 itself on the internal tester's physical iPhone before treating
   group availability or any tester account's general `INSTALLED` state as evidence for this build.
-- [ ] Replace the current Build 13 association with Build 15 on version 1.0 and select the first
-  subscription with that version before creating a new review submission.
+- [x] Replace the Build 13 association with Build 15 on version 1.0. The PATCH returned 204 and
+  `/build` read back Build 15, `version=15`, `VALID`, `expired=false`.
+- [ ] Select the first subscription with version 1.0 in App Store Connect before creating a new
+  review submission. Apple requires the first subscription/app-version association in the web UI.
 - [ ] New submission and version both read back `WAITING_FOR_REVIEW`; never infer success from the
   submit click alone.
 

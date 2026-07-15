@@ -5,7 +5,7 @@
 
 ## 한 줄 상태
 
-무료 Build 13 심사는 Reploom Pro를 준비하기 위해 철회했다. **코드 후보 `c98e021`의 Build 15는 Apple validation/upload를 통과해 `VALID` / `APP_STORE_ELIGIBLE`이고 내부 TestFlight에서 `IN_BETA_TESTING`이다. production exercise catalog와 Release simulator 실사용 seed QA도 검증됐다.** 그러나 필수 Apple IAP/entitlement Worker secret 5개가 없어 subscription Worker·Cron·production traffic은 여전히 Build 13 세대다. 구독은 `MISSING_METADATA`이며 Build 15/version/구독 연결과 App Review 재제출은 하지 않았다.
+무료 Build 13 심사는 Reploom Pro를 준비하기 위해 철회했다. **코드 후보 `c98e021`의 Build 15는 Apple validation/upload를 통과해 `VALID` / `APP_STORE_ELIGIBLE`이고 내부 TestFlight에서 `IN_BETA_TESTING`이며, 2026-07-15에 Version 1.0의 Build 관계도 Build 13에서 Build 15로 교체해 readback했다. production exercise catalog와 Release simulator 실사용 seed QA도 검증됐다.** 그러나 필수 Apple IAP/entitlement Worker secret 5개가 없어 subscription Worker·Cron·production traffic은 여전히 Build 13 세대다. 구독은 `MISSING_METADATA`이고 첫 subscription 선택과 App Review 재제출은 하지 않았다.
 
 ## 이번 범위와 명시적 비범위
 
@@ -17,7 +17,7 @@
   validation/TestFlight upload.
 - 제외: 별도 결제 백엔드 플랫폼 연동, Apple IAP key/Worker secrets, Cron deployment,
   subscription Worker upload/traffic promotion, 실제 purchase/renew/refund/restore, physical-device
-  Sandbox, subscription metadata 마감, Build/version/구독 연결, App Review 재요청.
+  Sandbox, subscription metadata 마감, version/첫 subscription 연결, App Review 재요청.
 - Build 15 `VALID`, catalog production 배포, D1 스키마 적용은 독립적으로 검증된 배포 단계다. 월 구독이 실제로
   청구되거나 production entitlement가 동작한다는 뜻은 아니다.
 
@@ -58,14 +58,16 @@
 - Build 14: archive/export·Apple validation·upload 성공. `VALID`, `APP_STORE_ELIGIBLE`, min iOS
   16.4, non-exempt encryption false. version 1.0 연결/submission은 없음.
 - Build 15: archive/export·Apple validation·upload 성공. `VALID`, `APP_STORE_ELIGIBLE`, min iOS
-  16.4, non-exempt encryption false. `/appStoreVersion` relationship은 `data:null`이다.
+  16.4, non-exempt encryption false. 2026-07-15에 Version 1.0 관계를 Build 13에서 Build 15로
+  PATCH했고, Version 1.0의 `/build`가 Build 15 ID와 `version=15`, `VALID`, `expired=false`로
+  readback됐다.
 - `Internal` group `0b3e2175-6e44-4667-b777-0331dd34fae1`은
   `hasAccessToAllBuilds=true`이고 Build 15를 포함한다. Build 15는
   `internalBuildState=IN_BETA_TESTING`, `externalBuildState=READY_FOR_BETA_SUBMISSION`, beta App
   Review `data:null`이다. 외부 beta/App Review 제출 증거가 아니며 실제 기기 설치·결제 증거도 아니다.
 - Version 1.0은 `DEVELOPER_REJECTED`, manual release, `usesIdfa=false`, copyright
-  `2026 Daeseon Yoo`며 Build 13이 아직 연결돼 있다. 재제출 전 검증된 최신 후보와 첫
-  subscription을 선택해야 하며, 현재 기준 최신 후보는 Build 15다.
+  `2026 Daeseon Yoo`며 Build 15가 연결돼 있다. 첫 subscription은 아직 선택하지 않았고 새
+  review submission도 없다.
 - Category: `HEALTH_AND_FITNESS`; content rights: `USES_THIRD_PARTY_CONTENT`
 - Age rating: global 4+, Health/Wellness yes, Age Assurance yes, Contests no, 나머지 공개 항목 none/no
 - Review contact·notes·demo-account-not-required 입력 및 readback 완료
@@ -80,6 +82,10 @@
 - Subscription App Review screenshot relationship은 `data:null`이다. 기존
   `/tmp/Reploom-14-subscription-paywall.png`는 `Loading the App Store price…` /
   `Subscription unavailable`을 노출하므로 제출 증거로 사용하지 말아야 한다.
+- Build 15 Release simulator에서 realistic seed를 유지한 채 실제 터치로 paywall을 다시 열고
+  15초 기다려도 위 loading/unavailable 상태가 유지됐다. Xcode의 shared Release scheme
+  `Reploom-StoreKit-QA`와 `ios/Reploom/Products.storekit`으로 실제 `$4.99/month`가 로드된
+  truthful screenshot을 새로 만들기 전에는 review screenshot을 업로드하지 않는다.
 - USA $4.99와 동일한 132개 판매 storefront 가격 row는 earlier ASC readback 완료. 이는 앱/Worker
   결제 연동 또는 제출 완료의 증거가 아니다.
 - live URL readback:
@@ -131,6 +137,10 @@
 - 구독 Worker의 필수 secret `APPLE_IAP_ISSUER_ID`, `APPLE_IAP_KEY_ID`,
   `APPLE_IAP_PRIVATE_KEY`, `ENTITLEMENT_IDENTITY_SECRET`, `ENTITLEMENT_SESSION_SECRET`는 모두
   없다. 비밀값 없이 새 Worker를 production으로 올리지 말아야 한다.
+- 맥에 있던 기존 ASC API key 두 개를 private key/JWT 출력 없이 App Store Server API의 존재하지
+  않는 transaction read로 확인했다. Sandbox는 둘 다 authenticated `4040010`을 반환했지만
+  production은 둘 다 HTTP 401이었다. 이 키들을 IAP production key로 간주하거나 Worker에
+  설치하지 않는다.
 - Wrangler의 만료된 OAuth 자격 증명이 내부 명령 출력에 노출됐고 repo/commit에는 들어가지 않았다. 새 OAuth 로그인으로 교체했으며 이전 Cloudflare authorization은 출시 후 폐기 대상으로 취급한다.
 
 ### Production exercise catalog
@@ -240,7 +250,7 @@
    확인하고 미가입/소진 상태의 local logging이 막히지 않는지 확인한다.
 5. 실제 localized price와 활성 Subscribe/Restore/Terms/Privacy가 보이는 truthful review
    screenshot을 올리고 Tax Category·private gate·subscription `READY_TO_SUBMIT`을 readback한다.
-6. version 1.0을 Build 15로 바꾸고 첫 subscription을 같이 선택한 새 review submission만
+6. 이미 Build 15가 연결된 version 1.0에서 첫 subscription을 같이 선택한 새 review submission만
    만든다. 최종 submit 후 submission과 version 둘 다 `WAITING_FOR_REVIEW`를 읽었을 때만
    심사 요청 완료로 기록한다.
 
