@@ -1,0 +1,26 @@
+---
+title: "카탈로그 기록 identity와 D1 draft 경계를 다시 잠갔다"
+date: "2026-07-14"
+project: "OverDrive"
+kind: "tech-retro"
+visibility: "public"
+language: "ko"
+summary: "과거 세트를 재해석하는 카탈로그 변경을 금지하고, 반복 가능한 bounded D1 draft import를 기계적으로 고정했다."
+tags: ["exercise-catalog", "data-integrity", "d1", "release-safety"]
+---
+
+최초 공개 전 `1.0.0` draft를 다시 공격하면서 두 가지 서로 다른 위험을 확인했다. 애플리케이션 쪽에서는 frozen ID의 현재 taxonomy가 예전 운동 기록의 의미까지 뒤바꿀 수 있었고, ingestion 쪽에서는 정확한 JSON을 만들어도 하나의 거대한 SQL literal로 보내면 D1/Wrangler 경계에서 실패할 수 있었다. 아직 production catalog publish는 없었으므로 과거 공개 행을 고치는 migration 대신, 첫 기준선 자체를 보수적으로 교정했다.
+
+`db_curl`과 `hammer_curl`은 `total`로 복원했다. 이 일반 ID는 동시, 교대, 한 팔 수행을 구분하지 않았고 기존 `set_log`는 catalog revision을 저장하지 않는다. 따라서 양쪽 목표라고 새로 해석할 근거가 없다. `walking_lunge`, `step_platform_step_up`, `glute_bridge`에서는 현재 bodyweight 로거가 별도로 저장하지 못하는 optional mass를 제거했다. 장비 필터는 frozen `isBodyweight` boolean이 아니라 명시적 장비·taxonomy를 써야 한다. frozen boolean은 사실 분류가 아니라 예전 입력 UX를 유지하는 bridge 값이다.
+
+`external_resistance`는 kg/lb 필드에 값을 정직하게 넣을 수 있는 질량 source로 제한했다. 저항 밴드, 보조량, 밴드 색·레벨, 질량으로 표현할 수 없는 tension은 이 capability를 만족하지 않는다. `Trap-Bar Deadlift`는 neutral `hex_bar_deadlift` 행의 정확한 영어 검색 alias 하나로만 남겼다. 다른 ID·장비·표시명·locale·alias의 `trapbar` token은 거부된다. 이 예외는 편의상 검색 bridge이지 전문가 검토 증거가 아니므로, 해당 행은 계속 `unreviewed` / `none` / source 0이다.
+
+공개 후의 전이 규칙은 더 좁게 잠갔다. 같은 ID의 `exerciseType`, `isBodyweight`, `trackingMode`, `countingConvention`, `target.unit`, `effectiveFrom`은 revision을 올려도 바꾸지 못한다. 의미 변경은 정확히 직전 revision+1, 무변경은 같은 revision이어야 한다. ID 삭제, revision jump, SemVer·release time 역행, `deprecated` 또는 `retired`에서 활성 상태로의 복귀를 거부한다. 새 ID만 revision 1로 출발하며 직전 릴리스 후, 현재 릴리스 이하의 `effectiveFrom`을 가진다. replacement는 active 행만 가리킨다.
+
+D1 draft SQL은 안쪽에 `BEGIN`/`COMMIT`을 넣지 않고 Wrangler file-ingestion의 원자적 경계를 사용한다. 같은 version이 `draft`일 때만 child→exercise→release 순서로 제거하고 재생성한다. `published` 또는 `withdrawn`이면 기존 release를 남긴 채 PK 충돌로 실패한다. payload는 `zeroblob(66654)`에서 출발해 24,576 / 24,576 / 17,502-byte 청크로 길이를 유지하며 패치된다. 760개 statement 중 가장 큰 크기는 49,353 bytes였다.
+
+기능 검증은 `catalog:validate` 39/39, strict TypeScript, lint, 전체 Jest 55 suites / 369 tests, `git diff --check`와 Node SQLite exact-BLOB/adversarial import를 통과했다. Wrangler 4.110 local에서 생성 draft 760 commands를 두 번 적용했고, 재실행 후에도 payload는 `blob` 66,654 bytes, exercise 64행, FK 위반 0이었다. 정본 checksum은 `sha256:43491e64b66fbd16f87325d8e8ea9e5d2325d888b71c700b61b80da19566604a`다.
+
+품질 검증은 네 locale 문자열이 schema·충돌·token 규칙을 만족한다는 데까지다. 사람의 locale 편집 검토와 exercise-specific 사실 검토는 수행하지 않았다. 제품/워크플로 검증도 data branch 범위 밖이다. 실제 앱의 부위 검색, 권장 순위, 세트 로거, offline fallback은 통합 다음 Release simulator와 실사용 seed DB에서 따로 확인해야 한다. production D1·Worker·channel에는 쓰지 않았다.
+
+구현 커밋은 `389a3e3ee6c4cc9269ef4934fc13a952868ec3ff`이다. 되돌릴 때는 이 커밋을 revert해 정본 source, 검증기, 생성 산출물, D1 SQL을 같은 단위로 복원한다. 원격 publish가 없었으므로 외부 상태 rollback은 필요하지 않다.

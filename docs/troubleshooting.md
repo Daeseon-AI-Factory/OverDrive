@@ -619,3 +619,17 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 750f674
 - **Verification**: focused 4 suites / 18 tests와 전체 Jest 52 suites / 363 tests, strict TypeScript, lint, `git diff --check` 통과. 실제 SQLite v6형 테이블 1행에 v7 SQL을 적용해 원본 `old-1` 행·source를 보존하고 manual 행 삽입 뒤 2행 / 430 kcal / 22g / `integrity_check=ok`를 확인했다. Release simulator 실사용 상태의 터치·레이아웃·원본 스크린샷 검증은 통합 단계에 남겼다.
 - **Pattern**: 유료 AI 추정은 값 생성 보조일 뿐 로컬 원장을 여는 권한이 아니다. 사용자가 직접 아는 값은 계정·네트워크·quota와 무관하게 먼저 저장돼야 한다.
+
+## 최초 운동 카탈로그가 과거 반복을 재해석하고 D1 import 한도를 넘을 수 있었다
+
+- **Symptom**: 최초 공개 전 draft의 정적 검토에서 아래 규칙이 그대로 고정돼 있었다. 동결 `db_curl`·`hammer_curl`은 이전 로그가 양쪽 반복을 별도로 저장했다는 근거 없이 `per_side`였고, 바디웨이트 행은 kg 로거가 정확히 저장할 수 없는 선택 중량을 광고했다. D1 draft는 명시 트랜잭션과 전체 payload 한 번의 hex literal을 사용했다.
+  ```text
+  reps(3, 8, 12, 'per_side')
+  'BEGIN IMMEDIATE;'
+  X'${raw.toString('hex')}'
+  ```
+- **Cause**: `scripts/catalog/catalog-source.mjs`와 `catalog-validation.mjs`가 미검증 좌우 반복 가정을 정본처럼 잠그고, frozen `isBodyweight`를 장비 사실과 로그 UX bridge로 분리하지 않았다. `prepare-exercise-catalog.mjs`는 Wrangler file-ingestion이 바깥 원자성 경계라는 사실과 statement 크기 한도를 산출물 규칙으로 인코딩하지 않았다. 전이 validator도 counting convention 하나만 동결해 다른 과거 로그 identity, revision jump, lifecycle 역행을 막지 못했다.
+- **Fix**: `scripts/catalog/catalog-source.mjs`에서 frozen curl을 `total`로 복원하고 `walking_lunge`, `step_platform_step_up`, `glute_bridge`의 optional mass를 제거했다. `docs/exercise-catalog-v1.md`와 JSON Schema는 `external_resistance`를 kg/lb로 정직하게 표현할 수 있는 질량으로 한정하고 band·assistance를 제외했다. `catalog-validation.mjs`는 log identity·SemVer·revision·lifecycle·replacement·effective window을 fail-closed로 검증한다. `prepare-exercise-catalog.mjs`는 draft인 경우만 FK 순서로 재생성하고, `zeroblob` 후 24 KiB 이하 청크로 payload를 복원하며, published/withdrawn 버전은 PK 충돌로 거부한다. 산출물·README·release-specific verifier·39개 적대적 테스트를 같이 갱신했다.
+- **Commit**: `389a3e3ee6c4cc9269ef4934fc13a952868ec3ff`
+- **Verification**: `catalog:validate` 39/39, Jest 55 suites / 369 tests, strict TypeScript, zero-warning lint, `git diff --check`가 통과했다. 생성 SQL은 760 statements, 최대 49,353 bytes, BLOB 청크 24,576 / 24,576 / 17,502 bytes였다. Node SQLite에서 exact BLOB·draft 재실행·published/withdrawn 불변을 검증했고, Wrangler 4.110 local file import를 두 번 적용한 뒤 `blob` 66,654 bytes, 64 exercise rows, `foreign_key_check` 0을 확인했다. 생성 checksum은 `sha256:43491e64b66fbd16f87325d8e8ea9e5d2325d888b71c700b61b80da19566604a`다. 네 locale의 사람 편집 검토와 실제 앱 검색·기록 흐름은 미검증이다.
+- **Pattern**: revision이 없는 과거 로그가 참조하는 카탈로그 ID는 입력 의미를 같은 ID에서 바꾸지 않는다. 원격 DB import는 payload 정확성뿐 아니라 statement 크기, 재실행, published 불변을 같은 생성기와 테스트에서 잠근다.
