@@ -1,0 +1,20 @@
+---
+title: "Cloudflare edge 변환과 카탈로그 무결성 계약을 분리했다"
+date: "2026-07-14"
+project: "OverDrive"
+kind: "tech-retro"
+visibility: "public"
+language: "ko"
+summary: "edge가 제거하거나 약화하는 표준 header 대신 보존되는 byte metadata와 checksum으로 앱 활성화 경계를 고쳤다."
+tags: ["cloudflare-workers", "etag", "react-native", "data-integrity"]
+---
+
+production D1을 바인딩한 Wrangler remote preview에서 처음으로 실제 Cloudflare edge 응답을 읽었다. body는 정본과 byte-for-byte 같고 checksum도 일치했지만 Worker에서 설정한 `Content-Length: 66654`는 edge 뒤에서 사라지고 `Transfer-Encoding: chunked`가 됐다. strong ETag도 같은 opaque value의 weak ETag로 바뀌었다. 기존 앱 refresh는 둘 중 하나만 달라도 원격 snapshot을 거부했다.
+
+이 동작은 payload 손상이 아니라 transport/cache 계층 변환이다. 그런데 앱이 transport framing을 application integrity의 필수 증거로 사용해 정상 응답을 차단했다. arrayBuffer를 읽은 뒤 최대 512 KiB와 checksum을 검사하더라도 먼저 `Content-Length`가 없다는 이유로 끝나므로 production endpoint를 넣어도 bundle fallback만 계속 사용할 상태였다.
+
+Worker가 `X-Catalog-Bytes`를 release metadata로 200과 304 모두에 싣도록 바꿨다. 앱은 이 값을 1..524,288 범위로 먼저 검사하고 body를 읽은 뒤 exact byte 수와 SHA-256을 다시 확인한다. standard `Content-Length`가 존재하면 custom count와 일치해야 하지만, edge가 생략한 것은 실패가 아니다. ETag는 정본 strong 형식 또는 같은 값의 `W/` 형식을 허용하고 SQLite에는 canonical strong ETag만 저장해 다음 `If-None-Match`에 사용한다.
+
+전체 앱 Jest 64 suites / 458 tests와 Worker 86/86, strict TypeScript, Expo lint가 통과했다. 보정된 remote preview 200은 `X-Catalog-Bytes: 66654`, checksum `sha256:43491e64b66fbd16f87325d8e8ea9e5d2325d888b71c700b61b80da19566604a`, weak ETag를 반환했고 body는 로컬 정본과 `cmp` 일치했다. canonical strong ETag로 재요청하면 bodyless 304가 왔고 custom byte/version/checksum header도 유지됐다.
+
+구현 커밋은 `0e782dd`다. 이 변경 시점에는 public workers.dev deployment가 아직 없으므로 external rollback은 없다. 코드 rollback은 이 커밋 revert지만, 이전 클라이언트는 실제 edge 응답을 활성화하지 못하므로 되돌리는 것은 권장되지 않는다.

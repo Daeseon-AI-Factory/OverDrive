@@ -690,3 +690,12 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 1561127
 - **Verification**: 통합 HEAD에서 strict TypeScript, zero-error lint, 전체 Jest 64 suites / 457 tests, catalog 39/39가 통과했다. Worker 86/86과 production D1 게시 검증은 직전 커밋에서 별도로 통과했다. Release simulator 실사용 터치와 스크린샷은 아직 이 merge의 제품 검증이 아니다.
 - **Pattern**: 병렬 계보를 합친 뒤에는 각 브랜치의 테스트 결과를 재사용하지 말고 merge HEAD에서 앱·정본 gate를 다시 실행한다.
+
+## Cloudflare edge가 Content-Length를 제거하고 strong ETag를 weak로 바꿨다
+
+- **Symptom**: production D1을 연결한 remote-dev GET은 정본 66,654 bytes를 반환했지만 응답은 `Transfer-Encoding: chunked`, `ETag: W/"catalog-v1-..."`였다. 앱은 필수 `Content-Length`와 exact strong ETag만 허용해 정상 원격 카탈로그도 `failed`로 버릴 상태였다.
+- **Cause**: Worker runtime에서 설정한 entity header가 Cloudflare edge의 transport framing·cache 처리 뒤에도 그대로 남는다고 가정했다. payload checksum과 version은 보존됐지만 hop/representation 처리 대상 header를 application integrity 계약으로 사용했다.
+- **Fix**: Worker가 `X-Catalog-Bytes`를 200/304에 명시하고 `no-transform`을 cache directive에 추가했다. 클라이언트는 이 고유 byte count를 bounded exact-length 계약으로 사용하고, transport `Content-Length`가 있을 때만 추가 일치 검사를 한다. ETag는 같은 opaque tag의 strong/weak 형태를 허용하되 cache에는 정본 strong 값을 저장한다.
+- **Commit**: 0e782dd
+- **Verification**: 전체 앱 64 suites / 458 tests, Worker 86/86, strict TypeScript, lint를 통과했다. remote-dev 200은 chunked 상태에서도 `X-Catalog-Bytes: 66654`, exact checksum, weak ETag를 보존했고 body는 정본과 byte-for-byte 같았다. 정본 strong `If-None-Match` 재요청은 bodyless 304와 strong ETag, 같은 custom metadata를 반환했다.
+- **Pattern**: application byte integrity는 CDN이 바꿀 수 있는 transport framing header에 의존하지 않는다. custom metadata와 payload checksum을 검증하고 standard ETag의 weak comparison 의미를 수용한다.
