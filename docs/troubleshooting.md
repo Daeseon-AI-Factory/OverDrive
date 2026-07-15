@@ -663,3 +663,12 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 2784cca
 - **Verification**: Worker 85/85와 catalog 39/39, Node syntax, `git diff --check`, Wrangler dry-run을 통과했다. 새 로컬 D1에서 schema 66 commands와 draft 760 commands를 적용하고 exact verify(`draftGeneration=752`), fixed publish, 동일 publish 재시도를 확인했다. 실제 Worker GET은 66,654 bytes·정본 SHA-256과 byte-for-byte 일치했고 ETag 재요청은 bodyless 304였다. 운영 D1 schema/import/publish와 live workers.dev 응답은 이 커밋 시점에는 아직 실행하지 않았다.
 - **Pattern**: publish 성공은 UPDATE 성공만이 아니다. serving bytes, normalized projection, FK, 이전 lineage, generation, pointer를 같은 release identity로 읽고 zero-row·race를 실패로 바꿔야 한다.
+
+## 원격 D1 게시가 성공했지만 Wrangler 진행 출력 때문에 실패로 보고됐다
+
+- **Symptom**: production publish 첫 실행은 D1에서 release와 `v1` channel을 정확히 갱신했지만 admin CLI가 `Wrangler did not return JSON: Unexpected token '├'`로 종료했다. 즉시 readback한 상태는 `published` / `currentChannelVersion: 1.0.0`이었다.
+- **Cause**: Wrangler 4.110 remote `d1 execute --file --json`은 file-upload 진행 줄을 stdout에 먼저 쓰고 마지막에 JSON array를 붙인다. admin의 parser는 stdout 전체가 JSON 하나라고 가정해 실제 성공 결과까지 거부했다.
+- **Fix**: `parseWranglerJson`이 전체 문자열을 먼저 파싱하고, 실패하면 뒤에서부터 `[` 후보를 검사해 stdout 끝까지 차지하는 유효한 JSON suffix만 허용하도록 바꿨다. trailing junk와 `success:false`는 계속 실패한다.
+- **Commit**: 7a0d677
+- **Verification**: parser 적대 테스트를 포함해 Worker 86/86과 Node syntax, `git diff --check`를 통과했다. 같은 production timestamp `1783987201234`로 publish를 재시도해 `status: published`, version `1.0.0`, exact checksum을 받고 post-readback까지 종료 코드 0으로 마쳤다.
+- **Pattern**: CLI의 JSON 모드는 machine-readable payload 앞에 progress를 섞을 수 있다. prefix는 제한적으로 버리되 JSON 뒤의 임의 출력은 성공으로 삼지 말고, 원격 mutation 오류 뒤에는 재시도 전에 실제 상태를 읽는다.
