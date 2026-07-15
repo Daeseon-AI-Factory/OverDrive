@@ -1,0 +1,24 @@
+---
+title: "카탈로그 게시를 exact readback과 generation CAS로 잠갔다"
+date: "2026-07-14"
+project: "OverDrive"
+kind: "tech-retro"
+visibility: "public"
+language: "ko"
+summary: "정본 BLOB과 여섯 projection을 전수 비교하고 경쟁 변경을 거부하는 D1 게시 경계를 구현했다."
+tags: ["exercise-catalog", "cloudflare-d1", "worker", "release-safety"]
+---
+
+카탈로그 Worker는 compact JSON BLOB만 응답하지만 운영자는 normalized exercise, localization, alias, equipment, region, source 테이블도 관리한다. 초기 경계는 checksum과 release metadata가 맞아도 projection drift를 게시할 수 있었고, 검증과 channel 전환 사이의 변경을 한 번에 묶어 감지하지 못했다. 특히 draft를 published로 바꾸는 같은 UPDATE에 payload 변경까지 넣으면 OLD/NEW state를 보는 generation과 immutable trigger 사이를 통과할 수 있었다.
+
+마이그레이션에 complete projection, provenance, lifecycle, log identity, draft generation, metadata-smuggling, channel deletion, published immutability guard를 추가했다. 모든 draft child mutation은 generation을 올린다. 게시 UPDATE는 검증한 generation과 schema, release time, checksum, item count, payload length를 모두 조건으로 사용하며, 성공 뒤에만 `catalog_channel('v1')`을 이동한다. 조건 불일치는 유효하지 않은 channel 값을 넣는 마지막 guard에서 atomic file 전체 실패로 변환된다.
+
+`worker/catalog/scripts/admin.mjs`는 별도 validator를 복제하지 않고 정본 `catalog-validation.mjs`를 import한다. 로컬 JSON·sidecar·schema·compatibility·reference context·legacy seed를 먼저 검사한 다음 D1 BLOB과 여섯 projection을 deterministic order로 읽고 `foreign_key_check`를 실행한다. 첫 release는 revision 1 active identity만 허용하고, 다음 release는 정본 SemVer·lifecycle·revision·effective-window 전이 검사를 공유한다. `verify`가 기본이고 `publish`와 `rollback`은 명시 subcommand가 있어야만 쓴다.
+
+전용 Cloudflare D1 `overdrive-catalog`은 ENAM에 생성됐고 ID는 `4bf0e085-56d8-405e-a7a7-333d5eeff03f`다. production config는 이 DB 하나만 `CATALOG_DB`로 바인딩하고 observability를 끄며 workers.dev route만 연다. D1 ID는 routing metadata이지 secret이 아니다. 이 구현 커밋 시점에는 운영 schema/import/channel publish/Worker upload를 아직 수행하지 않아 외부 성공으로 기록하지 않는다.
+
+기능 검증은 Worker 85/85, catalog 39/39, Node syntax, Wrangler production-config dry-run을 통과했다. 별도 local persistence에서 migration 66 commands와 generated import 760 commands를 실제 Wrangler 4.110으로 실행했다. admin exact readback은 64행, 66,654 bytes, checksum `sha256:43491e64b66fbd16f87325d8e8ea9e5d2325d888b71c700b61b80da19566604a`, generation 752를 확인했다. fixed timestamp publish와 같은 명령 재시도가 모두 성공했다. local Worker의 200 body는 정본과 byte-for-byte 같고 `Content-Length: 66654`였으며, ETag 요청은 bodyless 304였다.
+
+품질 경계에는 하나의 운영 전제가 남는다. 권한자가 draft를 삭제하고 같은 version·generation으로 조작해 재생성하는 공격까지 막는 distributed release lock은 아니다. Worker 응답은 계속 immutable BLOB/checksum을 검증하지만 projection의 privileged race를 완전히 닫으려면 별도 영속 generation/tombstone이 필요하다. 현재는 generated import→verify→publish를 단일 writer maintenance로 실행하고 동시 수동 D1 write를 금지한다.
+
+구현 커밋은 `2784cca`다. 코드 rollback은 이 커밋 revert로 가능하다. 전용 D1은 생성만 된 상태라 원격 데이터 rollback은 아직 필요 없으며, 운영 publish 뒤에는 admin의 checksum-검증 pointer rollback만 사용해야 한다.

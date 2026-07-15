@@ -654,3 +654,12 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 18043ab
 - **Verification**: 통합 HEAD에서 `npm run catalog:validate` 39/39가 통과했고 64행, 66,654 bytes, `sha256:43491e64b66fbd16f87325d8e8ea9e5d2325d888b71c700b61b80da19566604a`를 다시 읽었다. Worker·클라이언트·원격 D1·Release simulator 검증은 이 merge 자체의 완료 범위가 아니다.
 - **Pattern**: append-only 운영 로그가 충돌하면 한쪽을 선택하지 말고 두 원인·수정·검증 기록을 모두 보존한 뒤 통합 정본을 다시 검증한다.
+
+## 카탈로그 projection drift와 게시 경쟁을 metadata만으로 막을 수 없었다
+
+- **Symptom**: 초기 publisher 초안은 release metadata와 checksum만 확인해도 게시할 수 있었고, 같은 ID의 normalized projection이 payload와 달라지거나 검증 뒤 draft가 바뀌어도 이를 전부 감지하지 못했다. `draft -> published` UPDATE에 payload 변경을 같이 넣으면 기존 generation·immutable trigger 조건도 비껴갈 수 있었다.
+- **Cause**: serving BLOB, 여섯 projection, lifecycle 전이, channel pointer를 서로 다른 신뢰 경계로 다뤘고 검증 read와 게시 write 사이의 compare-and-swap token이 없었다. D1 관리 작업을 HTTP route와 분리했지만 재현 가능한 전수 readback·고정 timestamp·zero-row 실패 guard도 없었다.
+- **Fix**: `worker/catalog/migrations/0001_catalog.sql`에 complete projection, provenance, lifecycle, log identity, draft generation, metadata-smuggling, channel delete, published immutability trigger를 추가했다. `worker/catalog/scripts/admin.mjs`는 정본 validator를 공유하고 exact BLOB·6 projection·FK를 읽은 뒤 generation과 metadata 전체를 CAS 조건으로 고정해 publish/rollback한다. Worker 200 응답은 exact `Content-Length`를 내고 304는 body 없이 동일 release header를 유지한다. 전용 production config는 D1 `4bf0e085-56d8-405e-a7a7-333d5eeff03f`만 `CATALOG_DB`로 바인딩하며 observability를 끈다.
+- **Commit**: 2784cca
+- **Verification**: Worker 85/85와 catalog 39/39, Node syntax, `git diff --check`, Wrangler dry-run을 통과했다. 새 로컬 D1에서 schema 66 commands와 draft 760 commands를 적용하고 exact verify(`draftGeneration=752`), fixed publish, 동일 publish 재시도를 확인했다. 실제 Worker GET은 66,654 bytes·정본 SHA-256과 byte-for-byte 일치했고 ETag 재요청은 bodyless 304였다. 운영 D1 schema/import/publish와 live workers.dev 응답은 이 커밋 시점에는 아직 실행하지 않았다.
+- **Pattern**: publish 성공은 UPDATE 성공만이 아니다. serving bytes, normalized projection, FK, 이전 lineage, generation, pointer를 같은 release identity로 읽고 zero-row·race를 실패로 바꿔야 한다.
