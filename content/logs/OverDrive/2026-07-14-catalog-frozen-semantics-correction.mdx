@@ -1,0 +1,28 @@
+---
+title: "운동 카탈로그의 동결 ID와 실제 기록 의미를 다시 맞췄다"
+date: "2026-07-14"
+project: "OverDrive"
+kind: "tech-retro"
+visibility: "public"
+language: "ko"
+summary: "첫 공개 전 카탈로그에서 좁혀진 legacy 이름을 복원하고 장비 capability, 좌우 반복, seed bridge와 32~512행 계약을 fail-closed 검증으로 고정했다."
+tags: ["exercise-catalog", "compatibility", "data-quality", "validation"]
+---
+
+직전 보정 `bffdd1e`는 32개 동결 ID의 일반 이름을 특정 장비나 실행 방식으로 좁히고, 현재 64행 AI projection 한도를 snapshot 전체 한도로 잘못 적용했다. 이번 보정은 아직 한 번도 공개되지 않은 `1.0.0` 기준선을 다시 정리했다. 동결 이름은 Dumbbell Curl, Leg Curl, Bulgarian Split Squat, Standing Calf Raise, Hammer Curl, Hip Thrust, Zone 2 Run, HIIT Intervals와 Incline Walk 같은 seed 수준 identity로 돌아갔다. 최초 공개 전 draft 수정은 published semantic revision이 아니므로 64개 행의 `recordRevision`은 모두 1이다.
+
+일반 이름과 실제 추천 가능성을 동시에 지키기 위해 frozen bridge에만 장비 capability를 허용했다. Leg Curl은 `leg_curl_station`, Bulgarian은 `rear_foot_support + external_resistance`, Standing Calf Raise는 `external_resistance`, Hip Thrust는 `upper_back_support + external_resistance`가 필요하다. 상세 장비 필터는 이 capability를 실제 보유 장비에 매핑할 수 있을 때만 결과를 노출해야 한다. 새 non-frozen 행은 이 예외를 사용할 수 없다. Rear-delt machine은 `dual_fly_machine`, Trap-Bar canonical ID/equipment는 neutral `hex_bar_deadlift`/`hex_bar`로 바꾸고 익숙한 Trap-Bar 문구만 검색 alias에 남겼다. Assisted Pull-Up의 Chin-Up alias도 제거했다.
+
+`isBodyweight`는 장비 부재가 아니라 기존 입력·중량 UX를 고르는 bridge 의미가 있으므로 동결 32개는 seed의 exercise type과 boolean을 기계적으로 대조한다. Generic dumbbell curl과 hammer curl, seated trunk rotation은 양쪽 목표를 모두 채워야 set가 끝나는 `per_side`로 고정했다. 이미 공개된 ID의 counting convention을 바꾸면 revision 없는 과거 `set_log`가 재해석되므로, 전이 validator는 이를 거부하고 새 ID/replacement를 요구한다.
+
+계약 snapshot 범위는 32~512행이고, 64는 현재 curated artifact와 별도 AI candidate projection 한도일 뿐이다. 65행 synthetic snapshot이 generic validator를 통과하는 회귀 테스트를 추가했다. Timestamp schema는 정확한 `YYYY-MM-DDTHH:mm:ssZ` shape을 공유 `$defs`로 고정했고, runtime validator는 달력 round-trip까지 검사한다. App fallback 정본은 active → previous valid → bundled → seed이며, unreviewed row source는 정확히 0개, reviewed row source는 최소 1개다.
+
+기능 검증: `catalog:validate`의 prepare/check와 27개 corruption test가 통과했다. Draft 2020-12 schema로 canonical snapshot과 UTC-second shape을 독립 검사했고, Worker migration에 D1 draft를 적용해 release/exercise/localization/alias/equipment/region/source/channel이 `1/64/256/256/79/97/0/0`, foreign-key violation 0, integrity `ok`임을 확인했다. 생성 payload는 66,682 bytes, checksum은 `sha256:d54d5f010eea21e7f1bde2dc225463d99b23e1857f00f5515d60fc92a8ee8d3b`다.
+
+품질 검증: TypeScript strict, lint와 전체 Jest 55 suite/369 test가 통과했다. Alias 변조 Arnold/CrossFit/Tabata, frozen flag drift, capability 누락, 65행 상한 오적용, counting convention 변경, assisted grip 혼합, rear-delt 장비 불일치와 invalid calendar timestamp를 실패-차단했다. 네 언어 이름의 사람 편집 검토와 exercise-specific factual review는 수행하지 않았으므로 해당 품질은 검증되지 않았다.
+
+제품/워크플로 검증: data/contract 변경만 수행했으며 실제 앱 검색, 장비 필터, per-side 라벨, offline fallback과 헬스장 기록 흐름은 아직 simulator/seeded DB로 검증하지 않았다. Client integration 전까지 production catalog publish나 channel-pointer 변경은 금지한다.
+
+구현 커밋: `c2b99df395ecc82c42b518e276fdfc76570e814f`.
+
+되돌릴 때는 구현 커밋과 생성 산출물을 함께 revert한다. 원격 배포, D1 write, catalog publish는 수행하지 않았다.
