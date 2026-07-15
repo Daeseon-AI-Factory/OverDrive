@@ -4,6 +4,8 @@ import {
   regionsForMuscleGroup,
   type TrainingRegion,
 } from './regionRecommendations';
+import { exerciseFixture } from './catalog/testFixture';
+import type { CatalogExercise } from './catalog/types';
 
 const row = (id: string, name: string, muscleGroup: string): ExerciseRow => ({
   id,
@@ -103,5 +105,33 @@ describe('region recommendation ranking', () => {
     });
 
     expect(result).toEqual([{ exercise: custom, reason: 'recent' }]);
+  });
+
+  it('ranks canonical primary-region matches before secondary matches inside each reason', () => {
+    const primaryToday = row('primary_today', 'Primary Today', 'other');
+    const secondaryToday = row('secondary_today', 'Secondary Today', 'other');
+    const primaryRecent = row('primary_recent', 'Primary Recent', 'other');
+    const secondaryRecent = row('secondary_recent', 'Secondary Recent', 'other');
+    const metadata = new Map<string, CatalogExercise>([
+      [primaryToday.id, { ...exerciseFixture('primary_today', 36), primaryBodyRegions: ['chest'], secondaryBodyRegions: [] }],
+      [secondaryToday.id, { ...exerciseFixture('secondary_today', 33), primaryBodyRegions: ['back'], secondaryBodyRegions: ['chest'] }],
+      [primaryRecent.id, { ...exerciseFixture('primary_recent', 35), primaryBodyRegions: ['chest'], secondaryBodyRegions: [] }],
+      [secondaryRecent.id, { ...exerciseFixture('secondary_recent', 34), primaryBodyRegions: ['back'], secondaryBodyRegions: ['chest'] }],
+    ]);
+
+    const result = rankRegionRecommendations({
+      catalog: [secondaryToday, primaryToday, secondaryRecent, primaryRecent],
+      region: 'chest',
+      programExerciseIds: [secondaryToday.id, primaryToday.id],
+      recentSets: [{ exerciseId: secondaryRecent.id }, { exerciseId: primaryRecent.id }],
+      catalogFor: (exercise) => metadata.get(exercise.id) ?? null,
+    });
+
+    expect(result.map(({ exercise, reason }) => [exercise.id, reason])).toEqual([
+      [primaryToday.id, 'today'],
+      [secondaryToday.id, 'today'],
+      [primaryRecent.id, 'recent'],
+      [secondaryRecent.id, 'recent'],
+    ]);
   });
 });

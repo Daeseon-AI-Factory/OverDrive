@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import type { ExerciseRow } from '@/db/types';
+import type { CatalogExerciseSelection } from '@/features/exercises/catalog/types';
 import { FoodCard } from '@/features/food/FoodCard';
 import { useForge } from '@/features/forge/useForge';
 import { AmbientAura } from '@/features/juice/AmbientAura';
@@ -63,7 +63,7 @@ export default function LogScreen() {
   const skin = useSkinOrNull();
   const { enterSilently } = useForge();
   const [picker, setPicker] = useState<RegionPicker | null>(null);
-  const [activeExercise, setActiveExercise] = useState<ExerciseRow | null>(null);
+  const [activeExercise, setActiveExercise] = useState<CatalogExerciseSelection | null>(null);
 
   const ensureSession = useCallback(async (): Promise<string> => {
     return enterSilently();
@@ -72,7 +72,7 @@ export default function LogScreen() {
   // ExerciseRegionSheet delivers only after its picker Modal is fully dismissed. Session creation
   // stays inside the logger's actual save action, so browsing and closing cannot leave an empty
   // durable workout behind.
-  const chooseExercise = useCallback((exercise: ExerciseRow) => setActiveExercise(exercise), []);
+  const chooseExercise = useCallback((selection: CatalogExerciseSelection) => setActiveExercise(selection), []);
 
   return (
     <Screen background={<AmbientAura />}>
@@ -115,14 +115,18 @@ export default function LogScreen() {
         onClose={() => setPicker(null)}
       />
       <SetLoggerSheet
-        key={`log-strength-${activeExercise?.id ?? 'none'}`}
-        exercise={activeExercise?.type === 'strength' ? activeExercise : null}
+        key={`log-strength-${activeExercise?.exercise.id ?? 'none'}`}
+        exercise={(activeExercise?.catalog?.exerciseType ?? activeExercise?.exercise.type) === 'strength' ? activeExercise?.exercise ?? null : null}
+        catalog={activeExercise?.catalog ?? null}
+        displayName={activeExercise?.localizedName}
         ensureSession={ensureSession}
         onClose={() => setActiveExercise(null)}
       />
       <CardioLoggerSheet
-        key={`log-cardio-${activeExercise?.id ?? 'none'}`}
-        exercise={activeExercise?.type === 'cardio' ? activeExercise : null}
+        key={`log-cardio-${activeExercise?.exercise.id ?? 'none'}`}
+        exercise={(activeExercise?.catalog?.exerciseType ?? activeExercise?.exercise.type) === 'cardio' ? activeExercise?.exercise ?? null : null}
+        catalog={activeExercise?.catalog ?? null}
+        displayName={activeExercise?.localizedName}
         ensureSession={ensureSession}
         onClose={() => setActiveExercise(null)}
       />

@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { DayType } from '@/db/types';
+import { supportsLegacyCurrentLogger } from '@/features/exercises/catalog/loggingSupport';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { BUILTIN_DAY_META, defaultDayConfig } from './defaultProgram';
 import { dayDisplayName } from './resolve';
@@ -29,11 +30,25 @@ export function useTodayProgram(now: Date = new Date()): ResolvedToday {
       dayType: customDay.dayType,
       title: dayDisplayName(customDay, t), // label > labelKey (localized) > day type
       focus: t(`program.dayType.${customDay.dayType}`),
-      slots: customDay.slots,
+      slots: currentLoggerSlots(customDay.slots),
     };
   }
 
   const meta = BUILTIN_DAY_META[weekday] ?? BUILTIN_DAY_META[0]!;
   const day = defaultDayConfig(weekday);
-  return { dayType: day.dayType, title: t(meta.titleKey), focus: t(meta.focusKey), slots: day.slots };
+  return {
+    dayType: day.dayType,
+    title: t(meta.titleKey),
+    focus: t(meta.focusKey),
+    slots: currentLoggerSlots(day.slots),
+  };
+}
+
+/**
+ * Stored programs can outlive logger capabilities. Filter only the frozen legacy modes whose
+ * semantics are known without a catalog lookup; catalog-backed pickers already block new
+ * duration/distance strength rows until a matching logger exists.
+ */
+export function currentLoggerSlots(slots: readonly ProgramSlot[]): ProgramSlot[] {
+  return slots.filter((slot) => supportsLegacyCurrentLogger(slot.exerciseId));
 }

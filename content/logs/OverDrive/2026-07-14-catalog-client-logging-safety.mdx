@@ -1,0 +1,20 @@
+---
+title: "운동 카탈로그를 실제 기록 경로까지 끊기지 않게 연결했다"
+date: "2026-07-14"
+project: "OverDrive"
+kind: "troubleshoot"
+visibility: "public"
+language: "ko"
+summary: "Coach·QuickLog·부위 추천이 같은 운동 의미를 쓰게 하고 catalog 갱신이 foreground 기록과 경쟁하는 구간을 줄였다."
+tags: ["phase-1", "exercise-catalog", "quicklog", "sqlite", "usability"]
+---
+
+64개 canonical 운동 데이터가 앱에 들어와도 선택 화면에서 기록 화면으로 이동할 때 메타데이터가 사라지면 사용자는 그 이점을 얻지 못한다. 실제 Today 경로가 그 상태였다. Coach는 프로그램 운동의 legacy DB row만 넘겼고, 새 기록 intent도 그 row 하나만 저장했다. 따라서 좌우 반복 표기, bodyweight와 선택 중량의 구분, duration 운동의 추적 방식이 로거에 도착하지 않았다. 특히 `plank`는 초 단위 목표인데 reps 로거와 최근 운동 반복 경로가 이를 숫자 반복으로 저장할 수 있었다.
+
+`04641fc`는 catalog selection을 기록 경계까지 그대로 운반한다. Coach가 운동을 열 때 현재 locale 이름과 canonical metadata를 다시 해석하고, strength intent와 cardio sheet 모두 같은 selection을 받는다. one-tap repeat는 현재 reps candidate로 확인된 운동만 저장한다. catalog cache를 읽지 못하는 최악의 offline fallback에서도 legacy `plank`는 reps 로거에서 fail-closed다. 기본 프로그램과 template은 현재 로거가 처리할 수 있는 core 운동을 사용하고, 이미 저장된 프로그램에 남은 duration slot도 Today 실행 목록에서는 제외한다.
+
+검색은 앱 언어만 이해해서는 헬스장에서 충분하지 않다. 한국어 화면에서도 `Flat Bench`나 `Rear-Foot-Elevated Split Squat` 같은 영어 이름을 그대로 입력하는 사용자가 있다. 피커와 QuickLog는 현재 locale의 display name·alias를 우선하되, 정해진 후보 수 안에서 English display name·alias를 fallback으로 포함한다. typo, 장비, movement pattern, 주·보조 부위, 오늘 프로그램과 최근 기록 순위는 동일한 canonical metadata 위에서 계산한다.
+
+SQLite 쪽에는 별도의 경쟁 조건이 있었다. 첫 bundle 설치와 원격 catalog 활성화가 새 연결에서 정규화 행을 하나씩 쓰는 동안 foreground 세트 기록은 long-lived 연결로 바로 INSERT했다. 활성화는 이제 exercise, bridge, normalized children의 외래키 순서를 유지하면서 최대 900 bind의 multi-row statement로 묶인다. 두 연결 모두 bounded busy timeout을 사용한다. Boot는 검증된 로컬 catalog 설치를 첫 화면보다 먼저 끝내고, 원격 freshness는 그 뒤에 비차단으로 시작한다. 운동 피커를 여는 동작은 더 이상 별도 원격 write를 시작하지 않는다. 모든 catalog layer가 실패하면 frozen seed와 사용자가 만든 ad-hoc 운동은 남고 opaque canonical bridge만 숨긴다.
+
+기능 검증은 전체 Jest 64 suites / 457 tests와 catalog validator 39/39까지다. 품질 검증은 strict TypeScript, lint, diff 검사, 64행·66,654-byte bundle checksum 재확인까지다. 제품·워크플로 검증은 아직 끝나지 않았다. Release simulator의 realistic DB seed에서 Coach 시작·다르게·one-tap 반복, 저장 프로그램 fallback, 한국어 화면의 영어 검색, catalog 활성화와 동시 세트 기록을 실제 터치하고 원본 screenshot으로 확인해야 출고 판정을 내릴 수 있다.

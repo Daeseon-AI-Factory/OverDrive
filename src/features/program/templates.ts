@@ -57,7 +57,7 @@ export const SPLIT_TEMPLATES: SplitTemplate[] = [
     titleKey: 'program.template.fullBody.title',
     descKey: 'program.template.fullBody.desc',
     build: () => ({
-      1: strengthDay('upper', 'program.template.fullBody.dayA', ['barbell_back_squat', 'barbell_bench_press', 'barbell_row', 'overhead_press', 'plank']),
+      1: strengthDay('upper', 'program.template.fullBody.dayA', ['barbell_back_squat', 'barbell_bench_press', 'barbell_row', 'overhead_press', 'hanging_leg_raise']),
       2: restDay('program.dayType.rest'),
       3: strengthDay('upper', 'program.template.fullBody.dayB', ['deadlift', 'overhead_press', 'lat_pulldown', 'leg_press', 'hanging_leg_raise']),
       4: restDay('program.dayType.rest'),

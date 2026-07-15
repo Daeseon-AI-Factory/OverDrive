@@ -7,6 +7,8 @@ import i18n, { DEFAULT_LOCALE, isSupportedLocale, type AppLocale } from '@/i18n'
 import { computeCombatPower } from '@/features/combat-power/computeCombatPower';
 import { loadSfx } from '@/features/juice/audio/engine';
 import { OnboardingFlow } from '@/features/onboarding/OnboardingFlow';
+import { refreshExerciseCatalog } from '@/features/exercises/catalog/refresh';
+import { readCatalogViews } from '@/features/exercises/catalog/service';
 import { getOpenSessionForDate, getSessionActivitySummary, sessionStartedAtMs } from '@/db/repos/sessionRepo';
 import { useSessionStore } from '@/features/forge/sessionStore';
 import { todayLocal } from '@/lib/date';
@@ -32,63 +34,79 @@ export function Boot({ children }: { children: React.ReactNode }) {
     let alive = true;
     void loadSfx(); // preload JUICE SFX players (fire-and-forget; splash never waits on audio)
     (async () => {
-      // Independent reads run in parallel — first paint waits on no serial round-trips.
-      const [settings, user, input, deprecatedAvatarFilesPurged, sensitiveTemporaryFilesPurged] = await Promise.all([
-        getSettings(db),
-        getUser(db),
-        buildInput(db),
-        purgeDeprecatedAvatarFiles(),
-        purgeSensitiveTemporaryFiles(),
-      ]);
-      if (!deprecatedAvatarFilesPurged) {
-        // Retry on every launch; never mark a failed privacy cleanup as complete.
-        console.error('[privacy] deprecated avatar files could not be fully removed');
-      }
-      if (!sensitiveTemporaryFilesPurged) {
-        // The per-request cleanup still runs; retry the crash-recovery sweep on the next launch.
-        console.error('[privacy] sensitive temporary files could not be fully removed');
-      }
-      useSettingsStore.getState().hydrate(settings);
-      if (alive && !settings.onboardedAt) setNeedsOnboarding(true);
-
-      // Resolve UI language from the User row (default 'en'; persist the seed on first run).
-      const stored = user?.locale ?? '';
-      let locale: AppLocale;
-      if (isSupportedLocale(stored)) {
-        locale = stored;
-      } else {
-        locale = DEFAULT_LOCALE;
-        void updateLocale(db, locale).catch(() => {}); // idempotent write — never gates first paint
-      }
-      if (i18n.language !== locale) await i18n.changeLanguage(locale);
-      useSettingsStore.getState().setLocale(locale);
-
-      const result = computeCombatPower(input);
-      // First snapshot: align prev to score so the odometer doesn't slam on launch.
-      useCombatPowerStore.setState({ score: result.score, prev: result.score, gradeKey: result.grade.key });
-
-      // Rehydrate an in-progress workout so the coach's rest/next-set loop survives an app
-      // relaunch or an iOS background-kill mid-session (otherwise activeSessionId starts null and
-      // the coach forgets you're training — the flagship "손 최소화" loop silently disappears). The
-      // The timer keeps workout_session.started_at instead of restarting at launch. The rest anchor
-      // re-derives from this exact session's set_log rows in useCoachPlan. cpAtStart uses the
-      // just-computed score, matching the existing enter()/finish() resume.
-      if (useSessionStore.getState().activeSessionId == null) {
-        const open = await getOpenSessionForDate(db, todayLocal());
-        if (open) {
-          const summary = await getSessionActivitySummary(db, open.id);
-          useSessionStore
-            .getState()
-            .resume(open.id, result.score, sessionStartedAtMs(open), summary.itemCount, summary.volumeKg);
+      // The first local read can install the verified bundle. Keep that write behind the splash so
+      // the logger cannot race a first-launch activation; a failed catalog layer still falls back
+      // without stranding boot. The explicit finally wait also covers an unrelated hydration read
+      // rejecting before Promise.all would otherwise wait for the catalog promise.
+      const catalogHydration = readCatalogViews(db).catch(() => null);
+      try {
+        // Independent reads run in parallel — first paint waits on no serial round-trips.
+        const [settings, user, input, deprecatedAvatarFilesPurged, sensitiveTemporaryFilesPurged] = await Promise.all([
+          getSettings(db),
+          getUser(db),
+          buildInput(db),
+          purgeDeprecatedAvatarFiles(),
+          purgeSensitiveTemporaryFiles(),
+          catalogHydration,
+        ]);
+        if (!deprecatedAvatarFilesPurged) {
+          // Retry on every launch; never mark a failed privacy cleanup as complete.
+          console.error('[privacy] deprecated avatar files could not be fully removed');
         }
+        if (!sensitiveTemporaryFilesPurged) {
+          // The per-request cleanup still runs; retry the crash-recovery sweep on the next launch.
+          console.error('[privacy] sensitive temporary files could not be fully removed');
+        }
+        useSettingsStore.getState().hydrate(settings);
+        if (alive && !settings.onboardedAt) setNeedsOnboarding(true);
+
+        // Resolve UI language from the User row (default 'en'; persist the seed on first run).
+        const stored = user?.locale ?? '';
+        let locale: AppLocale;
+        if (isSupportedLocale(stored)) {
+          locale = stored;
+        } else {
+          locale = DEFAULT_LOCALE;
+          void updateLocale(db, locale).catch(() => {}); // idempotent write — never gates first paint
+        }
+        if (i18n.language !== locale) await i18n.changeLanguage(locale);
+        useSettingsStore.getState().setLocale(locale);
+
+        const result = computeCombatPower(input);
+        // First snapshot: align prev to score so the odometer doesn't slam on launch.
+        useCombatPowerStore.setState({ score: result.score, prev: result.score, gradeKey: result.grade.key });
+
+        // Rehydrate an in-progress workout so the coach's rest/next-set loop survives an app
+        // relaunch or an iOS background-kill mid-session (otherwise activeSessionId starts null and
+        // the coach forgets you're training — the flagship "손 최소화" loop silently disappears). The
+        // The timer keeps workout_session.started_at instead of restarting at launch. The rest anchor
+        // re-derives from this exact session's set_log rows in useCoachPlan. cpAtStart uses the
+        // just-computed score, matching the existing enter()/finish() resume.
+        if (useSessionStore.getState().activeSessionId == null) {
+          const open = await getOpenSessionForDate(db, todayLocal());
+          if (open) {
+            const summary = await getSessionActivitySummary(db, open.id);
+            useSessionStore
+              .getState()
+              .resume(open.id, result.score, sessionStartedAtMs(open), summary.itemCount, summary.volumeKg);
+          }
+        }
+        // Persist today's snapshot off the critical path (idempotent upsert; in-memory score already set).
+        void upsertSnapshot(db, result).catch(() => {});
+      } finally {
+        await catalogHydration;
       }
-      if (alive) setReady(true);
-      // Persist today's snapshot off the critical path (idempotent upsert; in-memory score already set).
-      void upsertSnapshot(db, result).catch(() => {});
-    })().catch(() => {
-      // Even if hydration fails, show the app with store defaults rather than hanging on splash.
-      if (alive) setReady(true);
-    });
+    })()
+      .catch(() => {
+        // Even if hydration fails, show the app with store defaults rather than hanging on splash.
+      })
+      .finally(() => {
+        if (!alive) return;
+        setReady(true);
+        // Remote freshness starts only after the local catalog is usable. It remains non-blocking
+        // and its atomic writes are bounded by the connection timeout and chunked activation.
+        void refreshExerciseCatalog(db).catch(() => {});
+      });
     return () => {
       alive = false;
     };

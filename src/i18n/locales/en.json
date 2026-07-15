@@ -10,6 +10,7 @@
   "exerciseDiscovery": {
     "searchPlaceholder": "Search exercises",
     "cardioMeta": "Duration · distance · effort",
+    "unsupportedTracking": "This tracking mode is not loggable yet",
     "reason": {
       "today": "Today's plan",
       "recent": "Recent"
@@ -419,6 +420,7 @@
       "weight": "Weight",
       "repsOrTime": "Reps / sec",
       "reps": "Reps",
+      "repsPerSide": "Reps per side",
       "weightUnit": "kg"
     },
     "rirLabel": "RIR (optional)",

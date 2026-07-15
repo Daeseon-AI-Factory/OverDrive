@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import type { ExerciseRow } from '@/db/types';
+import type { CatalogExerciseSelection } from '@/features/exercises/catalog/types';
 import { MyCharacter } from '@/features/character/MyCharacter';
 import { CARDIO_EXERCISE_IDS } from '@/features/character/regions';
 import type { BodyHitRegionId } from '@/features/character/bodyHitMap';
@@ -35,7 +35,7 @@ export default function ExercisesScreen() {
 
   const [picker, setPicker] = useState<RegionPicker | null>(null);
   const [activeRegion, setActiveRegion] = useState<BodyHitRegionId | null>(null);
-  const [activeExercise, setActiveExercise] = useState<ExerciseRow | null>(null);
+  const [activeExercise, setActiveExercise] = useState<CatalogExerciseSelection | null>(null);
 
   const ensureSession = useCallback(async (): Promise<string> => {
     return enterSilently();
@@ -103,14 +103,18 @@ export default function ExercisesScreen() {
         onClose={closePicker}
       />
       <SetLoggerSheet
-        key={`exercise-strength-${activeExercise?.id ?? 'none'}`}
-        exercise={activeExercise?.type === 'strength' ? activeExercise : null}
+        key={`exercise-strength-${activeExercise?.exercise.id ?? 'none'}`}
+        exercise={(activeExercise?.catalog?.exerciseType ?? activeExercise?.exercise.type) === 'strength' ? activeExercise?.exercise ?? null : null}
+        catalog={activeExercise?.catalog ?? null}
+        displayName={activeExercise?.localizedName}
         ensureSession={ensureSession}
         onClose={() => setActiveExercise(null)}
       />
       <CardioLoggerSheet
-        key={`exercise-cardio-${activeExercise?.id ?? 'none'}`}
-        exercise={activeExercise?.type === 'cardio' ? activeExercise : null}
+        key={`exercise-cardio-${activeExercise?.exercise.id ?? 'none'}`}
+        exercise={(activeExercise?.catalog?.exerciseType ?? activeExercise?.exercise.type) === 'cardio' ? activeExercise?.exercise ?? null : null}
+        catalog={activeExercise?.catalog ?? null}
+        displayName={activeExercise?.localizedName}
         ensureSession={ensureSession}
         onClose={() => setActiveExercise(null)}
       />

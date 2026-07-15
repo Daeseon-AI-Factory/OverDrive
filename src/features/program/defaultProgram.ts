@@ -18,7 +18,7 @@ export const WEEKLY_PROGRAM: Record<number, BuiltinDay> = {
   2: { dayType: 'lower', titleKey: 'program.lowerA.title', focusKey: 'program.lowerA.focus', exerciseIds: ['barbell_back_squat', 'romanian_deadlift', 'leg_press', 'standing_calf_raise', 'hanging_leg_raise'] },
   3: { dayType: 'cardio', titleKey: 'program.intervals.title', focusKey: 'program.intervals.focus', exerciseIds: ['hiit_intervals'] },
   4: { dayType: 'upper', titleKey: 'program.upperB.title', focusKey: 'program.upperB.focus', exerciseIds: ['overhead_press', 'lat_pulldown', 'incline_db_press', 'barbell_row', 'lateral_raise', 'db_curl'] },
-  5: { dayType: 'lower', titleKey: 'program.lowerB.title', focusKey: 'program.lowerB.focus', exerciseIds: ['deadlift', 'bulgarian_split_squat', 'leg_curl', 'standing_calf_raise', 'plank'] },
+  5: { dayType: 'lower', titleKey: 'program.lowerB.title', focusKey: 'program.lowerB.focus', exerciseIds: ['deadlift', 'bulgarian_split_squat', 'leg_curl', 'standing_calf_raise', 'hanging_leg_raise'] },
   6: { dayType: 'cardio', titleKey: 'program.intervalsZone2.title', focusKey: 'program.intervalsZone2.focus', exerciseIds: ['zone2_run', 'hiit_intervals'] },
   0: { dayType: 'rest', titleKey: 'program.rest.title', focusKey: 'program.rest.focus', exerciseIds: [] },
 };

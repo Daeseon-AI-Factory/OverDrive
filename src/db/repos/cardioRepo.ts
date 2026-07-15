@@ -1,4 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { withForeignKeyTransaction } from '../foreignKeyTransaction';
 import { nowIso } from '../../lib/date';
 import { newUuid } from '../uuid';
 import { LOCAL_USER_ID, type CardioLogRow, type CardioSource } from '../types';
@@ -38,7 +39,7 @@ export async function addCardio(
 
 export async function deleteCardio(db: SQLiteDatabase, cardioId: string): Promise<CardioLogRow | null> {
   let deleted: CardioLogRow | null = null;
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  await withForeignKeyTransaction(db, async (tx) => {
     const row = await tx.getFirstAsync<CardioLogRow>('SELECT * FROM cardio_log WHERE id = ?', [cardioId]);
     if (!row) return;
     const result = await tx.runAsync('DELETE FROM cardio_log WHERE id = ?', [cardioId]);
