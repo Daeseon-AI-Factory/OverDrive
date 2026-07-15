@@ -1,8 +1,8 @@
 # Reploom — Privacy Policy Source
 
-Last reconciled with the v1 code and verified support mailbox: 2026-07-13. The publishable HTML is
-`website/privacy.html`; this Markdown file is the repository source-of-truth inventory used to
-check App Store Connect answers.
+Source behavior last reconciled with the v1 code: 2026-07-15. The verified support-mailbox readback
+remains dated 2026-07-13. The publishable HTML is `website/privacy.html`; this Markdown file is the
+repository source-of-truth inventory used to check App Store Connect answers.
 
 > Operator: Daeseon Yoo. Public privacy/support contact: `showep12@gmail.com`. The connected Gmail
 > profile and inbound delivery were read back on 2026-07-13. The initial storefront plan excludes
@@ -13,7 +13,9 @@ check App Store Connect answers.
 Reploom has no user account, advertising, ad network, or third-party analytics SDK. Apple Health
 records are processed on device and are not sent to Reploom's Worker or AI provider. Optional
 Remote AI is off by default and requires an 18+ confirmation plus explicit, versioned consent.
-Public leaderboards and remote photo-avatar generation are absent from v1.
+At startup, the app may fetch a public read-only exercise catalog that contains app content, not
+user data. A validated on-device catalog remains the fallback. Public leaderboards and remote
+photo-avatar generation are absent from v1.
 
 ## Data kept on device
 
@@ -50,7 +52,9 @@ Health remain under Apple's controls.
 
 Remote AI consent is `null` by default. A stored consent is accepted only if its disclosure version
 matches the current app and has a valid acceptance timestamp. Turning the setting off prevents
-future remote requests. The local common-format workout parser and saved-meal repeat remain usable.
+future Remote AI requests. It does not disable the separate public exercise-catalog content refresh
+described below. The local common-format workout parser, direct manual meal entry, and saved-meal
+repeat remain usable.
 
 After consent, only a deliberate feature action sends the following through Reploom's Cloudflare
 Worker to Groq:
@@ -79,6 +83,21 @@ Groq documents that inference content is not retained by default, but inputs/out
 for reliability or suspected abuse for up to 30 days, and longer if legally required. Reploom does
 not claim that Groq Zero Data Retention is enabled. AI results can be wrong and are not medical or
 dietary advice.
+
+## Public exercise-catalog delivery
+
+After local catalog initialization completes, Reploom may make a non-blocking
+`GET https://overdrive-catalog.daeseon.workers.dev/catalog/v1` request to refresh public exercise
+definitions. The request contains no workout or meal log, HealthKit record, subscription value,
+AI input, or app-generated user identifier. It can carry standard HTTP headers such as `Accept` and
+`If-None-Match` for content negotiation and cache validation.
+
+The dedicated read-only catalog Worker has no user context, cookies, secrets, AI calls, cron,
+application telemetry, or public write/admin publication route, and it does not write user data.
+Cloudflare still processes ordinary request and security metadata, such as the network address
+needed to route the request, under its service policy. If the catalog request is disabled,
+unavailable, or rejected, Reploom continues with its validated on-device fallback and does not block
+local logging.
 
 ## Subscription entitlement, quotas, and cost safety
 
@@ -134,6 +153,10 @@ HealthKit records read only on device are not collected by Reploom. V1 does not 
 ranking handle or identifier. A legacy TestFlight user may explicitly transmit the random deletion
 token already stored on their device solely to delete the matching D1 row; the v1 Worker does not
 retain a new copy of that request token. There are no ads, cross-app tracking, or data sales.
+
+The public exercise-catalog GET retrieves app content and sends no user content or app-generated
+identifier, so it does not add a user-data type to the eight-type inventory above. Cloudflare's
+ordinary network and security metadata processing is disclosed in the catalog section.
 
 ## Choices and deletion
 

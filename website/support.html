@@ -25,7 +25,7 @@
     <article class="doc">
       <a class="back" href="index.html">← Back to Reploom</a>
       <h1>Support</h1>
-      <p class="updated">Support information last updated: July 13, 2026</p>
+      <p class="updated">Support information last updated: July 15, 2026</p>
 
       <div class="lead">
         Reploom has no login account: saved workouts, meals, goals, and app settings live in the
@@ -53,8 +53,8 @@
       <h3>A set or meal did not save</h3>
       <ol class="steps">
         <li>Keep Reploom open and check the Log or History view before entering the item again.</li>
-        <li>If an AI-assisted entry appeared, review its saved confirmation card and use Edit or Undo immediately if it is wrong.</li>
-        <li>If a workout AI tool is offline, use the manual workout logger. For meals, you can repeat a previously saved meal locally.</li>
+        <li>If a recent entry appeared, review its saved confirmation and use Edit or Undo immediately if it is wrong.</li>
+        <li>If a workout AI tool is offline, use the manual workout logger. For meals, enter the name, kcal, and protein in QUICK MANUAL or repeat a previously saved meal locally.</li>
         <li>Force-quit and reopen only after checking History, so you do not create an accidental duplicate.</li>
       </ol>
 
@@ -66,14 +66,16 @@
         internet connection, and the Reploom processing service. Voice transcription, workout
         parsing, and meal analysis use Groq. A missing purchase, exhausted quota, timeout, or
         provider outage does not remove your existing local logs. You can keep training with manual
-        workout logging. The v1 sportswear character is built in and does not upload a personal photo.
+        workout logging and record user-authored meal values with QUICK MANUAL. The v1 sportswear
+        character is built in and does not upload a personal photo.
       </p>
 
       <h3>Undo or edit a recent entry</h3>
       <p>
         Use the visible <strong>Edit</strong> or <strong>Undo</strong> action on the recent confirmation
-        card. For older workout entries, open History and select the relevant day. Review the final
-        value after editing; Combat Power is recalculated from the saved activity.
+        card. A just-saved single manual meal also exposes Edit and Undo. For older workout entries,
+        open History and select the relevant day. Review the final value after editing; Combat Power
+        is recalculated from the saved activity.
       </p>
 
       <h2 id="health">Apple Health</h2>
@@ -127,7 +129,8 @@
         (3–4 total), so voice recording requires at least 4 credits remaining. Credits and the photo
         count reset when the current paid billing period ends;
         unused amounts do not roll over. Devices using the same Apple subscription share the same
-        allowance. Manual logging and on-device quick parsing remain available after the limit.
+        allowance. Manual workout and meal logging, saved-meal repeat, and on-device quick parsing
+        remain available after the limit.
       </p>
       <p>
         Failed provider attempts are returned to the displayed allowance. Repeated failures can
@@ -181,9 +184,12 @@
 
       <h3>Can I use Reploom offline?</h3>
       <p>
-        Local history and manual workout logging are designed to work on device. Voice transcription,
-        AI parsing, and meal analysis need Remote AI consent, an active Reploom Pro entitlement,
-        remaining quota, and a network connection, and may be unavailable during a provider outage.
+        Local history, manual workout logging, direct manual meal logging, and saved-meal repeats are
+        designed to work from on-device data. When a network is available, Reploom may refresh its
+        public exercise catalog in the background; a failed refresh falls back to the validated
+        on-device catalog and does not block local logging. Voice transcription, AI parsing, and meal
+        analysis need Remote AI consent, an active Reploom Pro entitlement, remaining quota, and a
+        network connection, and may be unavailable during a provider outage.
       </p>
 
       <h2 id="contact">Contact and a useful bug report</h2>

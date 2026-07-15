@@ -1,13 +1,14 @@
 # Reploom App Store Launch Checklist
 
-Updated: 2026-07-14. App Store Connect app `6786831176`, bundle `ai.daeseon.reploom`.
+Updated: 2026-07-15. App Store Connect app `6786831176`, bundle `ai.daeseon.reploom`.
 
 The original free Build 13 submission was accepted into the review queue and then deliberately
 withdrawn on 2026-07-13 after the decision to prepare Reploom Pro and server-enforced AI limits.
 Review submission `72f01614-39bb-4b0e-95e7-a3810e5fbb97` read back `COMPLETE`, its item `REMOVED`,
 and version 1.0 `DEVELOPER_REJECTED`. Build 13 remains valid as a binary rollback artifact but must
-not be resubmitted as the subscription release. Build 14 is now uploaded and reads `VALID` /
-`APP_STORE_ELIGIBLE`, but it is not attached to version 1.0 and no replacement submission exists.
+not be resubmitted as the subscription release. Builds 14 and 15 are uploaded and read `VALID` /
+`APP_STORE_ELIGIBLE`; Build 15 is the current code candidate. Neither newer build is attached to
+version 1.0, which still points to Build 13, and no replacement submission exists.
 
 ## Verified before this release candidate
 
@@ -15,6 +16,9 @@ not be resubmitted as the subscription release. Build 14 is now uploaded and rea
 - TestFlight build 12 is `VALID`, but it predates this compliance/usability release candidate and
   must not be selected for App Review.
 - TestFlight build 14 is `VALID` / `APP_STORE_ELIGIBLE`; version 1.0 still points to Build 13.
+- TestFlight build 15 (`7123db21-dbc0-4126-8f30-5a7105278602`) is `VALID` /
+  `APP_STORE_ELIGIBLE`, minimum iOS 16.4, non-exempt encryption false, and internal
+  `IN_BETA_TESTING`. It has no App Store version relationship and is not an App Review submission.
 - Store-facing brand is Reploom; OverDrive remains only an internal repository/concept name.
 - Public ranking and remote photo-avatar entry points are removed from v1 UI.
 - Worker candidate source uses Groq only for optional workout text, audio, meal text, and selected meal photos.
@@ -35,35 +39,64 @@ not be resubmitted as the subscription release. Build 14 is now uploaded and rea
 - [x] Keep the initial release outside Europe and do not invent a postal address or governing-law
   venue. This is a storefront-scope decision, not a legal conclusion about every enabled market;
   reassess public trader/contact requirements before expanding distribution.
-- [ ] Render and inspect Privacy, Support, Terms, and Data pages at mobile and desktop widths.
-  Production Privacy and preview home/privacy passed visual inspection in iPhone 17 Pro Max Safari;
-  desktop visual QA remains open after the fresh iPad Safari launch timed out.
+- [ ] Render and inspect the current Privacy, Support, Terms, and Data candidate at mobile and
+  desktop widths. Historical production Privacy and preview home/privacy passed iPhone 17 Pro Max
+  Safari inspection, but the 2026-07-15 catalog/manual-meal edits are not deployed and this session's
+  Browser/Chrome connections were unavailable. No current-source visual QA or production promotion.
 - [x] Run full Jest, strict TypeScript, lint, Expo config/doctor, Worker dry-run, plist validation.
 - [x] Build Release for a 6.9-inch simulator with realistic seeded data.
-- [ ] App verification: AI OFF → zero HTTP calls, AI ON → disclosed calls only, withdrawal → zero future calls.
-- [ ] Verify local QuickLog save/edit/undo while AI is off and while endpoint access fails.
+- [ ] App verification: AI OFF → zero Remote AI calls, AI ON → disclosed Remote AI calls only,
+  withdrawal → zero future Remote AI calls. The public read-only catalog GET is not a Remote AI call
+  and must be inspected separately for its documented no-user-data request boundary.
+- [ ] Verify local QuickLog save/edit/undo while AI is off and while the optional Remote AI endpoint
+  is unavailable. Build 15 Release QA verified touch-driven local set save and a catalog-backed
+  Quick Log write, but did not independently inject every endpoint failure state.
 - [ ] Verify local QuickLog and saved-meal repeat remain unblocked while unsubscribed and after AI
-  quota exhaustion.
-- [x] Verify body-region recommendations on the final Release build.
-- [x] Verify full exercise search on the final Release build: Maestro entered `bench`, the live
-  catalog returned Barbell Bench Press with the seeded last-set context, and the result was visually inspected.
+  quota exhaustion. Build 15 Release QA verified manual meal save/edit/undo against the realistic
+  seed; unsubscribed/exhausted fixture coverage for every local path remains open.
+- [x] Verify body-region recommendations on the final Build 15 Release build: actual chest-region
+  touch opened Chest recommendations containing Barbell Bench Press.
+- [x] Verify full exercise search on Release product code: English and Korean aliases, English
+  fallback in Korean locale, per-side/total semantics, trap-bar Quick Log, and the plank
+  unsupported-tracking fail-closed guard were touch-driven and visually inspected. The final Build 15 metadata-only
+  rebuild repeated the chest flow without mutating the restored baseline.
 - [x] Verify SQLite directory, DB, WAL, and SHM backup exclusion in Simulator.
 - [ ] Verify `FileProtection.complete` after locking a physical iPhone.
 - [x] Inspect the built app for no dev-client dependency and no retired avatar/rank API or UI.
 - [x] Upgrade-path check: pre-v1 avatar photos are deleted; request-time voice/photo cache files are
   deleted after success/failure/cancel and swept after an interrupted session.
 
+Build 15 QA evidence is curated in `docs/artifacts/release-qa-build-15/`. It contains 11 original
+1320×2868 screenshots and a per-file hash/verification ledger. The final installed app read bundle
+`ai.daeseon.reploom`, version `1.0`, build `15`; its schema-v8 database retained 5 sessions / 1 open /
+20 sets / 1 cardio / 3 foods with `integrity_check=ok` and zero foreign-key violations. Catalog
+exercise/cache-bridge/localization/alias/equipment/region counts read
+64/64/256/256/76/97 with active `1.0.0`, 66,654 bytes, and the expected SHA-256.
+
 ## Public services
 
 - [x] Deploy `website/` to `https://reploom.pages.dev`; production deployment
   `1798ec5a-4134-4b02-b553-b00f6ea7e720` is branch `main`, source `b9ddda1`.
-- [x] Verify `/`, `/privacy`, `/support`, `/terms`, `/data` return HTTPS 200 without redirects,
-  contain the intended title/contact, and are byte-identical to the tracked HTML.
+- [x] At production source `b9ddda1`, verify `/`, `/privacy`, `/support`, `/terms`, `/data` return
+  HTTPS 200 without redirects, contain the intended title/contact, and match that deployed source.
 - [x] Deploy the subscription website source to noindex preview
   `14bd35fa-5d7b-41ce-aedc-65fb8baa5cc9`; both `https://14bd35fa.reploom.pages.dev` and the
-  branch alias return 200, and the five routes plus CSS match the tracked files by SHA-256.
+  branch alias return 200, and the five routes plus CSS match deployed source `7f4560d` by SHA-256.
+- [ ] The current 2026-07-15 website edits differ from both deployed sources and have not received
+  fresh browser visual QA. Keep them source-only until the payment and visual gates close.
 - [ ] Promote the subscription website to Pages production only after the matching entitlement
   Worker is live; production currently remains `1798ec5a-4134-4b02-b553-b00f6ea7e720`.
+- [ ] Keep the revised Pages and App Store listing source as candidate-only while it advertises Pro
+  behavior that is not backed by a production entitlement service. Do not promote either public
+  surface until payment is live and the claims can be exercised end to end.
+- [x] Publish exercise catalog `1.0.0` at
+  `https://overdrive-catalog.daeseon.workers.dev/catalog/v1` using dedicated D1
+  `4bf0e085-56d8-405e-a7a7-333d5eeff03f` and Worker version
+  `e19c7975-be71-456b-95cf-400c43703b2f`.
+- [x] Read back the production catalog as 64 rows / 66,654 bytes / SHA-256
+  `43491e64b66fbd16f87325d8e8ea9e5d2325d888b71c700b61b80da19566604a`; verify exact-body
+  HTTP 200, conditional 304, unknown-path 404, and unsupported-method 405. App fallback remains
+  bundled and non-blocking.
 - [x] Deploy the Worker with `logpush=false`; the Cloudflare script-settings readback returned
   `observability=null` and no tail consumer, so Worker observability is not enabled.
 - [ ] Independently verify `/parse`, `/transcribe`, and `/food` success/error/size contracts; consent remains a client-side gate.
@@ -147,14 +180,26 @@ not be resubmitted as the subscription release. Build 14 is now uploaded and rea
   the private App Privacy/DSA/Medical/Mac/Vision gates remain explicitly open above.
 - [x] Submit the free Build 13 candidate, read back `WAITING_FOR_REVIEW`, then withdraw it after the
   product decision to add Reploom Pro; final withdrawal readback is recorded at the top of this file.
+- [x] Create signed Build 15 from code candidate `c98e021`; export
+  `/tmp/Reploom-15-export-local-account/Reploom.ipa` (35,692,630 bytes), SHA-256
+  `69cd59077d4b93f80cc36b5ce5e9ae774d15c8f2b1113801cf3e7c6bdeda2936`.
+- [x] Apple validation and upload succeeded. Build 15 resource/delivery ID
+  `7123db21-dbc0-4126-8f30-5a7105278602` reads `VALID` / `APP_STORE_ELIGIBLE`, minimum iOS 16.4,
+  encryption false, and `internalBuildState=IN_BETA_TESTING`.
+- [x] Read back the `Internal` TestFlight group with `hasAccessToAllBuilds=true` and Build 15 listed;
+  Build 15 is `externalBuildState=READY_FOR_BETA_SUBMISSION`, has no beta App Review, and has no
+  App Store version relationship.
+- [x] Confirm after Build 15 upload that version 1.0 remains `DEVELOPER_REJECTED` and associated with
+  Build 13; the only review submission is still `COMPLETE` with its item `REMOVED`. No new review was
+  requested.
 
 ## Reploom Pro rebuild and resubmission gates
 
 Scope fence: completed items below mean only the evidence named on that line (repository tests,
-local Release simulator, or an earlier App Store Connect readback). The separate payment platform,
+local Release simulator, or an App Store Connect readback). The separate payment platform,
 Apple server credentials, cleanup cron deployment, production Worker traffic, real
 purchase/entitlement exchange, Build/version/subscription association, and App Review resubmission
-are deferred and remain unchecked. Remote D1 and the Build 14 TestFlight upload are completed only
+are deferred and remain unchecked. Remote D1 and the Build 14/15 TestFlight uploads are completed only
 at the evidence levels named below.
 
 - [ ] Paid Applications Agreement, tax, and banking status are active and read back. Korea
@@ -178,10 +223,14 @@ at the evidence levels named below.
   the older `GROQ_API_KEY` and unused `GEMINI_API_KEY` names exist.
 - [ ] App Store Connect App Privacy answers include linked Product Interaction for successful-use,
   provider-attempt, request-state, period-reset, and Apple-test daily safety aggregates.
+- [ ] Before App Privacy Publish, confirm whether Cloudflare retains catalog-request platform
+  security metadata in readable form beyond real-time request service. Worker observability is
+  disabled; if platform retention still applies, add the relevant IP-derived App Privacy data type
+  for its actual App Functionality/security purpose.
 - [ ] StoreKit 2 product loading, purchase success, user cancellation, pending approval, renewal,
   expiration/refund, current entitlement, restore, and manage-subscription links are exercised.
 - [ ] Non-subscribers and exhausted subscribers can still complete all manual/local logging paths.
-- [x] Build 14 Release simulator app (`ai.daeseon.reploom`, version `1.0`, build `14`) preserved the
+- [x] Historical Build 14 Release simulator app (`ai.daeseon.reploom`, version `1.0`, build `14`) preserved the
   realistic v6 seed (5 sessions / 1 open / 20 sets / 1 cardio / 3 foods; integrity `ok`) and visually
   rendered the free Pro card, purchase disclosure, active `412/1000` + `18/60` fixture, and exhausted
   `1000/1000` + `60/60` fixture. This proves only simulator UI behavior, not StoreKit ownership or a
@@ -197,16 +246,19 @@ at the evidence levels named below.
   product localizations, product review note, availability, price, tax category, and state
   `READY_TO_SUBMIT`. The live screenshot relationship is `data:null`; the simulator capture that
   says `Loading the App Store price…` / `Subscription unavailable` must not be submitted.
-- [x] Tracked Expo build number, generated Debug/Release Xcode build settings, and the local Release
-  simulator app all read `14`; the final device archive and exported IPA independently read bundle
-  `ai.daeseon.reploom`, version `1.0`, build `14`, arm64, minimum iOS 16.4, and encryption false.
-- [x] Apple validation and TestFlight upload succeeded; Build 14 resource
+- [x] Historical Build 14 Apple validation and TestFlight upload succeeded; Build 14 resource
   `ad2c1d7a-74f9-4516-94be-0c3a226e15d6` reads `VALID` / `APP_STORE_ELIGIBLE`.
-- [x] Build 14 is available to the one-tester `Internal` group and reads
+- [x] Historical Build 14 is available to the one-tester `Internal` group and reads
   `internalBuildState=IN_BETA_TESTING`; no external group or beta App Review submission exists.
-- [ ] Install and launch Build 14 itself on the internal tester's physical iPhone before treating
-  the tester account's general `INSTALLED` state as evidence for this build.
-- [ ] Replace the current Build 13 association with Build 14 on version 1.0 and select the first
+- [x] Tracked Expo build number, generated Debug/Release Xcode settings, final Release simulator,
+  device archive, and exported IPA all read Build 15; the IPA independently read bundle
+  `ai.daeseon.reploom`, version `1.0`, arm64, minimum iOS 16.4, and encryption false.
+- [x] Build 15 Apple validation/TestFlight upload and ASC processing succeeded; resource
+  `7123db21-dbc0-4126-8f30-5a7105278602` reads `VALID` / `APP_STORE_ELIGIBLE` and internal
+  `IN_BETA_TESTING`. External state is only `READY_FOR_BETA_SUBMISSION`; beta review is absent.
+- [ ] Install and launch Build 15 itself on the internal tester's physical iPhone before treating
+  group availability or any tester account's general `INSTALLED` state as evidence for this build.
+- [ ] Replace the current Build 13 association with Build 15 on version 1.0 and select the first
   subscription with that version before creating a new review submission.
 - [ ] New submission and version both read back `WAITING_FOR_REVIEW`; never infer success from the
   submit click alone.
@@ -225,7 +277,16 @@ Future payment-platform gaps, not completion work for this change:
 
 ## Verification ledger required at handoff
 
-- Function: exact commands, endpoints, UI controls, and ASC state observed.
-- Quality: test totals, lint/type results, original-resolution screenshot review, archive scan.
-- Product/workflow: real logging/meal/Health paths exercised; anything simulator-only or untested on
-  a physical iPhone must remain explicitly labeled.
+- **Function verification:** `npm run typecheck`, `npm run lint`, full app/worker/catalog test
+  commands, Release build/archive/export, Apple validation/upload, ASC processing readback, catalog
+  HTTP 200/304/404/405, and final Build 15 actual-touch chest flow executed. Build 15 is `VALID` /
+  `APP_STORE_ELIGIBLE` / internal `IN_BETA_TESTING`; no review submission was created.
+- **Quality verification:** strict TypeScript and lint passed; app Jest passed 64 suites / 458 tests,
+  catalog validation 39/39, Worker tests 86/86, and `git diff --check` passed. IPA metadata/string/
+  privacy-manifest inspection and 11 original-resolution simulator screenshots were reviewed. This
+  is not StoreKit/payment quality evidence.
+- **Product/workflow verification:** realistic-seed simulator touch flows covered body-region
+  recommendations, aliases/search, set logging, trap-bar Quick Log, and manual meal save/edit/undo;
+  QA writes were removed and the baseline integrity/counts were re-read. Physical iPhone TestFlight,
+  Health paths, purchase/renew/refund/restore, production entitlement/quota, and App Review remain
+  explicitly unverified.

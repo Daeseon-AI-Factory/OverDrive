@@ -1,6 +1,11 @@
 # Reploom — App Store Listing & Review Pack
 
-Last reconciled with the v1 code and App Store Connect record: 2026-07-13.
+Source behavior last reconciled with the v1 code: 2026-07-15. App Store Connect facts below were
+last read back on 2026-07-13 unless a later date is stated explicitly.
+
+> Publication gate: this is candidate metadata. Do not upload the revised Pro claims to App Store
+> Connect until the Apple product, production entitlement service, and purchase/restore workflows
+> are live and verified.
 
 ## App identity
 
@@ -71,7 +76,7 @@ gym, after a meal, and when you want a clear next action instead of another dash
 
 FAST WORKOUT LOGGING
 • Repeat a recent set with one tap.
-• Type a simple entry such as “bench 100 5” and save it locally without a network request.
+• Type a simple entry such as “bench 100 5” and parse and save it on device without a Remote AI request or Reploom Pro.
 • Reploom Pro adds flexible workout AI and on-demand voice transcription.
 • Edit or undo a recent result when something is wrong.
 
@@ -90,9 +95,11 @@ APPLE HEALTH — OPTIONAL
 • Write only workouts, body weight, and body fat that you actually log or enter.
 • Apple Health records stay on device and are never sent to Reploom’s AI service.
 
-MEAL LOGGING — OPTIONAL REPLOOM PRO AI
-• Estimate calories and protein from meal text or a photo you select.
-• Estimates can be wrong and are not medical or dietary advice.
+MEAL LOGGING — MANUAL OR OPTIONAL REPLOOM PRO AI
+• Enter a meal name, calories, and protein directly and save those user-authored values on device without Remote AI or Reploom Pro.
+• Edit or undo the just-saved manual meal.
+• Optionally estimate calories and protein from meal text or a photo you select with Reploom Pro.
+• AI estimates can be wrong and are not medical or dietary advice.
 • Repeat a saved meal locally without another AI request.
 
 REPLOOM PRO — MONTHLY SUBSCRIPTION
@@ -107,8 +114,8 @@ PRIVACY BY DEFAULT
 • No Reploom login, ads, ad tracking, or third-party analytics SDK.
 • Remote AI is off by default, requires an 18+ self-attestation and explicit consent, and can be
   disabled at any time.
-• Manual workout logging remains available when remote AI is off, a quota is reached, or the
-  network is unavailable.
+• Manual workout and meal logging remain available when remote AI is off, a quota is reached, or
+  the network is unavailable.
 
 Combat Power and nutrition estimates are for general wellness and entertainment only. They are
 not diagnoses, treatment recommendations, or validated medical measurements.
@@ -136,9 +143,20 @@ first-run setup.
 Suggested core path:
 1. On first launch, tap Skip on the welcome/setup flow (or complete its three short steps).
 2. Open Log.
-3. Type “bench 100 5” and submit. This common format parses and saves on device without a network request.
+3. Type “bench 100 5” and submit. This common format parses and saves on device without a Remote AI
+   request or Reploom Pro.
 4. Use the visible Edit or Undo action on the confirmation card.
 5. Open Explore and tap a region on the built-in sportswear body map to browse recommendations.
+6. On Log, find Fuel → QUICK MANUAL, enter a meal name, kcal, and protein, then tap SAVE.
+7. Use the visible Edit or Undo action on the meal confirmation.
+
+Exercise catalog delivery:
+After local catalog initialization completes, Reploom may make a non-blocking GET request to
+https://overdrive-catalog.daeseon.workers.dev/catalog/v1 to refresh public exercise definitions.
+The request contains no workout or meal log, HealthKit record, subscription value, or app-generated
+user identifier. It is separate from Remote AI; only ordinary HTTP request/security metadata is
+processed by Cloudflare. If this refresh is unavailable or rejected, Reploom keeps using its
+validated on-device catalog and local logging remains available.
 
 Optional Remote AI:
 Settings → Remote AI processing. It is OFF by default. Enabling it requires an 18+ self-attestation and
@@ -201,6 +219,10 @@ HealthKit records read on device are not collected by Reploom and are not transm
 Worker or Groq. The subscription build does not create or submit a leaderboard handle. Public ranking
 routes return `410 Gone`; `/rank/delete` accepts an existing random TestFlight deletion token only
 when that user explicitly removes the old row, and does not retain a new copy of the token.
+
+The public exercise-catalog GET retrieves app content and sends no user content or app-generated
+identifier, so it does not add a user-data type to the eight-row inventory above. Cloudflare may
+still process ordinary network and security metadata as described in the Privacy Policy.
 
 ## Screenshot set
 
