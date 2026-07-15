@@ -4,7 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { FlatList, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getRecentExercises } from '@/db/repos/setLogRepo';
-import type { ExerciseRow, ExerciseType } from '@/db/types';
+import type { ExerciseType } from '@/db/types';
+import { readCatalogViews } from '@/features/exercises/catalog/service';
+import { supportsCurrentLogger } from '@/features/exercises/catalog/loggingSupport';
+import {
+  appLocaleToCatalogLocale,
+  type CatalogExerciseSelection,
+  type CatalogExerciseView,
+} from '@/features/exercises/catalog/types';
 import {
   buildExerciseDiscoveryItems,
   discoverExercises,
@@ -44,33 +51,42 @@ export function ExerciseRegionSheet({
   onClose,
 }: {
   picker: RegionPicker | null;
-  onSelect: (exercise: ExerciseRow) => void;
+  onSelect: (selection: CatalogExerciseSelection) => void;
   onClose: () => void;
 }) {
   const db = useSQLiteContext();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const [rows, setRows] = useState<ExerciseRow[]>([]);
+  const [catalogViews, setCatalogViews] = useState<CatalogExerciseView[]>([]);
   const [recentSets, setRecentSets] = useState<RecentExerciseSet[]>([]);
   const [query, setQuery] = useState('');
-  const pendingSelection = useRef<ExerciseRow | null>(null);
+  const pendingSelection = useRef<CatalogExerciseSelection | null>(null);
   const unitSystem = useSettingsStore((state) => state.unitSystem);
+  const appLocale = useSettingsStore((state) => state.locale);
+  const catalogLocale = appLocaleToCatalogLocale(appLocale);
   const visible = picker != null;
+  const rows = useMemo(() => catalogViews.map((view) => view.exercise), [catalogViews]);
+  const catalogByExerciseId = useMemo(
+    () => new Map(catalogViews.map((view) => [view.exercise.id, view.catalog] as const)),
+    [catalogViews],
+  );
 
   useEffect(() => {
     if (!visible) return;
     let alive = true;
-    (async () => {
-      const catalog = await db.getAllAsync<ExerciseRow>('SELECT * FROM exercise');
-      const recents = await getRecentExercises(db, Math.max(1, catalog.length));
+    const loadLocal = async () => {
+      const result = await readCatalogViews(db);
+      const recents = await getRecentExercises(db, Math.max(1, result.views.length));
       if (!alive) return;
-      setRows(catalog);
+      setCatalogViews(result.views);
       setRecentSets(recents);
-    })().catch(() => {
-      if (!alive) return;
-      setRows([]);
-      setRecentSets([]);
-    });
+    };
+    void loadLocal()
+      .catch(() => {
+        // Keep the last known rows on screen. A cache read problem must not turn a usable picker
+        // into an empty one merely because fallback work failed. Remote freshness is boot-owned so
+        // opening a logger never starts a concurrent catalog write.
+      });
     return () => {
       alive = false;
     };
@@ -80,16 +96,23 @@ export function ExerciseRegionSheet({
     () =>
       buildExerciseDiscoveryItems(
         rows,
-        (exercise) => t(`exercise.${exercise.id}`, { defaultValue: exercise.name }),
+        (exercise) =>
+          catalogByExerciseId.get(exercise.id)?.localizations[catalogLocale].displayName ??
+          t(`exercise.${exercise.id}`, { defaultValue: exercise.name }),
         recentSets,
         (exercise) => {
-          const regions = regionsForMuscleGroup(exercise.muscle_group);
+          const metadata = catalogByExerciseId.get(exercise.id);
+          const regions = metadata
+            ? [...metadata.primaryBodyRegions, ...metadata.secondaryBodyRegions]
+            : regionsForMuscleGroup(exercise.muscle_group);
           if (regions.length > 0) return regions.map((region) => t(`region.${region}`));
           if (exercise.type === 'cardio') return [t('today.cardioSheetTitle')];
           return [];
         },
+        (exercise) => catalogByExerciseId.get(exercise.id) ?? null,
+        catalogLocale,
       ),
-    [recentSets, rows, t],
+    [catalogByExerciseId, catalogLocale, recentSets, rows, t],
   );
   const regionRank = useMemo(
     () =>
@@ -99,9 +122,10 @@ export function ExerciseRegionSheet({
             region: picker.region,
             recentSets,
             programExerciseIds: picker.programExerciseIds,
+            catalogFor: (exercise) => catalogByExerciseId.get(exercise.id) ?? null,
           })
         : [],
-    [picker, recentSets, rows],
+    [catalogByExerciseId, picker, recentSets, rows],
   );
   const recommendationReason = useMemo(
     () => new Map(regionRank.map(({ exercise, reason }) => [exercise.id, reason] as const)),
@@ -121,15 +145,16 @@ export function ExerciseRegionSheet({
         query,
         explicitIds: picker.exerciseIds,
         type: picker.type,
+        programExerciseIds: picker.programExerciseIds,
       });
     },
     [items, picker, query, regionRank],
   );
 
   const deliverSelection = useCallback(() => {
-    const exercise = pendingSelection.current;
+    const selection = pendingSelection.current;
     pendingSelection.current = null;
-    if (exercise) onSelect(exercise);
+    if (selection) onSelect(selection);
   }, [onSelect]);
 
   const close = () => {
@@ -139,7 +164,12 @@ export function ExerciseRegionSheet({
   };
 
   const select = (item: ExerciseDiscoveryItem) => {
-    pendingSelection.current = item.exercise;
+    if (!supportsCurrentLogger(item.exercise, item.catalog)) return;
+    pendingSelection.current = {
+      exercise: item.exercise,
+      catalog: item.catalog,
+      localizedName: item.localizedName,
+    };
     setQuery('');
     onClose();
     // iOS reports the end of the native slide animation via onDismiss. Android removes a hidden
@@ -149,6 +179,9 @@ export function ExerciseRegionSheet({
   };
 
   const exerciseMeta = (item: ExerciseDiscoveryItem): string => {
+    if (!supportsCurrentLogger(item.exercise, item.catalog)) {
+      return t('exerciseDiscovery.unsupportedTracking');
+    }
     const reason = recommendationReason.get(item.exercise.id);
     const reasonPrefix = (value: RegionRecommendationReason | undefined): string | null => {
       if (value === 'today') return t('exerciseDiscovery.reason.today');
@@ -163,10 +196,14 @@ export function ExerciseRegionSheet({
       return prefix ? `${prefix} · ${meta}` : meta;
     }
     const exercise = item.exercise;
-    if (exercise.type === 'cardio') return t('exerciseDiscovery.cardioMeta');
-    const meta = `${exercise.is_bodyweight ? t('logger.exerciseMeta.bodyweightPrefix') : ''}${t(
+    if ((item.catalog?.exerciseType ?? exercise.type) === 'cardio') return t('exerciseDiscovery.cardioMeta');
+    const target = item.catalog?.defaultPrescription.target;
+    const low = target?.unit === 'reps' ? target.low : exercise.rep_low;
+    const high = target?.unit === 'reps' ? target.high : exercise.rep_high;
+    const bodyweight = item.catalog?.isBodyweight ?? exercise.is_bodyweight === 1;
+    const meta = `${bodyweight ? t('logger.exerciseMeta.bodyweightPrefix') : ''}${t(
       'logger.exerciseMeta.repRange',
-      { low: exercise.rep_low, high: exercise.rep_high },
+      { low, high },
     )}`;
     const prefix = reasonPrefix(reason);
     return prefix ? `${prefix} · ${meta}` : meta;
@@ -195,7 +232,7 @@ export function ExerciseRegionSheet({
                 accessibilityLabel={t('exerciseDiscovery.searchPlaceholder')}
                 autoCapitalize="none"
                 autoCorrect={false}
-                autoFocus={picker.exerciseIds == null && picker.type == null}
+                autoFocus={picker.region == null && picker.exerciseIds == null && picker.type == null}
                 returnKeyType="search"
                 style={styles.search}
               />
@@ -209,7 +246,13 @@ export function ExerciseRegionSheet({
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`${item.localizedName}. ${exerciseMeta(item)}`}
-                    style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                    accessibilityState={{ disabled: !supportsCurrentLogger(item.exercise, item.catalog) }}
+                    disabled={!supportsCurrentLogger(item.exercise, item.catalog)}
+                    style={({ pressed }) => [
+                      styles.row,
+                      !supportsCurrentLogger(item.exercise, item.catalog) && styles.rowDisabled,
+                      pressed && styles.rowPressed,
+                    ]}
                     onPress={() => select(item)}
                   >
                     <View style={styles.rowBody}>
@@ -265,6 +308,7 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm,
   },
   rowPressed: { backgroundColor: colors.surface2 },
+  rowDisabled: { opacity: 0.5 },
   rowBody: { flex: 1, justifyContent: 'center' },
   exName: { ...typeScale.body, color: colors.text },
   chevron: { fontSize: 18, lineHeight: 22, color: colors.text3 },

@@ -7,6 +7,11 @@ import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
 import { getSessionActivitySummary } from '@/db/repos/sessionRepo';
 import { getLastSetForExercise, updateSet } from '@/db/repos/setLogRepo';
 import type { ExerciseRow } from '@/db/types';
+import {
+  catalogAllowsExternalLoad,
+  supportsCurrentLogger,
+} from '@/features/exercises/catalog/loggingSupport';
+import type { CatalogExercise } from '@/features/exercises/catalog/types';
 import { useSessionStore } from '@/features/forge/sessionStore';
 import { useEditIntentStore } from '@/features/quicklog/editIntentStore';
 import { displayToKg, formatWeight, kgToDisplay, weightStepDisplay, weightUnit } from '@/lib/units';
@@ -32,10 +37,14 @@ import { useLogSet } from './useLogSet';
  */
 export function SetLoggerSheet({
   exercise: exerciseProp,
+  catalog: catalogProp = null,
+  displayName,
   ensureSession,
   onClose,
 }: {
   exercise: ExerciseRow | null;
+  catalog?: CatalogExercise | null;
+  displayName?: string;
   ensureSession: () => Promise<string>;
   onClose: () => void;
 }) {
@@ -48,14 +57,35 @@ export function SetLoggerSheet({
 
   const intent = useEditIntentStore((s) => s.intent);
   // Strength only — cardio has its own sheet; the quicklog card hides [수정] for cardio anyway.
-  const exercise = exerciseProp ?? (intent?.exercise.type === 'strength' ? intent.exercise : null);
+  const intentSelection = exerciseProp == null && intent?.kind === 'new' ? intent.selection : null;
+  const intentExercise = intent?.kind === 'edit' ? intent.exercise : intentSelection?.exercise;
+  const candidate = exerciseProp ?? (intentExercise?.type === 'strength' ? intentExercise : null);
+  const catalog = exerciseProp ? catalogProp : intentSelection?.catalog ?? null;
+  const resolvedDisplayName = displayName ?? intentSelection?.localizedName;
+  const exercise = candidate && supportsCurrentLogger(candidate, catalog) ? candidate : null;
   const edit = exerciseProp == null && intent?.kind === 'edit' ? intent.saved : null;
   const close = useCallback(() => {
     useEditIntentStore.getState().close();
     onClose();
   }, [onClose]);
 
-  const isBw = exercise?.is_bodyweight === 1;
+  // A bodyweight movement may still support added resistance. Catalog metadata is authoritative;
+  // QuickLog captures the same decision on its saved intent so edit/repeat cannot fall back to a
+  // stale frozen-seed flag.
+  const isBw = catalog?.isBodyweight ?? edit?.isBodyweight ?? exercise?.is_bodyweight === 1;
+  const allowsExternalLoad = catalog
+    ? catalogAllowsExternalLoad(catalog)
+    : edit?.allowsExternalLoad ?? false;
+  const allowsWeight = !isBw || allowsExternalLoad;
+  const countingConvention =
+    catalog?.defaultPrescription.countingConvention ?? edit?.countingConvention ?? null;
+  const repsLabel = countingConvention === 'per_side'
+    ? t('logger.field.repsPerSide')
+    : t('logger.field.reps');
+  const repTarget = catalog?.defaultPrescription.trackingMode === 'reps'
+    ? catalog.defaultPrescription.target
+    : null;
+  const repLow = repTarget?.unit === 'reps' ? repTarget.low : exercise?.rep_low ?? 0;
 
   // weight is in DISPLAY units (kg or lb); lastSet keeps canonical kg for exact repeats.
   const [weight, setWeight] = useState(0);
@@ -71,10 +101,11 @@ export function SetLoggerSheet({
     let alive = true;
     (async () => {
       if (edit) {
+        const initialWeightKg = allowsWeight ? edit.weightKg : 0;
         setCount(0);
         setWeightDirty(false);
-        setLastSet({ weightKg: edit.weightKg, reps: edit.reps, rir: edit.rir });
-        setWeight(Math.round(kgToDisplay(edit.weightKg, unitSystem) * 10) / 10);
+        setLastSet({ weightKg: initialWeightKg, reps: edit.reps, rir: edit.rir });
+        setWeight(Math.round(kgToDisplay(initialWeightKg, unitSystem) * 10) / 10);
         setReps(edit.reps);
         setRir(edit.rir);
         return;
@@ -84,27 +115,29 @@ export function SetLoggerSheet({
       setCount(0); // fresh per-open counter — the intent path reopens without a key remount
       setWeightDirty(false);
       if (last) {
-        setLastSet({ weightKg: last.weight, reps: last.reps, rir: last.rir });
-        setWeight(Math.round(kgToDisplay(last.weight, unitSystem) * 10) / 10);
+        const initialWeightKg = allowsWeight ? last.weight : 0;
+        setLastSet({ weightKg: initialWeightKg, reps: last.reps, rir: last.rir });
+        setWeight(Math.round(kgToDisplay(initialWeightKg, unitSystem) * 10) / 10);
         setReps(last.reps);
         setRir(last.rir);
       } else {
         setLastSet(null);
-        setWeight(exercise.is_bodyweight ? 0 : Math.round(kgToDisplay(20, unitSystem)));
-        setReps(exercise.rep_low);
+        // Optional-load bodyweight exercises start at zero; users explicitly add the load used.
+        setWeight(isBw ? 0 : Math.round(kgToDisplay(20, unitSystem)));
+        setReps(repLow);
         setRir(null);
       }
     })();
     return () => {
       alive = false;
     };
-  }, [db, edit, exercise, unitSystem]);
+  }, [allowsWeight, db, edit, exercise, isBw, repLow, unitSystem]);
 
   const commitKg = async (weightKg: number, r: number, rv: number | null) => {
     if (!exercise || r <= 0 || busy) return;
     setBusy(true);
     try {
-      const finalKg = exercise.is_bodyweight ? 0 : weightKg;
+      const finalKg = allowsWeight ? weightKg : 0;
       if (edit) {
         if (!useSessionStore.getState().tryBeginLogWrite()) throw new Error('session_finishing');
         try {
@@ -131,7 +164,7 @@ export function SetLoggerSheet({
         weight: finalKg,
         reps: r,
         rir: rv,
-        hitTargetReps: r >= exercise.rep_low,
+        hitTargetReps: r >= repLow,
         loggedVia: 'quick',
       });
       setCount((c) => c + 1);
@@ -156,13 +189,13 @@ export function SetLoggerSheet({
         {exercise ? (
           <>
             <View style={styles.grabber} />
-            <Text style={styles.title}>{t(`exercise.${exercise.id}`, { defaultValue: exercise.name })}</Text>
+            <Text style={styles.title}>{resolvedDisplayName ?? t(`exercise.${exercise.id}`, { defaultValue: exercise.name })}</Text>
             <Muted style={styles.meta}>
               {lastSetText}
               {count > 0 ? t('logger.sessionSetCount', { count }) : ''}
             </Muted>
 
-            {!isBw ? (
+            {allowsWeight ? (
               <Stepper
                 label={t('logger.field.weight')}
                 value={weight}
@@ -178,7 +211,7 @@ export function SetLoggerSheet({
               />
             ) : null}
             <Stepper
-              label={isBw ? t('logger.field.repsOrTime') : t('logger.field.reps')}
+              label={repsLabel}
               value={reps}
               step={1}
               min={0}

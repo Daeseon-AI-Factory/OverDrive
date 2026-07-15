@@ -10,6 +10,7 @@
   "exerciseDiscovery": {
     "searchPlaceholder": "운동 검색",
     "cardioMeta": "시간 · 거리 · 강도",
+    "unsupportedTracking": "이 기록 방식은 아직 선택할 수 없음",
     "reason": {
       "today": "오늘 프로그램",
       "recent": "최근 운동"
@@ -277,6 +278,7 @@
       "weight": "무게",
       "repsOrTime": "횟수 / 초",
       "reps": "횟수",
+      "repsPerSide": "한쪽당 횟수",
       "weightUnit": "kg"
     },
     "rirLabel": "RIR (선택)",

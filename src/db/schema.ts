@@ -5,7 +5,7 @@
 // Deferred to later phases: FitnessTest (Phase 5), League/Friendship/AuraCard (Phase 3-4).
 // Program is a code constant (defaultProgram.ts), not a table. Streak is computed, not stored.
 
-export const DATABASE_VERSION = 7;
+export const DATABASE_VERSION = 8;
 
 export const SCHEMA_V1 = `
 CREATE TABLE IF NOT EXISTS user (
@@ -247,4 +247,126 @@ DROP TABLE food_log;
 ALTER TABLE food_log_v7 RENAME TO food_log;
 CREATE INDEX IF NOT EXISTS idx_food_user_date ON food_log(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_food_user_batch ON food_log(user_id, batch_id);
+`;
+
+// v7 → v8: immutable catalog snapshots + active/previous pointers + stable local bridge ids.
+// The existing exercise table remains the logging FK target and is never replaced by this cache.
+export const MIGRATION_008 = `
+CREATE TABLE IF NOT EXISTS catalog_snapshot_cache (
+  catalog_version TEXT PRIMARY KEY NOT NULL,
+  schema_version  TEXT NOT NULL CHECK (schema_version = '1.0.0'),
+  effective_at    TEXT NOT NULL,
+  etag            TEXT NOT NULL,
+  checksum_hex    TEXT NOT NULL CHECK (
+    length(checksum_hex) = 64 AND
+    checksum_hex = lower(checksum_hex) AND
+    checksum_hex NOT GLOB '*[^0-9a-f]*'
+  ),
+  payload_bytes   INTEGER NOT NULL CHECK (payload_bytes BETWEEN 1 AND 524288),
+  payload_blob    BLOB NOT NULL CHECK (
+    typeof(payload_blob) = 'blob' AND length(payload_blob) = payload_bytes
+  ),
+  source          TEXT NOT NULL CHECK (source IN ('remote','bundled')),
+  validated_at    TEXT NOT NULL,
+  CHECK (
+    catalog_version GLOB '1.[0-9]*.[0-9]*' AND
+    catalog_version NOT GLOB '*[^0-9.]*'
+  )
+);
+
+CREATE TABLE IF NOT EXISTS catalog_cache_channel (
+  slot            TEXT PRIMARY KEY NOT NULL CHECK (slot IN ('active','previous')),
+  catalog_version TEXT NOT NULL REFERENCES catalog_snapshot_cache(catalog_version) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS catalog_exercise_bridge (
+  catalog_id  TEXT PRIMARY KEY NOT NULL,
+  exercise_id TEXT NOT NULL UNIQUE REFERENCES exercise(id) ON DELETE RESTRICT,
+  is_frozen   INTEGER NOT NULL CHECK (is_frozen IN (0,1)),
+  created_at  TEXT NOT NULL,
+  UNIQUE (catalog_id, exercise_id),
+  CHECK (
+    (is_frozen = 1 AND exercise_id = catalog_id) OR
+    (is_frozen = 0 AND exercise_id LIKE 'catalog_%')
+  )
+);
+
+CREATE TABLE IF NOT EXISTS catalog_exercise_cache (
+  catalog_version    TEXT NOT NULL REFERENCES catalog_snapshot_cache(catalog_version) ON DELETE CASCADE,
+  catalog_id         TEXT NOT NULL,
+  bridge_exercise_id TEXT NOT NULL REFERENCES exercise(id) ON DELETE RESTRICT,
+  record_revision    INTEGER NOT NULL CHECK (record_revision >= 1),
+  status             TEXT NOT NULL CHECK (status IN ('active','deprecated','retired')),
+  effective_from     TEXT NOT NULL,
+  effective_to       TEXT,
+  replacement_id     TEXT,
+  display_order      INTEGER NOT NULL CHECK (display_order >= 1),
+  exercise_type      TEXT NOT NULL CHECK (exercise_type IN ('strength','cardio')),
+  is_bodyweight      INTEGER NOT NULL CHECK (is_bodyweight IN (0,1)),
+  movement_pattern   TEXT NOT NULL,
+  difficulty         TEXT NOT NULL CHECK (difficulty IN ('beginner','intermediate','advanced')),
+  default_sets       INTEGER NOT NULL CHECK (default_sets BETWEEN 1 AND 20),
+  tracking_mode      TEXT NOT NULL CHECK (tracking_mode IN ('reps','duration','distance','duration_distance','intervals')),
+  counting_convention TEXT NOT NULL CHECK (counting_convention IN ('total','per_side','not_applicable')),
+  target_unit        TEXT,
+  target_low         REAL,
+  target_high        REAL,
+  provenance_json    TEXT NOT NULL,
+  PRIMARY KEY (catalog_version, catalog_id),
+  FOREIGN KEY (catalog_id, bridge_exercise_id)
+    REFERENCES catalog_exercise_bridge(catalog_id, exercise_id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS catalog_exercise_localization (
+  catalog_version TEXT NOT NULL,
+  catalog_id      TEXT NOT NULL,
+  locale          TEXT NOT NULL CHECK (locale IN ('en','ko','es','zh-Hans')),
+  display_name    TEXT NOT NULL,
+  PRIMARY KEY (catalog_version, catalog_id, locale),
+  FOREIGN KEY (catalog_version, catalog_id)
+    REFERENCES catalog_exercise_cache(catalog_version, catalog_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS catalog_exercise_alias (
+  catalog_version TEXT NOT NULL,
+  catalog_id      TEXT NOT NULL,
+  locale          TEXT NOT NULL CHECK (locale IN ('en','ko','es','zh-Hans')),
+  alias_order     INTEGER NOT NULL CHECK (alias_order >= 0),
+  alias           TEXT NOT NULL,
+  PRIMARY KEY (catalog_version, catalog_id, locale, alias_order),
+  FOREIGN KEY (catalog_version, catalog_id, locale)
+    REFERENCES catalog_exercise_localization(catalog_version, catalog_id, locale) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS catalog_exercise_equipment (
+  catalog_version TEXT NOT NULL,
+  catalog_id      TEXT NOT NULL,
+  role            TEXT NOT NULL CHECK (role IN ('required','optional')),
+  item_order      INTEGER NOT NULL CHECK (item_order >= 0),
+  equipment_id    TEXT NOT NULL,
+  PRIMARY KEY (catalog_version, catalog_id, role, item_order),
+  FOREIGN KEY (catalog_version, catalog_id)
+    REFERENCES catalog_exercise_cache(catalog_version, catalog_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS catalog_exercise_region (
+  catalog_version TEXT NOT NULL,
+  catalog_id      TEXT NOT NULL,
+  role            TEXT NOT NULL CHECK (role IN ('primary','secondary')),
+  item_order      INTEGER NOT NULL CHECK (item_order >= 0),
+  region_id       TEXT NOT NULL,
+  PRIMARY KEY (catalog_version, catalog_id, role, item_order),
+  FOREIGN KEY (catalog_version, catalog_id)
+    REFERENCES catalog_exercise_cache(catalog_version, catalog_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_catalog_cache_order
+  ON catalog_exercise_cache(catalog_version, status, display_order, catalog_id);
+CREATE INDEX IF NOT EXISTS idx_catalog_cache_bridge
+  ON catalog_exercise_cache(bridge_exercise_id);
+CREATE INDEX IF NOT EXISTS idx_catalog_alias_lookup
+  ON catalog_exercise_alias(catalog_version, locale, alias);
+CREATE INDEX IF NOT EXISTS idx_catalog_equipment_lookup
+  ON catalog_exercise_equipment(catalog_version, equipment_id);
+CREATE INDEX IF NOT EXISTS idx_catalog_region_lookup
+  ON catalog_exercise_region(catalog_version, region_id, role);
 `;

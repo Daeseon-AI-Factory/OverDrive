@@ -1,4 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { withForeignKeyTransaction } from '../foreignKeyTransaction';
 import { detectPr } from '../../features/logging/detectPr';
 import { PR_VOLUME_MULT } from '../../features/combat-power/constants';
 import { nowIso } from '../../lib/date';
@@ -267,7 +268,7 @@ export async function updateSet(
 ): Promise<{ previous: SetLogRow; row: SetLogRow; isPr: boolean }> {
   const userId = input.userId ?? LOCAL_USER_ID;
   let output: { previous: SetLogRow; row: SetLogRow; isPr: boolean } | null = null;
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  await withForeignKeyTransaction(db, async (tx) => {
     const previous = await tx.getFirstAsync<SetLogRow>(
       `SELECT sl.* FROM set_log sl
        JOIN workout_session ws ON ws.id = sl.session_id
@@ -308,7 +309,7 @@ export async function updateSet(
 /** Delete one logged set once. Returning null makes retries safe for session counters. */
 export async function deleteSet(db: SQLiteDatabase, setId: string): Promise<SetLogRow | null> {
   let deleted: SetLogRow | null = null;
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  await withForeignKeyTransaction(db, async (tx) => {
     const row = await tx.getFirstAsync<SetLogRow>('SELECT * FROM set_log WHERE id = ?', [setId]);
     if (!row) return;
     const result = await tx.runAsync('DELETE FROM set_log WHERE id = ?', [setId]);

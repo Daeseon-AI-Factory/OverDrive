@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import type { ExerciseRow } from '@/db/types';
 import { ExercisePose } from '@/features/exercise-art/ExercisePose';
 import { exerciseFamily } from '@/features/exercise-art/families';
+import type { CatalogExerciseSelection } from '@/features/exercises/catalog/types';
 import { useSessionStore } from '@/features/forge/sessionStore';
 import { playNamed } from '@/features/juice/audio/engine';
 import { ConfirmUndoCard } from '@/features/quicklog/ConfirmUndoCard';
@@ -40,7 +40,7 @@ export function CoachCard({
   /** Silent session start (index-level) — '시작' must never play the 1.6s enter ritual (§6). */
   ensureSession: () => Promise<string>;
   /** Route to the screen-level logger sheets (cardio has no one-tap payload). */
-  onOpenExercise: (exercise: ExerciseRow) => void;
+  onOpenExercise: (selection: CatalogExerciseSelection) => void;
   onFinishWorkout: () => void;
   detailOpen: boolean;
   onToggleDetail: () => void;
@@ -49,7 +49,7 @@ export function CoachCard({
   const accent = useSkinAccent();
   const unitSystem = useSettingsStore((s) => s.unitSystem);
   const { loaded, dayTitle, exerciseById, compute } = useCoachPlan();
-  const { repeat, undoSave } = useQuickLog(); // THE quicklog save/undo paths — JUICE + recents refresh
+  const { candidates, repeat, undoSave, resolveSelection } = useQuickLog(); // THE quicklog save/undo paths — JUICE + recents refresh
   const activeSessionId = useSessionStore((s) => s.activeSessionId);
   const sessionActive = activeSessionId != null;
   const sessionMutationBlocked = useSessionStore((s) => s.finishing || s.pendingLogWrites > 0);
@@ -111,11 +111,16 @@ export function CoachCard({
 
   /** Open the prefilled logger for an exercise ('다르게' / cardio / no-history first set). */
   const openLogger = useCallback(
-    (row: ExerciseRow) => {
-      if (row.type === 'strength') useEditIntentStore.getState().openExercise(row);
-      else onOpenExercise(row);
+    async (row: CatalogExerciseSelection['exercise']) => {
+      const selection = await resolveSelection(row);
+      if (!selection) {
+        setHint(t('quicklog.fail.log'));
+        return;
+      }
+      if (row.type === 'strength') useEditIntentStore.getState().openExercise(selection);
+      else onOpenExercise(selection);
     },
-    [onOpenExercise],
+    [onOpenExercise, resolveSelection, t],
   );
 
   /** '시작' — silent session start + the first exercise's logger, prefilled, in one tap. */
@@ -125,7 +130,7 @@ export function CoachCard({
     setHint(null);
     try {
       await ensureSession();
-      if (sugRow) openLogger(sugRow);
+      if (sugRow) await openLogger(sugRow);
     } catch {
       setHint(t('quicklog.fail.log'));
     } finally {
@@ -149,6 +154,7 @@ export function CoachCard({
         isBodyweight: sugRow?.is_bodyweight === 1,
       });
       if (saved) setCard({ nonce: ++cardNonce.current, saved });
+      else setHint(t('quicklog.fail.log'));
     } catch {
       setHint(t('quicklog.fail.log'));
     } finally {
@@ -157,8 +163,10 @@ export function CoachCard({
   }, [busy, suggestion, repeat, exName, sugRow, t]);
 
   const isBodyweight = sugRow?.is_bodyweight === 1 || suggestion?.weightKg === 0;
+  const supportsOneTap = suggestion != null && candidates.some((item) => item.id === suggestion.exerciseId);
   const canOneTap =
-    suggestion != null && !suggestion.isCardio && suggestion.reps != null && (suggestion.weightKg != null || isBodyweight);
+    supportsOneTap && suggestion != null && !suggestion.isCardio && suggestion.reps != null &&
+    (suggestion.weightKg != null || isBodyweight);
 
   // The ONE mega primary per state — a single stable handler switching on the CURRENT action
   // (handlers are passed straight to JSX props, never stored in derived objects).
@@ -171,11 +179,11 @@ export function CoachCard({
       if (idleKey != null) setContinuedIdleKey(idleKey);
     }
     else if (canOneTap) void onDidIt();
-    else if (sugRow != null) openLogger(sugRow);
+    else if (sugRow != null) void openLogger(sugRow);
   }, [action.kind, idleKey, idleContinued, canOneTap, sugRow, onStart, onDidIt, onFinishWorkout, openLogger]);
 
   const onAlt = useCallback(() => {
-    if (sugRow != null) openLogger(sugRow);
+    if (sugRow != null) void openLogger(sugRow);
   }, [sugRow, openLogger]);
 
   const onCardEdit = useCallback((saved: SavedQuickSet) => {

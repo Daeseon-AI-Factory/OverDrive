@@ -2,6 +2,8 @@
 // from on-device speech) → a structured set. Pure + on-device (no LLM, no server key): handles the
 // common gym grammar ("벤치 100 5", "스쿼트 80kg 10개 rir 2", "풀업 12", "bench 100x5"). Messy natural
 // language is Phase 2 (server LLM). The UI layer turns a ParsedSet into the unchanged logging hot path.
+import { normalizeCatalogSearch } from '@/features/exercises/catalog/normalization';
+import type { CatalogCountingConvention } from '@/features/exercises/catalog/types';
 
 export type UnitSystem = 'metric' | 'imperial';
 const LB_TO_KG = 0.45359237;
@@ -9,9 +11,14 @@ const LB_TO_KG = 0.45359237;
 /** A catalog entry to match against: the exercise + every name/alias it can be called by. */
 export interface ParseCandidate {
   id: string;
+  /** Stable canonical id sent to AI; local parser/save still uses the FK-safe bridge id above. */
+  catalogId?: string;
   name: string; // canonical display name (for echo-back)
   aliases: string[]; // localized names + nicknames (e.g. ['벤치프레스','벤치','bench press','bench'])
   isBodyweight: boolean;
+  allowsExternalLoad?: boolean;
+  countingConvention?: CatalogCountingConvention;
+  targetRepLow?: number;
 }
 
 export interface ParsedSet {
@@ -37,7 +44,7 @@ export type ParseResult =
     }
   | { ok: false; reason: 'empty' | 'no_exercise' | 'no_reps'; text: string };
 
-const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
+const norm = normalizeCatalogSearch;
 
 /** How close (in normalized alias chars) a rival match must be to the winner to count as a near-tie. */
 const NEAR_TIE_CHARS = 2;
@@ -72,7 +79,7 @@ export function parseEntry(raw: string, catalog: ParseCandidate[], unitSystem: U
   const bestAlias = matches[0].alias;
   const near = matches.filter((m) => m.len >= matches[0].len - NEAR_TIE_CHARS).map((m) => m.c);
 
-  const lower = text.toLowerCase();
+  const lower = text.normalize('NFKC').toLowerCase();
 
   // RIR first, then strip it so it isn't re-read as weight/reps.
   let rir: number | null = null;
@@ -80,7 +87,7 @@ export function parseEntry(raw: string, catalog: ParseCandidate[], unitSystem: U
   if (rirM) rir = Number(rirM[1]);
   // Strip the matched exercise name BEFORE reading numbers, so digits inside a name (e.g. the "2" in
   // "Zone 2 Run") are never mistaken for weight/reps.
-  const body = lower.replace(/rir\s*\d+/, ' ').replace(bestAlias.toLowerCase(), ' ');
+  const body = lower.replace(/rir\s*\d+/, ' ').replace(bestAlias.normalize('NFKC').toLowerCase(), ' ');
 
   // Explicit unit hints take priority over bare-number position.
   let weightKg: number | null = null;

@@ -6,6 +6,13 @@ import { recomputeAndStore } from '@/db/repos/combatPowerRepo';
 import { getSessionActivitySummary } from '@/db/repos/sessionRepo';
 import { deleteSets, ensureExercise, getRecentExercises, getSetCountsForExercisesOnDate } from '@/db/repos/setLogRepo';
 import type { ExerciseRow } from '@/db/types';
+import { readCatalogViews } from '@/features/exercises/catalog/service';
+import { supportsCurrentLogger } from '@/features/exercises/catalog/loggingSupport';
+import {
+  appLocaleToCatalogLocale,
+  type CatalogCountingConvention,
+  type CatalogExerciseSelection,
+} from '@/features/exercises/catalog/types';
 import { useForge } from '@/features/forge/useForge';
 import { useSessionStore } from '@/features/forge/sessionStore';
 import { useLogSet, useLogSets } from '@/features/logging/useLogSet';
@@ -23,6 +30,7 @@ import { formatWeight } from '@/lib/units';
 import { useCombatPowerStore } from '@/stores/combatPowerStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { QUICKLOG_ENDPOINT } from './config';
+import { buildQuickLogCandidates, resolvedQuickLogWeightKg } from './catalogProjection';
 import { parseEntry, type ParseCandidate, type ParsedSet } from './parseEntry';
 import { parseEntryAI } from './parseEntryAI';
 
@@ -44,6 +52,10 @@ export interface SavedQuickSet {
   exercise: ExerciseRow | null;
   /** Localized display name (what the user saw echoed). */
   name: string;
+  /** Catalog-authoritative movement metadata captured for safe edit/repeat behavior. */
+  isBodyweight: boolean;
+  allowsExternalLoad: boolean;
+  countingConvention: CatalogCountingConvention | null;
   weightKg: number;
   reps: number;
   rir: number | null;
@@ -84,38 +96,69 @@ export function useQuickLog() {
   const { enterSilently } = useForge();
   const { requestAiAccess, showAiAccessError } = useSubscription();
   const unitSystem = useSettingsStore((s) => s.unitSystem);
+  const appLocale = useSettingsStore((s) => s.locale);
   const remoteAiAllowed = useSettingsStore((s) => hasCurrentRemoteAiConsent(s.remoteAiConsent));
   const logRevision = useSessionStore((s) => s.logRevision);
   const [candidates, setCandidates] = useState<ParseCandidate[]>([]);
   const [recents, setRecents] = useState<RecentChip[]>([]);
   const exMap = useRef<Map<string, ExerciseRow>>(new Map());
+  const candidateMap = useRef<Map<string, ParseCandidate>>(new Map());
+  const selectionMap = useRef<Map<string, CatalogExerciseSelection>>(new Map());
 
   const load = useCallback(async () => {
-    const rows = await db.getAllAsync<ExerciseRow>('SELECT * FROM exercise');
-    exMap.current = new Map(rows.map((r) => [r.id, r]));
-    setCandidates(
-      rows.map((r) => ({
-        id: r.id,
-        name: t(`exercise.${r.id}`, { defaultValue: r.name }), // fall back to stored name (ad-hoc exercises)
-        aliases: [r.name, t(`exercise.${r.id}`, { defaultValue: r.name }), ...r.id.split('_')],
-        isBodyweight: r.is_bodyweight === 1,
-      })),
+    const result = await readCatalogViews(db);
+    const catalogLocale = appLocaleToCatalogLocale(appLocale);
+    const nextCandidates = buildQuickLogCandidates(
+      result.views,
+      catalogLocale,
+      ({ exercise }) => t(`exercise.${exercise.id}`, { defaultValue: exercise.name }),
     );
+    exMap.current = new Map(result.views.map((view) => [view.exercise.id, view.exercise]));
+    candidateMap.current = new Map(nextCandidates.map((candidate) => [candidate.id, candidate]));
+    selectionMap.current = new Map(result.views.map((view) => [
+      view.exercise.id,
+      {
+        ...view,
+        localizedName:
+          view.catalog?.localizations[catalogLocale].displayName ??
+          t(`exercise.${view.exercise.id}`, { defaultValue: view.exercise.name }),
+      },
+    ]));
+    setCandidates(nextCandidates);
     const rec = await getRecentExercises(db, 5);
     setRecents(
-      rec.map((x) => {
+      rec.flatMap((x) => {
         const ex = exMap.current.get(x.exerciseId);
-        return {
+        const candidate = candidateMap.current.get(x.exerciseId);
+        if (!ex || !candidate) return [];
+        return [{
           exerciseId: x.exerciseId,
-          name: ex ? t(`exercise.${x.exerciseId}`, { defaultValue: ex.name }) : x.exerciseId,
+          name: candidate.name,
           weight: x.weight,
           reps: x.reps,
           rir: x.rir,
-          isBodyweight: ex?.is_bodyweight === 1,
-        };
+          isBodyweight: candidate.isBodyweight,
+        }];
       }),
     );
-  }, [db, t]);
+  }, [appLocale, db, t]);
+
+  /**
+   * Resolves the exact catalog metadata used by every picker. The cache is normally warm before
+   * first paint; awaiting load here closes the tiny focus-effect race for an immediate Coach tap.
+   */
+  const resolveSelection = useCallback(async (
+    exercise: ExerciseRow,
+  ): Promise<CatalogExerciseSelection | null> => {
+    let selection = selectionMap.current.get(exercise.id) ?? null;
+    if (!selection) {
+      await load();
+      selection = selectionMap.current.get(exercise.id) ?? null;
+    }
+    return selection && supportsCurrentLogger(selection.exercise, selection.catalog)
+      ? selection
+      : null;
+  }, [load]);
 
   useFocusEffect(
     useCallback(() => {
@@ -161,13 +204,20 @@ export function useQuickLog() {
       const sid = await ensureSession();
       if (!sid) return { ok: false, reason: 'no_session' };
       const ex = exMap.current.get(set.exerciseId) ?? null;
+      const candidate = candidateMap.current.get(set.exerciseId);
+      const isBodyweight = candidate?.isBodyweight ?? set.isBodyweight ?? ex?.is_bodyweight === 1;
+      const weightKg = resolvedQuickLogWeightKg(
+        candidate,
+        set.isBodyweight ?? ex?.is_bodyweight === 1,
+        set.weightKg,
+      );
       const { setId } = await logSet({
         sessionId: sid,
         exerciseId: set.exerciseId,
-        weight: set.weightKg,
+        weight: weightKg,
         reps: set.reps,
         rir: set.rir,
-        hitTargetReps: ex ? set.reps >= ex.rep_low : true,
+        hitTargetReps: set.reps >= (candidateMap.current.get(set.exerciseId)?.targetRepLow ?? ex?.rep_low ?? 0),
         loggedVia: 'quick',
       });
       // Post-save decoration for the confirm card — the set is already durable above.
@@ -180,17 +230,20 @@ export function useQuickLog() {
       }
       return {
         ok: true,
-        summary: setSummary(set.exerciseName, set.weightKg, set.reps),
+        summary: setSummary(set.exerciseName, weightKg, set.reps),
         saved: {
           setId,
           sessionId: sid,
           exerciseId: set.exerciseId,
           exercise: ex,
           name: set.exerciseName,
-          weightKg: set.weightKg,
+          isBodyweight,
+          allowsExternalLoad: candidate?.allowsExternalLoad ?? false,
+          countingConvention: candidate?.countingConvention ?? null,
+          weightKg,
           reps: set.reps,
           rir: set.rir,
-          volumeKg: set.weightKg * set.reps,
+          volumeKg: weightKg * set.reps,
           setCountToday,
         },
       };
@@ -280,7 +333,13 @@ export function useQuickLog() {
                   ? set.exerciseId
                   : await ensureExercise(db, { name: set.exerciseName, isBodyweight: set.isBodyweight });
               const exercise = await getExerciseRow(exerciseId);
-              return { ...set, exerciseId, exercise };
+              const candidate = candidateMap.current.get(exerciseId);
+              const weightKg = resolvedQuickLogWeightKg(
+                candidate,
+                set.isBodyweight ?? exercise?.is_bodyweight === 1,
+                set.weightKg,
+              );
+              return { ...set, exerciseId, exercise, weightKg };
             }),
           );
           const sessionId = await ensureSession();
@@ -292,7 +351,9 @@ export function useQuickLog() {
               weight: set.weightKg,
               reps: set.reps,
               rir: set.rir,
-              hitTargetReps: set.exercise ? set.reps >= set.exercise.rep_low : true,
+              hitTargetReps:
+                set.reps >=
+                (candidateMap.current.get(set.exerciseId)?.targetRepLow ?? set.exercise?.rep_low ?? 0),
               loggedVia: 'quick',
             })),
           );
@@ -307,13 +368,21 @@ export function useQuickLog() {
             exerciseId: set.exerciseId,
             exercise: set.exercise,
             name: set.exerciseName,
+            isBodyweight:
+              candidateMap.current.get(set.exerciseId)?.isBodyweight ??
+              set.isBodyweight ??
+              set.exercise?.is_bodyweight === 1,
+            allowsExternalLoad:
+              candidateMap.current.get(set.exerciseId)?.allowsExternalLoad ?? false,
+            countingConvention:
+              candidateMap.current.get(set.exerciseId)?.countingConvention ?? null,
             weightKg: set.weightKg,
             reps: set.reps,
             rir: set.rir,
             volumeKg: set.weightKg * set.reps,
             setCountToday: counts[set.exerciseId] ?? 1,
           }));
-          const head = setSummary(sets[0].exerciseName, sets[0].weightKg, sets[0].reps);
+          const head = setSummary(resolved[0].exerciseName, resolved[0].weightKg, resolved[0].reps);
           return {
             ok: true,
             summary: sets.length > 1 ? `${head}  +${sets.length - 1}` : head,
@@ -358,6 +427,9 @@ export function useQuickLog() {
   /** One-tap repeat of a recent lift (same weight×reps). Returns the saved set for the confirm card. */
   const repeat = useCallback(
     async (chip: RecentChip): Promise<SavedQuickSet | null> => {
+      // Repeat chips and Coach suggestions must resolve to a current reps candidate. This is the
+      // final defense against a stale legacy duration row being written as repetitions.
+      if (!candidateMap.current.has(chip.exerciseId)) return null;
       const r = await saveParsed({
         exerciseId: chip.exerciseId,
         exerciseName: chip.name,
@@ -397,5 +469,5 @@ export function useQuickLog() {
     [db],
   );
 
-  return { candidates, recents, submitText, submitWith, repeat, undoSave };
+  return { candidates, recents, submitText, submitWith, repeat, undoSave, resolveSelection };
 }

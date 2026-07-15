@@ -1,4 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { withForeignKeyTransaction } from '../foreignKeyTransaction';
 import type { UserSettings } from '@/lib/settings';
 import { nowIso } from '../../lib/date';
 import { type BodyCompositionRow, LOCAL_USER_ID } from '../types';
@@ -42,7 +43,7 @@ export async function saveBodyCompositionEntry(
     measured_at: measuredAt,
   };
 
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  await withForeignKeyTransaction(db, async (tx) => {
     await tx.runAsync(
       `INSERT INTO body_composition_log
          (id, client_uuid, user_id, weight_kg, body_fat_fraction, measured_at)

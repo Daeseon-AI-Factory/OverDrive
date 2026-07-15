@@ -10,6 +10,7 @@
   "exerciseDiscovery": {
     "searchPlaceholder": "Buscar ejercicios",
     "cardioMeta": "Duración · distancia · esfuerzo",
+    "unsupportedTracking": "Este modo de registro aún no está disponible",
     "reason": {
       "today": "Plan de hoy",
       "recent": "Reciente"
@@ -277,6 +278,7 @@
       "weight": "Peso",
       "repsOrTime": "Reps / seg",
       "reps": "Reps",
+      "repsPerSide": "Reps por lado",
       "weightUnit": "kg"
     },
     "rirLabel": "RIR (opcional)",

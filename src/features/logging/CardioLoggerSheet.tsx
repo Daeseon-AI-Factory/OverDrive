@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ExerciseRow } from '@/db/types';
+import type { CatalogExercise } from '@/features/exercises/catalog/types';
 import { distanceToMeters, distanceUnit } from '@/lib/units';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { Button, Muted, Pill } from '@/ui/primitives';
@@ -17,10 +18,14 @@ import { useLogCardio } from './useLogCardio';
  */
 export function CardioLoggerSheet({
   exercise,
+  catalog = null,
+  displayName,
   ensureSession,
   onClose,
 }: {
   exercise: ExerciseRow | null;
+  catalog?: CatalogExercise | null;
+  displayName?: string;
   ensureSession: () => Promise<string>;
   onClose: () => void;
 }) {
@@ -29,7 +34,13 @@ export function CardioLoggerSheet({
   const logCardio = useLogCardio();
   const unitSystem = useSettingsStore((s) => s.unitSystem);
 
-  const [minutes, setMinutes] = useState(20);
+  const target = catalog?.defaultPrescription.target;
+  const defaultMinutes = target?.unit === 'minutes'
+    ? target.low
+    : target?.unit === 'seconds'
+      ? target.low / 60
+      : 20;
+  const [minutes, setMinutes] = useState(defaultMinutes);
   const [distance, setDistance] = useState(0); // display units (km/mi)
   const [rpe, setRpe] = useState<number | null>(null);
   const [count, setCount] = useState(0);
@@ -61,7 +72,7 @@ export function CardioLoggerSheet({
         {exercise ? (
           <>
             <View style={styles.grabber} />
-            <Text style={styles.title}>{t(`exercise.${exercise.id}`, { defaultValue: exercise.name })}</Text>
+            <Text style={styles.title}>{displayName ?? t(`exercise.${exercise.id}`, { defaultValue: exercise.name })}</Text>
             <Muted style={styles.meta}>{count > 0 ? t('logger.sessionSetCount', { count }) : ''}</Muted>
 
             <Stepper label={t('cardio.duration')} value={minutes} step={5} min={0} max={600} precision={0} unit={t('cardio.min')} onChange={setMinutes} />

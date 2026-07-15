@@ -1,4 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { withForeignKeyTransaction } from '../foreignKeyTransaction';
 import { nowIso, todayLocal } from '../../lib/date';
 import { newUuid } from '../uuid';
 import { LOCAL_USER_ID } from '../types';
@@ -92,7 +93,7 @@ export async function undoFoodBatch(
 ): Promise<{ proteinReset: boolean }> {
   if (batch.ids.length === 0) return { proteinReset: false };
   let proteinReset = false;
-  await db.withExclusiveTransactionAsync(async (tx) => {
+  await withForeignKeyTransaction(db, async (tx) => {
     await tx.runAsync(
       `DELETE FROM food_log WHERE user_id = ? AND id IN (${batch.ids.map(() => '?').join(',')})`,
       [batch.userId, ...batch.ids],

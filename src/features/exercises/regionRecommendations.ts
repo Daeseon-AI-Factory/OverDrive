@@ -1,4 +1,5 @@
 import type { ExerciseRow } from '@/db/types';
+import type { CatalogExercise } from './catalog/types';
 
 export const TRAINING_REGIONS = [
   'chest',
@@ -70,6 +71,8 @@ export interface RegionRecommendationInput {
   recentSets: readonly RecentSetReference[];
   /** Today's program order. */
   programExerciseIds?: readonly string[];
+  /** Canonical region/display-order metadata; null preserves ad-hoc muscle-group behavior. */
+  catalogFor?: (exercise: ExerciseRow) => CatalogExercise | null;
 }
 
 function normalizeMuscleGroup(value: string): string {
@@ -80,8 +83,8 @@ export function regionsForMuscleGroup(muscleGroup: string): readonly TrainingReg
   return MUSCLE_GROUP_TO_REGIONS[normalizeMuscleGroup(muscleGroup)] ?? [];
 }
 
-function compareExerciseName(a: ExerciseRow, b: ExerciseRow): number {
-  return a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
+function compareStableId(a: ExerciseRow, b: ExerciseRow): number {
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
 /**
@@ -94,35 +97,46 @@ export function rankRegionRecommendations({
   region,
   recentSets,
   programExerciseIds = [],
+  catalogFor = () => null,
 }: RegionRecommendationInput): RegionRecommendation[] {
-  const catalogById = new Map<string, ExerciseRow>();
+  const catalogById = new Map<string, { exercise: ExerciseRow; role: 'primary' | 'secondary'; displayOrder: number }>();
   for (const exercise of catalog) {
-    if (
-      !catalogById.has(exercise.id) &&
-      regionsForMuscleGroup(exercise.muscle_group).includes(region)
-    ) {
-      catalogById.set(exercise.id, exercise);
-    }
+    if (catalogById.has(exercise.id)) continue;
+    const metadata = catalogFor(exercise);
+    const role = metadata?.primaryBodyRegions.includes(region)
+      ? 'primary'
+      : metadata?.secondaryBodyRegions.includes(region)
+        ? 'secondary'
+        : metadata == null && regionsForMuscleGroup(exercise.muscle_group).includes(region)
+          ? 'primary'
+          : null;
+    if (role) catalogById.set(exercise.id, { exercise, role, displayOrder: metadata?.displayOrder ?? Number.POSITIVE_INFINITY });
   }
 
   const ranked: RegionRecommendation[] = [];
   const emitted = new Set<string>();
 
-  const append = (exerciseId: string, reason: RegionRecommendationReason) => {
+  const append = (exerciseId: string, reason: RegionRecommendationReason, role: 'primary' | 'secondary') => {
     if (emitted.has(exerciseId)) return;
-    const exercise = catalogById.get(exerciseId);
-    if (!exercise) return;
+    const entry = catalogById.get(exerciseId);
+    if (!entry || entry.role !== role) return;
     emitted.add(exerciseId);
-    ranked.push({ exercise, reason });
+    ranked.push({ exercise: entry.exercise, reason });
   };
 
-  for (const exerciseId of programExerciseIds) append(exerciseId, 'today');
-  for (const set of recentSets) append(set.exerciseId, 'recent');
+  for (const role of ['primary', 'secondary'] as const) {
+    for (const exerciseId of programExerciseIds) append(exerciseId, 'today', role);
+  }
+  for (const role of ['primary', 'secondary'] as const) {
+    for (const set of recentSets) append(set.exerciseId, 'recent', role);
+  }
 
-  const remaining = [...catalogById.values()]
-    .filter((exercise) => !emitted.has(exercise.id))
-    .sort(compareExerciseName);
-  for (const exercise of remaining) append(exercise.id, 'catalog');
+  for (const role of ['primary', 'secondary'] as const) {
+    const remaining = [...catalogById.values()]
+      .filter((entry) => entry.role === role && !emitted.has(entry.exercise.id))
+      .sort((a, b) => a.displayOrder - b.displayOrder || compareStableId(a.exercise, b.exercise));
+    for (const entry of remaining) append(entry.exercise.id, 'catalog', role);
+  }
 
   return ranked;
 }

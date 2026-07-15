@@ -6,6 +6,8 @@ import {
   discoverExercises,
   type RecentExerciseSet,
 } from './discovery';
+import { exerciseFixture } from './catalog/testFixture';
+import type { CatalogExercise } from './catalog/types';
 
 const rows: ExerciseRow[] = EXERCISE_SEED.map((exercise) => ({
   ...exercise,
@@ -114,5 +116,131 @@ describe('exercise discovery', () => {
         ),
       ).toBe(true);
     }
+  });
+
+  it('applies the frozen typo vectors only to complete display/alias/id terms', () => {
+    const bench = rows[0];
+    const run = rows.find((exercise) => exercise.id === 'outdoor_run')!;
+    const metadata = new Map<string, CatalogExercise>([
+      [bench.id, {
+        ...exerciseFixture(bench.id, 1),
+        localizations: {
+          ...exerciseFixture(bench.id, 1).localizations,
+          en: { displayName: 'Bench', aliases: ['Bench Press'] },
+        },
+      }],
+      [run.id, {
+        ...exerciseFixture(run.id, 25, 'cardio'),
+        localizations: {
+          ...exerciseFixture(run.id, 25, 'cardio').localizations,
+          en: { displayName: 'Run', aliases: ['Outdoor Run'] },
+        },
+      }],
+    ]);
+    const items = buildExerciseDiscoveryItems(
+      [bench, run],
+      (exercise) => metadata.get(exercise.id)!.localizations.en.displayName,
+      [],
+      () => [],
+      (exercise) => metadata.get(exercise.id) ?? null,
+    );
+
+    expect(discoverExercises(items, { query: 'benc' }).map((item) => item.exercise.id)).toEqual([bench.id]);
+    expect(discoverExercises(items, { query: 'benhc' })).toHaveLength(0);
+    expect(discoverExercises(items, { query: 'benchprzs' }).map((item) => item.exercise.id)).toEqual([bench.id]);
+    expect(discoverExercises(items, { query: 'rnu' })).toHaveLength(0);
+  });
+
+  it('searches canonical aliases, equipment, movement, and primary/secondary regions', () => {
+    const exercise = rows[0];
+    const metadata: CatalogExercise = {
+      ...exerciseFixture(exercise.id, 1),
+      equipment: { required: ['barbell'], optional: ['bench'] },
+      movementPattern: 'horizontal_push',
+      primaryBodyRegions: ['chest'],
+      secondaryBodyRegions: ['shoulders', 'triceps'],
+      localizations: {
+        ...exerciseFixture(exercise.id, 1).localizations,
+        en: { displayName: 'Barbell Bench Press', aliases: ['Flat Bench'] },
+      },
+    };
+    const items = buildExerciseDiscoveryItems(
+      [exercise],
+      () => metadata.localizations.en.displayName,
+      [],
+      () => ['가슴'],
+      () => metadata,
+    );
+
+    for (const query of ['flat bench', 'barbell', 'horizontal push', 'chest', 'shoulders', '가슴']) {
+      expect(discoverExercises(items, { query })[0]?.exercise.id).toBe(exercise.id);
+    }
+  });
+
+  it('searches English canonical aliases while the picker displays Korean', () => {
+    const exercise = rows[0];
+    const metadata: CatalogExercise = {
+      ...exerciseFixture(exercise.id, 1),
+      localizations: {
+        ...exerciseFixture(exercise.id, 1).localizations,
+        ko: { displayName: '바벨 벤치프레스', aliases: ['바벨 벤치'] },
+        en: { displayName: 'Barbell Bench Press', aliases: ['Flat Bench'] },
+      },
+    };
+    const items = buildExerciseDiscoveryItems(
+      [exercise],
+      () => metadata.localizations.ko.displayName,
+      [],
+      () => [],
+      () => metadata,
+      'ko',
+    );
+
+    expect(discoverExercises(items, { query: 'flat bench' })[0]?.exercise.id).toBe(exercise.id);
+  });
+
+  it('searches canonical ID tokens instead of the opaque local bridge ID', () => {
+    const opaque: ExerciseRow = {
+      ...rows[0],
+      id: 'catalog_00000000000040008000000000000001',
+    };
+    const metadata = exerciseFixture('single_leg_romanian_deadlift', 33);
+    const items = buildExerciseDiscoveryItems(
+      [opaque],
+      () => metadata.localizations.en.displayName,
+      [],
+      () => [],
+      () => metadata,
+    );
+
+    expect(discoverExercises(items, { query: 'single' })[0]?.exercise.id).toBe(opaque.id);
+    expect(discoverExercises(items, { query: 'romanian' })[0]?.exercise.id).toBe(opaque.id);
+  });
+
+  it('uses current program, then recent use, then displayOrder for search ties', () => {
+    const candidates = rows.slice(0, 3);
+    const metadata = new Map<string, CatalogExercise>(candidates.map((exercise, index) => [
+      exercise.id,
+      {
+        ...exerciseFixture(exercise.id, index + 1),
+        primaryBodyRegions: ['chest'],
+      },
+    ] as [string, CatalogExercise]));
+    const items = buildExerciseDiscoveryItems(
+      candidates,
+      () => 'Chest movement',
+      [{ exerciseId: candidates[1].id, weight: 20, reps: 8, rir: 2 }],
+      () => [],
+      (exercise) => metadata.get(exercise.id) ?? null,
+    );
+
+    expect(discoverExercises(items, {
+      query: 'chest',
+      programExerciseIds: [candidates[2].id],
+    }).map((item) => item.exercise.id)).toEqual([
+      candidates[2].id,
+      candidates[1].id,
+      candidates[0].id,
+    ]);
   });
 });

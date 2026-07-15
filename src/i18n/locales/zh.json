@@ -10,6 +10,7 @@
   "exerciseDiscovery": {
     "searchPlaceholder": "搜索动作",
     "cardioMeta": "时长 · 距离 · 强度",
+    "unsupportedTracking": "暂不支持此记录方式",
     "reason": {
       "today": "今日计划",
       "recent": "最近训练"
@@ -277,6 +278,7 @@
       "weight": "重量",
       "repsOrTime": "次数 / 秒",
       "reps": "次数",
+      "repsPerSide": "每侧次数",
       "weightUnit": "kg"
     },
     "rirLabel": "RIR（可选）",

@@ -1,16 +1,23 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { useSessionStore } from '@/features/forge/sessionStore';
+import { useEditIntentStore } from '@/features/quicklog/editIntentStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { CoachCard } from './CoachCard';
 
 const mockRepeat = jest.fn();
 const mockUndoSave = jest.fn();
+const mockResolveSelection = jest.fn();
 
 jest.mock('@/features/exercise-art/ExercisePose', () => ({ ExercisePose: () => null }));
 jest.mock('@/features/juice/audio/engine', () => ({ playNamed: jest.fn() }));
 jest.mock('@/features/quicklog/ConfirmUndoCard', () => ({ ConfirmUndoCard: () => null }));
 jest.mock('@/features/quicklog/useQuickLog', () => ({
-  useQuickLog: () => ({ repeat: mockRepeat, undoSave: mockUndoSave }),
+  useQuickLog: () => ({
+    candidates: [{ id: 'row' }],
+    repeat: mockRepeat,
+    undoSave: mockUndoSave,
+    resolveSelection: mockResolveSelection,
+  }),
 }));
 jest.mock('./RestCountdownBar', () => ({ RestCountdownBar: () => null }));
 
@@ -52,6 +59,12 @@ jest.mock('./useCoachPlan', () => {
 describe('CoachCard idle-session save guard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useEditIntentStore.setState({ intent: null });
+    mockResolveSelection.mockImplementation(async (exercise) => ({
+      exercise,
+      catalog: null,
+      localizedName: 'Barbell row',
+    }));
     useSettingsStore.setState({ unitSystem: 'metric' });
     useSessionStore.setState({
       activeSessionId: 'open-session',
@@ -69,6 +82,7 @@ describe('CoachCard idle-session save guard', () => {
 
   afterEach(() => {
     act(() => {
+      useEditIntentStore.setState({ intent: null });
       useSessionStore.setState({
         activeSessionId: null,
         startedAt: null,
@@ -117,6 +131,29 @@ describe('CoachCard idle-session save guard', () => {
       reps: 7,
       rir: null,
       isBodyweight: false,
+    });
+  });
+
+  it('opens the strength logger with the resolved catalog selection intact', async () => {
+    render(
+      <CoachCard
+        ensureSession={jest.fn(async () => 'open-session')}
+        onOpenExercise={jest.fn()}
+        onFinishWorkout={jest.fn()}
+        detailOpen={false}
+        onToggleDetail={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByLabelText('Change'));
+
+    await waitFor(() => expect(mockResolveSelection).toHaveBeenCalledWith(expect.objectContaining({ id: 'row' })));
+    expect(useEditIntentStore.getState().intent).toMatchObject({
+      kind: 'new',
+      selection: {
+        exercise: expect.objectContaining({ id: 'row' }),
+        localizedName: 'Barbell row',
+      },
     });
   });
 });

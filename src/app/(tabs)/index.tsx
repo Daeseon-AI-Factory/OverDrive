@@ -2,7 +2,7 @@ import { Fragment, useCallback, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import type { ExerciseRow } from '@/db/types';
+import type { CatalogExerciseSelection } from '@/features/exercises/catalog/types';
 import { ArenaCard } from '@/features/arena/ArenaCard';
 import { gradeForScore } from '@/features/combat-power/grades';
 import type { BodyHitRegionId } from '@/features/character/bodyHitMap';
@@ -57,7 +57,7 @@ export default function TodayScreen() {
 
   const [activeRegion, setActiveRegion] = useState<BodyHitRegionId | null>(null);
   const [picker, setPicker] = useState<RegionPicker | null>(null);
-  const [activeExercise, setActiveExercise] = useState<ExerciseRow | null>(null);
+  const [activeExercise, setActiveExercise] = useState<CatalogExerciseSelection | null>(null);
   const [showDetail, setShowDetail] = useState(false); // ActiveWorkoutCard behind CoachCard's '자세히'
 
   const ensureSession = useCallback(async (): Promise<string> => {
@@ -65,6 +65,12 @@ export default function TodayScreen() {
     if (active) return active;
     return enterSilently();
   }, [enterSilently]);
+
+  const legacySelection = useCallback((exercise: CatalogExerciseSelection['exercise']): CatalogExerciseSelection => ({
+    exercise,
+    catalog: null,
+    localizedName: t(`exercise.${exercise.id}`, { defaultValue: exercise.name }),
+  }), [t]);
 
   const onRegionPress = useCallback(
     (region: BodyHitRegionId) => {
@@ -124,13 +130,13 @@ export default function TodayScreen() {
             stays reachable as the detail view behind the card's '자세히' toggle. */}
         <CoachCard
           ensureSession={ensureSession}
-          onOpenExercise={(exercise) => setActiveExercise(exercise)}
+          onOpenExercise={setActiveExercise}
           onFinishWorkout={finish}
           detailOpen={showDetail}
           onToggleDetail={() => setShowDetail((v) => !v)}
         />
         {showDetail ? (
-          <ActiveWorkoutCard ensureSession={ensureSession} onOpenCardio={(exercise) => setActiveExercise(exercise)} onFinishWorkout={finish} />
+          <ActiveWorkoutCard ensureSession={ensureSession} onOpenCardio={(exercise) => setActiveExercise(legacySelection(exercise))} onFinishWorkout={finish} />
         ) : null}
 
         {/* The high-frequency lane changes with context. Stable keys preserve typed input and
@@ -179,14 +185,18 @@ export default function TodayScreen() {
       />
 
       <SetLoggerSheet
-        key={`s-${activeExercise?.id ?? 'none'}`}
-        exercise={activeExercise?.type === 'strength' ? activeExercise : null}
+        key={`s-${activeExercise?.exercise.id ?? 'none'}`}
+        exercise={(activeExercise?.catalog?.exerciseType ?? activeExercise?.exercise.type) === 'strength' ? activeExercise?.exercise ?? null : null}
+        catalog={activeExercise?.catalog ?? null}
+        displayName={activeExercise?.localizedName}
         ensureSession={ensureSession}
         onClose={() => setActiveExercise(null)}
       />
       <CardioLoggerSheet
-        key={`c-${activeExercise?.id ?? 'none'}`}
-        exercise={activeExercise?.type === 'cardio' ? activeExercise : null}
+        key={`c-${activeExercise?.exercise.id ?? 'none'}`}
+        exercise={(activeExercise?.catalog?.exerciseType ?? activeExercise?.exercise.type) === 'cardio' ? activeExercise?.exercise ?? null : null}
+        catalog={activeExercise?.catalog ?? null}
+        displayName={activeExercise?.localizedName}
         ensureSession={ensureSession}
         onClose={() => setActiveExercise(null)}
       />
