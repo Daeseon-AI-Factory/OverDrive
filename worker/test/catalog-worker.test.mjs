@@ -93,6 +93,7 @@ test('returns the immutable compact payload bytes with strong cache metadata', a
   assert.equal(response.status, 200);
   assert.deepEqual(await responseBytes(response), bytes);
   assert.equal(response.headers.get('content-type'), 'application/json; charset=utf-8');
+  assert.equal(response.headers.get('content-length'), String(bytes.byteLength));
   assert.equal(response.headers.get('cache-control'), CACHE_CONTROL);
   assert.equal(response.headers.get('etag'), `"catalog-v1-${VERSION}-${digest.slice(0, 16)}"`);
   assert.equal(response.headers.get('x-catalog-version'), VERSION);
@@ -136,6 +137,7 @@ test('returns bodyless 304 with the same version, checksum, ETag, and cache head
   assert.equal(response.status, 304);
   assert.equal((await responseBytes(response)).byteLength, 0);
   assert.equal(response.headers.get('content-type'), null);
+  assert.equal(response.headers.get('content-length'), null);
   assert.equal(response.headers.get('cache-control'), CACHE_CONTROL);
   assert.equal(response.headers.get('etag'), etag);
   assert.equal(response.headers.get('x-catalog-version'), VERSION);

@@ -151,7 +151,10 @@ function catalogHeaders(release, includeContentType) {
     'X-Catalog-Checksum': `sha256:${release.checksum}`,
     'X-Content-Type-Options': 'nosniff',
   });
-  if (includeContentType) headers.set('Content-Type', 'application/json; charset=utf-8');
+  if (includeContentType) {
+    headers.set('Content-Type', 'application/json; charset=utf-8');
+    headers.set('Content-Length', String(release.bytes.byteLength));
+  }
   return headers;
 }
 
