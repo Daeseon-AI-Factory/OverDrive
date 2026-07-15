@@ -1,0 +1,28 @@
+---
+title: "운동 카탈로그 Worker 저장 계약을 정본 데이터에 맞췄다"
+date: "2026-07-14"
+project: "OverDrive"
+kind: "tech-retro"
+visibility: "public"
+language: "ko"
+summary: "counting convention과 정직한 unreviewed provenance를 전용 D1 migration에 반영하고 실제 64행 생성 SQL 적재까지 검증했다."
+tags: ["exercise-catalog", "cloudflare-worker", "d1", "provenance", "validation"]
+---
+
+전용 catalog Worker의 최초 migration이 이전 데이터 계약의 `source_checked` 전제를 유지하고 있어, 정본 catalog SQL은 그대로 적재될 수 없었다. `catalog_exercise`에 `total`, `per_side`, `not_applicable`만 허용하는 `counting_convention`을 추가하고 provenance tuple을 새 계약에 맞췄다.
+
+`unreviewed`는 `original_editorial` + method `none`만 허용하며 reviewer, evidence, timestamp는 모두 null이어야 한다. Row source 삽입·retarget과 source가 있는 reviewed row의 unreviewed 전환을 trigger로 차단했다. `source_checked`와 `human_reviewed`는 reviewer/evidence/timestamp가 실제 non-null·non-empty여야 하고, publish 전에 exercise-specific source가 최소 하나 있어야 한다. Licensed row는 human review와 비어 있지 않은 license source도 필요하다.
+
+테스트 작성 중 SQLite `CHECK`가 결과 `NULL`을 실패로 취급하지 않는 특성 때문에 `length(NULL) > 0`만으로 reviewed 필드 누락이 차단되지 않는 결함을 발견했다. 각 reviewed 필드의 `IS NOT NULL`을 명시해 해결하고, 실제 SQLite corruption test로 재발을 막았다.
+
+Worker envelope의 timestamp도 `Date.parse` 성공만 확인하던 경로를 UTC second precision과 실제 달력 round-trip 검사로 바꿨다. Date-only, timezone 누락, `2026-02-30`처럼 자동 정규화되는 값은 checksum이 맞아도 503으로 닫힌다.
+
+기능 검증: FK를 켠 실제 migration 위에 정본 data commit `bffdd1e`의 생성 D1 SQL을 적용했다. Release/exercise/localization/alias/equipment/region/source/channel 수는 각각 `1/64/256/256/81/97/0/0`, counting 수는 `total 43`, `per_side 10`, `not_applicable 11`이었다. `foreign_key_check`는 무출력이고 `integrity_check`는 `ok`였다. Worker 전체 65 tests가 통과했다.
+
+품질 검증: TypeScript strict, lint와 앱 Jest 55 suite/369 tests가 통과했다. Migration tests는 unreviewed source, 가짜 reviewer, invalid counting, incomplete source check, licensed-without-human-review/license와 sourced-row downgrade를 실제 SQLite에서 거부한다.
+
+제품/워크플로 검증: 로컬 storage/serving 호환성까지만 확인했다. Dedicated Cloudflare D1이나 hostname을 만들지 않았고 deploy·network·channel update를 실행하지 않았으므로 production publication은 미검증이다.
+
+구현 커밋: `7bd6ce856b3dee43768c31bf023dbecb679654ec`.
+
+되돌릴 때는 이 구현 커밋과 기록 커밋을 함께 revert한다. 아직 실제 D1 migration이나 catalog release를 배포하지 않았으므로 production rollback 작업은 없다.
