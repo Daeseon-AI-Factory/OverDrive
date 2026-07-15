@@ -10,6 +10,7 @@ import {
   buildRollbackSql,
   compareReleaseReadback,
   main,
+  parseWranglerJson,
 } from '../catalog/scripts/admin.mjs';
 import { validateCatalogTransition } from '../../scripts/catalog/catalog-validation.mjs';
 
@@ -176,6 +177,22 @@ test('CLI fails closed on misspelled or duplicate operation options before D1 ac
   assert.throws(
     () => main(['verify', '--local', '--local']),
     /option --local was provided more than once/u,
+  );
+});
+
+test('Wrangler JSON parsing accepts progress-prefixed remote file output and rejects trailing junk', () => {
+  const result = [{ results: [], success: true, meta: { changed_db: true } }];
+  assert.deepEqual(
+    parseWranglerJson(`├ Checking if file needs uploading\n│\n🌀 Starting import...\n${JSON.stringify(result)}\n`),
+    result,
+  );
+  assert.throws(
+    () => parseWranglerJson(`${JSON.stringify(result)}\nnot-json`),
+    /Wrangler did not return JSON/u,
+  );
+  assert.throws(
+    () => parseWranglerJson(`progress\n${JSON.stringify([{ success: false }])}`),
+    /Wrangler query failed/u,
   );
 });
 

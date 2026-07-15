@@ -470,11 +470,23 @@ WHERE NOT EXISTS (
 }
 
 export function parseWranglerJson(stdout) {
+  const trimmed = stdout.trim();
   let parsed;
-  try {
-    parsed = JSON.parse(stdout);
-  } catch (error) {
-    fail(`Wrangler did not return JSON: ${error instanceof Error ? error.message : String(error)}`);
+  let parseError;
+  const candidates = [0];
+  for (let index = trimmed.lastIndexOf('['); index > 0; index = trimmed.lastIndexOf('[', index - 1)) {
+    candidates.push(index);
+  }
+  for (const index of candidates) {
+    try {
+      parsed = JSON.parse(trimmed.slice(index));
+      break;
+    } catch (error) {
+      parseError = error;
+    }
+  }
+  if (parsed === undefined) {
+    fail(`Wrangler did not return JSON: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
   }
   check(Array.isArray(parsed) && parsed.every((entry) => entry?.success === true), 'Wrangler query failed');
   return parsed;
