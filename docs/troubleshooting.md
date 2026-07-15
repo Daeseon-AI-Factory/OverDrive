@@ -731,4 +731,5 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Fix**: App Store Connect API로 Version 1.0의 build 관계를 Build 15 `7123db21-dbc0-4126-8f30-5a7105278602`로 교체하고 handoff/checklist의 live 상태를 갱신했다. 비기능 구독을 포함한 새 review submission은 만들지 않았고, loading/unavailable screenshot도 업로드하지 않았다.
 - **Commit**: bf4a133e8082dd411aff41109cf9db00575b431c
 - **Verification**: build relationship PATCH는 HTTP 204였고 후속 `/build` readback은 Build 15, `version=15`, `VALID`, `expired=false`였다. subscription은 계속 `MISSING_METADATA`, review screenshot은 `data:null`, replacement review submission은 0개다. Function 검증은 Build 관계 교체와 readback까지다. Quality 검증은 문서 diff와 `git diff --check`까지이며 결제 품질을 뜻하지 않는다. Product/workflow 검증은 실제 구매·entitlement·restore가 막혀 있어 미완료다.
+- **Follow-up commit**: `c8cd9af365541d66757e4cdd61f97b8af408fa01` — Build 관계 교체 뒤 Version 1.0이 `DEVELOPER_REJECTED`에서 `PREPARE_FOR_SUBMISSION`으로 바뀐 최종 readback을 handoff와 checklist에 반영했다. 이는 제출 성공이 아니라 제출 준비 상태이며 구독과 screenshot 상태는 그대로다.
 - **Pattern**: 바이너리 업로드, version-build 관계, 첫 subscription 선택, review submission은 서로 다른 외부 상태다. 각 관계를 독립적으로 readback하고 결제 후 entitlement가 실제로 발급되기 전에는 제출 완료로 합치지 않는다.

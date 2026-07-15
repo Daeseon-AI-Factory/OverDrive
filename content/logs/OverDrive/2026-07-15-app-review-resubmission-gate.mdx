@@ -11,6 +11,8 @@ tags: ["app-store", "subscription", "storekit", "release-gate"]
 
 release-state 기록 커밋 `bf4a133e8082dd411aff41109cf9db00575b431c` 시점에 Version 1.0은 의도적 철회 뒤 `DEVELOPER_REJECTED`였고 Build 13을 가리켰다. Build 15는 이미 `VALID` / `APP_STORE_ELIGIBLE` / Internal `IN_BETA_TESTING`이었으므로 App Store Connect API의 build relationship을 Build 15로 교체했다. PATCH는 HTTP 204였고 후속 readback은 Build 15, `version=15`, `VALID`, `expired=false`였다. 새 review submission은 만들지 않았다.
 
+후속 상태 기록 커밋 `c8cd9af365541d66757e4cdd61f97b8af408fa01`은 같은 관계 교체 뒤 Version 1.0이 `PREPARE_FOR_SUBMISSION`으로 바뀐 readback을 반영한다. 기존 철회 submission은 여전히 `COMPLETE`, 전체 submission 수는 1개라 replacement draft는 없다. `PREPARE_FOR_SUBMISSION`은 App Review 요청이나 구독 포함을 뜻하지 않는다.
+
 구독 상품은 월 $4.99, 132개 판매 지역, en-US 상품·그룹 localization, review note가 있었지만 상태는 `MISSING_METADATA`였고 review screenshot 관계는 `data:null`이었다. realistic seed를 유지한 Build 15 Release simulator에서 실제 터치로 paywall을 열고 15초 기다렸지만 `Loading the App Store price…`와 `Subscription unavailable`이 그대로였다. 이 캡처는 심사용으로 올리지 않았다. shared Release scheme `Reploom-StoreKit-QA`와 `ios/Reploom/Products.storekit`으로 실제 localized price와 활성 Subscribe 버튼이 보이는 새 캡처가 필요하다.
 
 더 큰 중단 조건은 결제 이후다. production Quick Log Worker는 Build 13 세대 source이고 `/entitlements/session`이 없으며 Apple/entitlement secret 5개도 없다. Build 15가 StoreKit 결제를 마쳐도 Worker 교환이 실패해 Pro 권한, 1,000 credits, 60 meal-photo 한도를 발급하지 못한다. 기존 ASC API key 두 개를 비밀값과 JWT를 출력하지 않고 확인한 결과 Sandbox의 존재하지 않는 transaction은 authenticated `4040010`이었지만 production StoreKit API는 둘 다 HTTP 401이었다. 따라서 이 키들을 production IAP key로 설치하지 않았다.
