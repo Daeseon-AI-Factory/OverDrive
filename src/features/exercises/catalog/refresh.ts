@@ -56,29 +56,36 @@ async function refreshOnce(
     if (!/^application\/json(?:\s*;\s*charset=utf-8)?$/.test(contentType)) {
       return { status: 'failed', error: 'invalid content type' };
     }
-    const contentLengthHeader = response.headers.get('content-length') ?? '';
-    if (!/^[1-9][0-9]*$/.test(contentLengthHeader)) {
-      return { status: 'failed', error: 'missing or invalid content length' };
+    const byteCountHeader = response.headers.get('x-catalog-bytes') ?? '';
+    if (!/^[1-9][0-9]*$/.test(byteCountHeader)) {
+      return { status: 'failed', error: 'missing or invalid catalog byte count' };
     }
-    const contentLength = Number(contentLengthHeader);
-    if (!Number.isSafeInteger(contentLength) || contentLength > MAX_CATALOG_BYTES) {
+    const expectedByteCount = Number(byteCountHeader);
+    if (!Number.isSafeInteger(expectedByteCount) || expectedByteCount > MAX_CATALOG_BYTES) {
       return { status: 'failed', error: 'payload exceeds catalog byte limit' };
+    }
+    const contentLengthHeader = response.headers.get('content-length');
+    if (contentLengthHeader != null && (
+      !/^[1-9][0-9]*$/.test(contentLengthHeader) || Number(contentLengthHeader) !== expectedByteCount
+    )) {
+      return { status: 'failed', error: 'catalog transport length mismatch' };
     }
     const checksum = response.headers.get('x-catalog-checksum') ?? '';
     const version = response.headers.get('x-catalog-version') ?? '';
     const etag = response.headers.get('etag') ?? '';
     const rawBytes = new Uint8Array(await response.arrayBuffer());
-    if (rawBytes.byteLength !== contentLength || rawBytes.byteLength > MAX_CATALOG_BYTES) {
-      return { status: 'failed', error: 'catalog content length mismatch' };
+    if (rawBytes.byteLength !== expectedByteCount || rawBytes.byteLength > MAX_CATALOG_BYTES) {
+      return { status: 'failed', error: 'catalog byte count mismatch' };
     }
     const validated = await validateCatalogBytes(rawBytes, checksum);
     if (validated.snapshot.catalogVersion !== version) {
       return { status: 'failed', error: 'catalog version header mismatch' };
     }
-    if (etag !== expectedCatalogEtag(version, validated.checksumHex)) {
+    const canonicalEtag = expectedCatalogEtag(version, validated.checksumHex);
+    if (etag !== canonicalEtag && etag !== `W/${canonicalEtag}`) {
       return { status: 'failed', error: 'catalog ETag header mismatch' };
     }
-    await activateCatalogSnapshot(db, validated, { etag, source: 'remote' });
+    await activateCatalogSnapshot(db, validated, { etag: canonicalEtag, source: 'remote' });
     return { status: 'activated' };
   } catch (error) {
     return { status: 'failed', error: error instanceof Error ? error.message : 'catalog refresh failed' };

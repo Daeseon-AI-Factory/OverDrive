@@ -8,7 +8,7 @@ const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString('b
 const { default: worker } = await import(moduleUrl);
 
 const VERSION = '1.2.3';
-const CACHE_CONTROL = 'public, max-age=300, stale-while-revalidate=86400';
+const CACHE_CONTROL = 'public, max-age=300, stale-while-revalidate=86400, no-transform';
 
 function fixturePayload(overrides = {}) {
   return {
@@ -96,6 +96,7 @@ test('returns the immutable compact payload bytes with strong cache metadata', a
   assert.equal(response.headers.get('content-length'), String(bytes.byteLength));
   assert.equal(response.headers.get('cache-control'), CACHE_CONTROL);
   assert.equal(response.headers.get('etag'), `"catalog-v1-${VERSION}-${digest.slice(0, 16)}"`);
+  assert.equal(response.headers.get('x-catalog-bytes'), String(bytes.byteLength));
   assert.equal(response.headers.get('x-catalog-version'), VERSION);
   assert.equal(response.headers.get('x-catalog-checksum'), `sha256:${digest}`);
   assert.equal(response.headers.get('set-cookie'), null);
@@ -140,6 +141,7 @@ test('returns bodyless 304 with the same version, checksum, ETag, and cache head
   assert.equal(response.headers.get('content-length'), null);
   assert.equal(response.headers.get('cache-control'), CACHE_CONTROL);
   assert.equal(response.headers.get('etag'), etag);
+  assert.equal(response.headers.get('x-catalog-bytes'), String(bytes.byteLength));
   assert.equal(response.headers.get('x-catalog-version'), VERSION);
   assert.equal(response.headers.get('x-catalog-checksum'), `sha256:${row.checksum_hex}`);
 });

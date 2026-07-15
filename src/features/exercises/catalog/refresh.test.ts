@@ -74,13 +74,13 @@ describe('catalog refresh', () => {
     expect(mockActivateCatalogSnapshot).not.toHaveBeenCalled();
   });
 
-  it('fails closed before reading a 200 body without a valid bounded Content-Length', async () => {
+  it('fails closed before reading a 200 body without a valid bounded catalog byte count', async () => {
     const raw = new TextEncoder().encode(JSON.stringify(catalogFixture()));
     const arrayBuffer = jest.fn(async () => raw.buffer);
     const fetcher = jest.fn().mockResolvedValue({
       ...response(200, raw, {
         'content-type': 'application/json; charset=utf-8',
-        'content-length': '',
+        'x-catalog-bytes': '',
       }),
       arrayBuffer,
     });
@@ -88,21 +88,22 @@ describe('catalog refresh', () => {
       endpoint: 'https://catalog.example/catalog/v1',
       fetcher: fetcher as unknown as typeof fetch,
     });
-    expect(result).toEqual({ status: 'failed', error: 'missing or invalid content length' });
+    expect(result).toEqual({ status: 'failed', error: 'missing or invalid catalog byte count' });
     expect(arrayBuffer).not.toHaveBeenCalled();
   });
 
-  it('rejects a body whose exact bytes do not match Content-Length', async () => {
+  it('rejects a body whose exact bytes do not match the catalog byte count', async () => {
     const raw = new TextEncoder().encode(JSON.stringify(catalogFixture()));
     const fetcher = jest.fn().mockResolvedValue(response(200, raw, {
       'content-type': 'application/json; charset=utf-8',
+      'x-catalog-bytes': String(raw.byteLength - 1),
       'content-length': String(raw.byteLength - 1),
     }));
     const result = await refreshExerciseCatalog(db, {
       endpoint: 'https://catalog.example/catalog/v1',
       fetcher: fetcher as unknown as typeof fetch,
     });
-    expect(result).toEqual({ status: 'failed', error: 'catalog content length mismatch' });
+    expect(result).toEqual({ status: 'failed', error: 'catalog byte count mismatch' });
     expect(mockActivateCatalogSnapshot).not.toHaveBeenCalled();
   });
 
@@ -115,6 +116,29 @@ describe('catalog refresh', () => {
       'x-catalog-checksum': `sha256:${checksumHex}`,
       'x-catalog-version': '1.0.0',
       etag,
+    }));
+
+    await expect(refreshExerciseCatalog(db, {
+      endpoint: 'https://catalog.example/catalog/v1',
+      fetcher: fetcher as unknown as typeof fetch,
+    })).resolves.toEqual({ status: 'activated' });
+    expect(mockActivateCatalogSnapshot).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({ checksumHex }),
+      { etag, source: 'remote' },
+    );
+  });
+
+  it('accepts a Cloudflare weak ETag and missing transport Content-Length while storing the canonical ETag', async () => {
+    const raw = new TextEncoder().encode(JSON.stringify(catalogFixture()));
+    const checksumHex = await sha256Hex(raw);
+    const etag = expectedCatalogEtag('1.0.0', checksumHex);
+    const fetcher = jest.fn().mockResolvedValue(response(200, raw, {
+      'content-type': 'application/json; charset=utf-8',
+      'x-catalog-bytes': String(raw.byteLength),
+      'x-catalog-checksum': `sha256:${checksumHex}`,
+      'x-catalog-version': '1.0.0',
+      etag: `W/${etag}`,
     }));
 
     await expect(refreshExerciseCatalog(db, {
@@ -158,7 +182,7 @@ describe('catalog refresh', () => {
 
 function response(status: number, body = new Uint8Array(), headerValues: Record<string, string> = {}) {
   const headers = new Map(Object.entries(headerValues).map(([key, value]) => [key.toLowerCase(), value]));
-  if (status === 200 && !headers.has('content-length')) headers.set('content-length', String(body.byteLength));
+  if (status === 200 && !headers.has('x-catalog-bytes')) headers.set('x-catalog-bytes', String(body.byteLength));
   return {
     status,
     headers: { get: (name: string) => headers.get(name.toLowerCase()) ?? null },

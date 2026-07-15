@@ -1,7 +1,7 @@
 const CATALOG_PATH = '/catalog/v1';
 const CATALOG_CHANNEL = 'v1';
 const SCHEMA_VERSION = '1.0.0';
-const CACHE_CONTROL = 'public, max-age=300, stale-while-revalidate=86400';
+const CACHE_CONTROL = 'public, max-age=300, stale-while-revalidate=86400, no-transform';
 const MAX_EXERCISES = 512;
 const MIN_EXERCISES = 32;
 const MAX_PAYLOAD_BYTES = 524_288;
@@ -147,6 +147,7 @@ function catalogHeaders(release, includeContentType) {
   const headers = new Headers({
     'Cache-Control': CACHE_CONTROL,
     ETag: release.etag,
+    'X-Catalog-Bytes': String(release.bytes.byteLength),
     'X-Catalog-Version': release.version,
     'X-Catalog-Checksum': `sha256:${release.checksum}`,
     'X-Content-Type-Options': 'nosniff',
