@@ -681,3 +681,12 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Commit**: 04641fc
 - **Verification**: 전체 Jest 64 suites / 457 tests, strict TypeScript, lint, `catalog:validate` 39/39, `git diff --check`가 통과했다. bundle은 64행 / 66,654 bytes / checksum `sha256:43491e64b66fbd16f87325d8e8ea9e5d2325d888b71c700b61b80da19566604a`로 재검증했다. 회귀 테스트는 catalog-null plank 차단, 저장 프로그램 slot 제거, Coach selection 보존, locale 간 English alias 검색, frozen/ad-hoc fallback, 900-bind chunk를 포함한다. Release simulator에서 realistic DB seed로 Coach·상세 운동·검색을 실제 터치하고 원격 활성화와 동시 기록을 재현하는 제품·워크플로 검증은 아직 완료되지 않았다.
 - **Pattern**: 기록 의미를 결정하는 메타데이터는 선택 화면에서 저장 함수까지 같은 객체로 운반하고 최종 write 직전에 capability를 다시 확인한다. background cache는 foreground 원장과 같은 SQLite를 쓸 때 startup ordering, bounded statements, lock wait를 함께 설계해야 한다.
+
+## 클라이언트와 게시 계보를 합칠 때 append-only 운영 로그가 다시 충돌했다
+
+- **Symptom**: `codex/catalog-client`를 production D1 publisher 작업이 진행된 통합 브랜치에 병합할 때 `docs/troubleshooting.md`만 content conflict가 났다.
+- **Cause**: 클라이언트와 Worker가 같은 데이터 기준선에서 병렬로 발전했고, 양쪽 dual-write가 공통 문서 끝에 각각 항목을 추가했다. 코드 계층은 분리돼 자동 병합됐지만 append 위치는 같았다.
+- **Fix**: data integration, guarded publishing, remote output parsing, client logging safety 기록을 모두 시간 순서로 보존하고 `04641fc`/`72e290a` 클라이언트 계보를 no-fast-forward merge로 통합했다.
+- **Commit**: 1561127
+- **Verification**: 통합 HEAD에서 strict TypeScript, zero-error lint, 전체 Jest 64 suites / 457 tests, catalog 39/39가 통과했다. Worker 86/86과 production D1 게시 검증은 직전 커밋에서 별도로 통과했다. Release simulator 실사용 터치와 스크린샷은 아직 이 merge의 제품 검증이 아니다.
+- **Pattern**: 병렬 계보를 합친 뒤에는 각 브랜치의 테스트 결과를 재사용하지 말고 merge HEAD에서 앱·정본 gate를 다시 실행한다.
