@@ -1,0 +1,901 @@
+# Reploom Social v1 Implementation Contract
+
+Status: **Canonical for Social v1 implementation**
+
+Contract version: `1.0.0`
+
+Repository baseline: `1b5ce1ab43f0e3ef6ee1db168d0ed79fd0736612`
+
+Frozen: `2026-07-15`
+
+This document is the normative boundary for Reploom Social v1. `MUST`, `MUST
+NOT`, `SHOULD`, and `MAY` are requirements. A statement marked `[baseline]`
+describes source observed at the repository baseline; it is not a claim about a
+later build or a live service. `TBD` is deliberately unresolved and blocks the
+affected launch path; an implementer must not silently choose a value.
+
+Social v1 means the first generation of Reploom social features. It does **not**
+mean App Store marketing version `1.0`. This contract authorizes documentation
+only. It does not authorize feature code, dependency changes, deployment,
+TestFlight upload, payment work, or an App Store review-state change.
+
+## 1. Evidence boundary, outcome, and non-goals
+
+### 1.1 Baseline facts used by this contract
+
+- `[baseline]` The current tab source is `Today / Explore / Log / History /
+  Settings` in `src/app/(tabs)/_layout.tsx`; the target menu in this document is
+  not implemented.
+- `[baseline]` The local database has one on-device user identified by
+  `LOCAL_USER_ID = 'local'`; it has no `auth_subject` or `social_user_id`
+  binding (`src/db/types.ts`, `src/db/schema.ts`).
+- `[baseline]` the subscription Worker derives `actor_key` by HMAC from a
+  verified StoreKit `appAccountToken` and uses it for entitlement, quota,
+  request, and deletion-tombstone rows (`worker/src/index.js`,
+  `worker/migrations/0001_ai_subscription_quota.sql`).
+- `[baseline]` current policy and listing sources say that v1 has no online
+  account, public leaderboard, chat, or remote photo-avatar generation
+  (`docs/compliance/privacy-policy.md`,
+  `docs/launch/app-store-listing.md`). `store.config.json` currently records
+  `messagingAndChat: false` and `userGeneratedContent: false`.
+- `[baseline]` `verifiedRatio` is the share of locally logged sessions
+  corroborated by a health-platform workout and directly increases the local,
+  for-fun Combat Power multiplier (`src/db/repos/combatPowerRepo.ts`,
+  `src/features/combat-power/computeCombatPower.ts`). It is not proof that a
+  profile is a real person and is not a social anti-cheat verdict.
+- `[baseline]` the repository handoff records Version 1.0 as
+  `PREPARE_FOR_SUBMISSION` with no replacement submission. This document does
+  not read live App Store Connect, so any current live review state is
+  `[unverified]`.
+
+### 1.2 Ordered outcome
+
+1. Add a clear Social home without slowing or coupling the local workout log.
+2. Give every social action an authenticated, domain-authorized identity.
+3. Make privacy, block, report, deletion, media provenance, and adult opt-in
+   structural invariants rather than client-only copy.
+4. Compare consenting people by consistency and their own improvement, not by
+   appearance, body shape, absolute strength, or the current `verifiedRatio`.
+5. Permit staged rollout and immediate fail-closed shutdown by independent
+   feature capabilities.
+
+### 1.3 Non-goals
+
+- No Hot-or-Not flow, attractiveness number, appearance rank, swipe score, or
+  photo-engagement rank.
+- No public/global leaderboard, monetary prize, betting, or pay-to-rank.
+- No exact GPS, coordinates, geohash, live presence, route, home inference, or
+  IP-derived location.
+- No health-record, body-composition, raw workout, message, report, or photo
+  content in analytics.
+- No social authentication through Apple purchase state or the subscription
+  entitlement Bearer token.
+- No automatic account merge by email, phone number, purchase, device, or
+  legacy rank token.
+- No social route in `worker/src/index.js`; the subscription/AI Worker remains
+  a separate service and failure boundary.
+- No promise that 18+ self-attestation verifies identity or legal age.
+
+## 2. Release boundary and navigation
+
+### 2.1 Current 1.0 versus the next social release
+
+| Surface | Current Version 1.0 release/review track | Next social-capable release |
+| --- | --- | --- |
+| Social account | Absent; current policy says no online account | Explicit account creation after authenticated bootstrap |
+| Menu | Preserve the current shipped/reviewed behavior | `TODAY / TRAIN / +LOG / SOCIAL / ME` |
+| Social flags | Effective false or capability absent | Staged independently; missing/invalid remains false |
+| Profile media, UGC, chat | Not added by this contract change | Gated by policy, store metadata, moderation, and feature flags |
+| Partner discovery | Not present and must remain disabled | 18+ self-attestation plus explicit, revocable opt-in |
+| Store/review action | No edit, upload, submission, or deployment | Separate release approval after every gate in section 14 |
+
+The marketing version number of the next release is `TBD`. No source or UI may
+call it `1.1`, `2.0`, or another number until release ownership fixes that value.
+
+### 2.2 Target primary menu
+
+The social-capable client MUST render these five primary destinations in this
+order and with these labels:
+
+1. `TODAY` — existing daily decision and active-workout surface.
+2. `TRAIN` — exercise discovery, body-region browsing, program, and workout
+   history. The existing History capability is moved behind TRAIN, not removed.
+3. `+LOG` — the raised center action for workout and meal logging.
+4. `SOCIAL` — the Social v1 home, present only when `socialCore` is effective.
+5. `ME` — profile, settings, subscription, privacy, safety, and account controls.
+
+The client MAY preserve existing route filenames during migration, but the
+visible information architecture above is fixed. A disabled social capability
+must not leave a dead tab or reorder logging controls unexpectedly.
+
+### 2.3 SOCIAL internal navigation
+
+SOCIAL contains exactly three first-level surfaces:
+
+- `친구` — accepted friends, incoming/outgoing friend invitations, and duels;
+- `주변` — adult, opt-in partner discovery using the user's current manual area
+  or venue selection only; and
+- `크루` — private, invite-only crews and their consistency/improvement views.
+
+The nearby screen MUST explain that it is based on a manually selected area or
+venue and is not current-position or distance tracking. When
+`partnerDiscovery` is unavailable, the screen shows the eligibility/settings
+path without exposing candidate data.
+
+### 2.4 Logging isolation
+
+Social bootstrap, refresh, media, chat, flag, or backend failure MUST NOT delay,
+disable, roll back, or require the network for TODAY, TRAIN, or +LOG local saves.
+Social requests run outside the local logging transaction. Social JUICE is
+allowed only after the underlying social write is durable; it remains
+asynchronous and skippable. New UI uses the active skin's existing tokens and
+primitives only; hard-coded colors, franchise styling, or a second visual token
+system are forbidden.
+
+## 3. Identity and subscription separation
+
+### 3.1 Social account and authentication binding
+
+The social domain owns two supporting records:
+
+| Record | Required fields | Invariants |
+| --- | --- | --- |
+| `SocialAccount` | `social_user_id`, `status`, `created_at`, `updated_at`, `deleted_at` | `status` is `active`, `deleting`, or `deleted`. `social_user_id` is a server-generated, opaque random UUID and is immutable. It is never derived from user content, a device, auth claims, or payment data. |
+| `AuthBinding` | `auth_binding_id`, `social_user_id`, `auth_issuer`, `auth_subject`, `created_at`, `revoked_at` | Active `(auth_issuer, auth_subject)` is unique. Subject comparison is exact and case-sensitive inside its issuer namespace. `auth_subject` is never public or client-editable. |
+
+The authentication provider, issuer allow-list, audience, and gateway claim
+transport are per-environment configuration, not hard-coded to one vendor. The
+gateway must verify issuer, audience, signature, expiry, and subject. The social
+service must reject direct bypass and must derive the acting account only from
+the verified server-side claim. A request body, query, or ordinary client header
+cannot nominate `auth_subject` or `social_user_id` as the actor.
+
+Account provisioning is explicit through `POST /social/v1/account`. A read
+request does not silently recreate a deleted account. V1 has no account-linking
+or merge UI. A later linking flow requires reauthentication of every binding and
+a new contract; matching email text is never sufficient.
+
+### 3.2 Hard separation from `actor_key`
+
+`actor_key` is a subscription/AI-quota principal, not a person or login. The
+following rules are absolute:
+
+- `social_user_id`, `auth_subject`, and `auth_issuer` MUST NOT be derived from,
+  copied from, encrypted from, or hashed from `actor_key`, `appAccountToken`, an
+  Apple transaction, `LOCAL_USER_ID`, `client_uuid`, or legacy `rankDeviceId`.
+- Social tables, indexes, caches, URLs, tokens, analytics, and logs MUST NOT have
+  an `actor_key` column or lookup path.
+- The social service MUST NOT accept the subscription entitlement Bearer token
+  as social authentication. The AI/subscription Worker MUST NOT accept a social
+  token in place of its entitlement token.
+- No database foreign key or join may connect the social schema to the
+  subscription quota schema. If a future paid capability is needed, billing may
+  return a coarse capability to the authenticated gateway; raw identifiers
+  remain inside billing.
+- Social account deletion, subscription-ledger deletion, Apple subscription
+  cancellation, legacy-rank deletion, and local SQLite deletion are independent
+  user actions. None automatically cascades into another.
+
+This boundary also means that a purchaser, a restored purchase, or a family
+payment relationship is never assumed to be one social person.
+
+## 4. Normative entity model
+
+### 4.1 Common database rules
+
+- PostgreSQL is authoritative for online social state. Every primary ID is an
+  opaque server-generated UUID; every time is UTC; every mutable aggregate has
+  an integer `version` for optimistic concurrency.
+- Database columns use `snake_case`; REST JSON uses `camelCase` through strict
+  DTO mapping. Unknown request fields are rejected, not ignored.
+- All relationship constraints, block precedence, and state transitions are
+  enforced in the domain service and database transaction. Hiding a client
+  button is not authorization.
+- Uniqueness involving an unordered pair uses canonical `user_low_id` and
+  `user_high_id`, rejects a self-pair, and is enforced by a unique constraint.
+- User-authored content has a moderation state and cannot become discoverable
+  while pending or rejected.
+- Deleting an account immediately suppresses it from reads before asynchronous
+  cleanup begins.
+
+### 4.2 Required entities
+
+| Entity | Required fields | Frozen invariant / lifecycle |
+| --- | --- | --- |
+| `Profile` | `social_user_id`, `handle`, `display_name`, `bio`, `visibility`, `primary_media_id`, `moderation_state`, `version`, timestamps | One per account. A normalized handle is unique; exact handle/display/bio bounds are `TBD`. Default `visibility = private`. `private` permits only self; `friends` permits self and accepted friends. A discovery card is a separate, minimal projection requiring surface opt-in. |
+| `Friendship` | `friendship_id`, canonical user pair, `created_at` | Contains accepted friendships only; pending authority lives in `Invite`. One active row per pair. Either participant may remove it. |
+| `Invite` | `invite_id`, `kind`, `inviter_id`, `invitee_id`, `crew_id`, `token_digest`, `state`, `expires_at`, timestamps | `kind` is `friend` or `crew`. A target-bound invite can be accepted only by that target. An external token is stored only as a digest, is one-time, and reveals no profile before authentication. States: `pending -> accepted\|declined\|revoked\|expired`. Duel authority does not share this state machine. |
+| `Duel` | `duel_id`, `challenger_id`, `opponent_id`, `state`, `metric_version`, `starts_at`, `ends_at`, frozen metric inputs, server result, timestamps | Requires an active friendship and no block. States: `pending -> active -> completed`; `pending -> declined\|cancelled`; `active -> cancelled` without a winner. Acceptance starts an EXACT 7-day window. Only the server writes results. |
+| `Crew` | `crew_id`, `owner_id`, `name`, `state`, `visibility`, `moderation_state`, `version`, timestamps | V1 is `private` and invite-only. One active owner. `active -> archived` only. It has no public directory or arbitrary join. |
+| `Membership` | `membership_id`, `crew_id`, `social_user_id`, `role`, `joined_at` | One active membership per crew/user. Roles: `owner`, `moderator`, `member`. The owner alone transfers ownership or archives. Owner leave requires transfer; account deletion is never blocked and archives any still-owned crew. |
+| `Discoverability` | `social_user_id`, `friend_search_enabled`, `crew_invites_enabled`, `partner_discovery_enabled`, `partner_scope`, `area_code`, `venue_id`, `adult_attestation_version`, `adult_attested_at`, `partner_opted_in_at`, `version`, `updated_at` | One row per account; every opt-in defaults false. `partner_scope` is `off`, `area`, or `venue` and requires its matching current selection. Only the current manual area/venue choice is stored. Replacing or clearing it does not create application history. Partner eligibility requires current 18+ self-attestation and partner opt-in. |
+| `Interest` | `interest_id`, `from_user_id`, `to_user_id`, `state`, timestamps | Partner-only, directed, and private. One active direction per pair. States: `active -> withdrawn`. A one-way interest and its withdrawal are never revealed to the target. |
+| `Match` | `match_id`, canonical user pair, `state`, `matched_at`, `closed_at`, `version` | The server alone creates one row inside the transaction that observes reciprocal active Interests. States: `active -> unmatched\|blocked\|closed`. It is not a friendship and does not restore after unblock. |
+| `Block` | `block_id`, `blocker_id`, `blocked_id`, `created_at` | Directional storage, symmetric product effect. One row per direction. It takes precedence over profile, discovery, invite, friendship, duel, crew projection/notification, interest, match, and chat reads/writes. Unblock never restores old relationships. |
+| `Report` | `report_id`, `reporter_id`, `subject_user_id`, `target_type`, `target_id`, `category`, `details`, `status`, `created_at`, internal timestamps | Reporter identity and internal status are never exposed to the subject. A stale resource receipt can be reported after block. Public creation returns a receipt only; moderation read/write is an internal safety API. |
+
+`Profile.moderation_state` is `pending`, `approved`, `rejected`, or `hidden`.
+`Report.status` is internal-only `received`, `triaged`, `actioned`, or
+`dismissed`. `Report.category` is a bounded original vocabulary covering spam, harassment,
+impersonation, threat, hate, sexual content, suspected underage use, privacy,
+unsafe conduct, and other. Category labels are product routing labels, not legal
+findings.
+
+### 4.3 Supporting entities
+
+`ProfileMedia` is required when `profileMedia` is enabled:
+
+- fields: `media_id`, `owner_id`, `kind`, `source_media_id`,
+  `moderation_state`, storage reference, dimensions, checksum, timestamps;
+- `kind` is exactly `user_photo` or `ai_stylized`;
+- `user_photo` means a user-declared photographic upload. It is **not** proof of
+  identity, age, recency, or absence of editing;
+- product-generated or product-transformed media is always `ai_stylized` and
+  references its source when one exists;
+- every rendition, cache record, API projection, accessibility label, and share
+  surface inherits `kind`. An `ai_stylized` image always displays a visible
+  `AI 스타일` badge; `user_photo` displays the non-verification label
+  `업로드 사진`. Cropping or thumbnail generation cannot remove either kind;
+- uploads are re-encoded, metadata including EXIF/location is removed, and
+  pending media is self-only. The exact media transport, bounds, storage, and
+  moderation provider remain `TBD` and block `profileMedia` rollout;
+- deleting media removes every rendition and cache reference subject to the
+  disclosed backup/safety retention policy.
+
+`SocialMetricSnapshot` is a server-authored projection used by duels and crew
+or friend comparison. It contains the metric version, window, frozen planned
+training-day unit count, completed consistency units, and personal-improvement event
+count. It contains no body measurements, raw health records, `verifiedRatio`,
+or attractiveness value.
+
+When `socialChat` is enabled, `ChatThread` is one-to-one with an active Match and
+`ChatMessage` is text-only in v1 and carries an internal moderation state.
+Attachments, image messages, disappearing
+messages, read receipts, live location, precise place sharing, and user-typed
+links are outside this contract. Message retention and moderation operations are
+`TBD` release blockers; enabling a route before those values are approved is
+forbidden.
+
+## 5. Privacy, media, appearance, and comparison rules
+
+### 5.1 No appearance scoring
+
+Profile photos are identity-expression content, never a scoring input. The
+product MUST NOT calculate, display, infer, purchase, or rank:
+
+- attractiveness, hotness, body-shape desirability, facial quality, or a
+  Hot-or-Not number;
+- a candidate order based on photo taps, dwell time, likes, inferred appearance,
+  or media type; or
+- a comparison that rewards lower body fat, larger muscles, higher absolute
+  weight, or another person's absolute strength.
+
+The partner flow is `candidate card -> private Interest -> reciprocal Interest
+-> Match -> chat when enabled`. There is no public like count. A unilateral
+Interest produces no target notification and no rejection signal.
+
+App-generated style names, media, badges, callouts, sounds, and graphics MUST be
+original Reploom IP. A style implementation is configurable and must not hard-
+code one AI vendor, model, or CLI as the product's only agent. User media remains
+subject to rights, safety, and report handling; calling it user content does not
+make third-party IP an app-owned asset.
+
+### 5.2 Consistency and personal-improvement metric
+
+The frozen v1 social metric identifier is
+`consistency_improvement_v1`. It is intentionally separate from Combat Power.
+
+For each 7-day comparison window:
+
+1. Freeze the user's number of planned training-day units at window start. A
+   calendar day contributes at most one planned unit even if the program has
+   multiple sessions.
+2. Count at most one completed consistency unit in each consecutive 24-hour
+   bucket. Extra sessions in the same bucket do not increase consistency.
+3. `consistency_rate_bps = floor(10000 * min(completed_units,
+   planned_units) / planned_units)`. A user with zero planned units is
+   `not_ranked`, not last.
+4. Recompute personal improvement on the server against that same user's
+   pre-window best. Count at most one improvement per exercise in the window.
+   A client-supplied `is_pr`, rank, winner, or aggregate is not authoritative.
+5. Comparison order is: higher consistency rate, then more completed planned
+   units, then more distinct personal improvements. Equal tuples are a tie; the
+   server does not invent a winner.
+
+The UI displays the underlying numerator/denominator and improvement count, not
+a universal body or person score. Unscheduled extra training does not improve
+the consistency component. No global/public board or valuable reward uses this
+metric in v1.
+
+The metric requires a server-authoritative, idempotent workout-sync summary that
+does not exist at the repository baseline. Its authentication, conflict, and
+local-to-account migration contract is `TBD` and blocks duel results and social
+ranking. Until that dependency exists, clients may show social graph fixtures
+only in an explicitly labeled development environment and must not publish a
+winner.
+
+`verifiedRatio`, its trust multiplier, Combat Power, grade, body weight, body
+fat, photo kind, and health-platform connection state are excluded from the
+formula, tie-breaks, candidate order, and real-person rank. A future provenance
+or anti-cheat system requires a separate versioned contract and bias review.
+
+## 6. Nearby and partner-discovery privacy
+
+### 6.1 Adult eligibility
+
+Partner discovery is available only when all are true:
+
+1. `socialCore` and `partnerDiscovery` are effective on both client and server;
+2. the user explicitly attests that they are at least 18 under the current
+   attestation text/version;
+3. the user separately turns partner discovery on; and
+4. a current manual `area_code` or `venue_id` is selected.
+
+Self-attestation is not age verification and the UI MUST NOT label the person
+`age verified`. Date of birth is not required or stored by this contract. The
+server rechecks both users' current eligibility, opt-in, and block state at
+candidate read, Interest creation, reciprocal Match creation, and chat
+authorization. Revoking opt-in immediately removes the user from discovery,
+withdraws unmatched Interests, and stops new chat reads/writes. Existing
+Matches remain visible read-only until explicit unmatch or block; the opt-out UI
+must explain that consequence.
+
+### 6.2 Manual location only
+
+- `area_code` is a server-curated coarse area identifier selected by the user.
+  It is not a postal address or free-form home location.
+- `venue_id` is a server-curated public training-venue identifier selected by
+  the user. It never means that the user is currently present.
+- Nearby queries accept only `scope=area|venue` and use the caller's stored
+  selection. They reject arbitrary coordinates, radius, distance, area code, or
+  venue impersonation in the query.
+- V1 candidate ordering is a rotating, non-appearance order inside the selected
+  exact scope. It never uses distance, last-seen time, media engagement, Combat
+  Power, or `verifiedRatio`.
+- Candidate responses do not expose GPS, distance, live status, movement, home,
+  prior selections, or cohort counts. Sparse-cohort suppression requires an
+  approved minimum cohort value; that value is `TBD` and blocks
+  `partnerDiscovery` rollout.
+
+V1 does not need or request OS location permission. If a reused or later client
+arrives from a denied, restricted, unavailable, or skipped location-permission
+state, it MUST show the same manual area/venue selector and keep non-location
+social features usable.
+
+The client, social API, database, logs, analytics, traces, media metadata, and
+backups MUST NOT store or derive exact latitude/longitude, accuracy, GPS fixes,
+geohashes, background location, real-time presence, travel routes, visit
+history, home location, or IP-derived area. Changing a manual selection
+overwrites the current application value; application audit records contain
+only that a selection changed, never the old or new `area_code`/`venue_id`.
+Encrypted backups may temporarily contain the value that was current when a
+backup was taken only under the approved finite backup-retention policy. That
+period is `TBD`, must be disclosed, and blocks partner rollout; backups cannot
+be queried as a location-history product.
+
+## 7. Relationship and safety behavior
+
+### 7.1 Friends, duels, and crews
+
+- Friend request acceptance creates Friendship and consumes the Invite in one
+  transaction. Decline/revoke/expiry creates no Friendship.
+- Duel creation produces a pending Duel, not a generic Invite. Only the named
+  opponent accepts or declines. Block or account deletion cancels and hides an
+  active Duel without declaring a winner.
+- Crew membership is granted only by accepting a crew Invite. Moderators may
+  invite and remove members but cannot transfer ownership, promote another
+  owner, or read private safety reports.
+- An owner cannot normally leave before transfer. Account deletion remains an
+  unconditional right: any still-owned crew is archived transactionally before
+  that owner is removed. The UI warns and offers transfer first.
+- Blocked users may remain members of the same crew so blocking cannot be used
+  to evict an owner or moderator. They are removed from each other's member
+  projection, direct notification, duel, profile, and interaction surfaces;
+  safety staff retain a separate internal moderation view.
+
+### 7.2 Interest, Match, and chat
+
+- Interest can target only a currently eligible candidate returned by the
+  caller's partner-discovery scope.
+- Reciprocal Interest creation and the unique Match insert happen atomically.
+  Concurrent reciprocal requests create one Match and no duplicate
+  notification.
+- Match creation is server-only. Either participant may unmatch. Blocking has
+  priority and closes the Match and chat authorization.
+- `socialChat` requires an active Match, two currently authorized participants,
+  no block, and effective server capability. Turning the kill switch off blocks
+  new reads/writes without deleting evidence or claiming deletion.
+- Unmatching or blocking prevents new messages immediately. Unblock never
+  restores Match, Interest, Friendship, Invite, Duel, or chat state.
+
+### 7.3 User rights
+
+ME > Privacy & Safety MUST provide:
+
+- block, unblock, and a private block list;
+- report from profile, Invite, Duel, Crew member, Match, and message context;
+- social account deletion independent of Pro status;
+- profile `private` control;
+- separate friend-search, nearby/partner, and crew-invite discoverability
+  opt-outs; and
+- media deletion plus a clear `AI 스타일` explanation when media is enabled.
+
+Block authorization takes effect before the response returns. It cancels
+pending direct Invites, active Interests, Friendship, Duel, Match, and unsent
+direct notifications in one transaction or through an outbox committed
+atomically with the block. A notification already delivered cannot be recalled.
+Every downstream consumer rechecks block state; a stale search index or queued
+notification cannot authorize new access.
+
+Account deletion requires recent reauthentication from the configured auth
+service. The exact freshness window is `TBD`. A valid delete request immediately
+sets `SocialAccount.status = deleting`, revokes social sessions, suppresses the
+profile, clears discoverability, stops chat, and queues removal of graph rows,
+memberships, media, and authored content. Retry returns the same deletion job;
+GET cannot auto-provision the account. `GET /account/deletion` returns the
+authenticated caller's deletion status without requiring an active
+subscription.
+
+Safety report evidence, block abuse-prevention records, chat evidence, backups,
+and deleted-auth-subject re-registration controls may be retained only for an
+approved, disclosed, finite policy. Exact periods and deletion SLO are `TBD`.
+Indefinite retention and unconditional deletion of active safety evidence are
+both forbidden until that policy is approved. These unresolved values block all
+public social rollout, not local logging.
+
+## 8. REST API contract
+
+Base path: `/social/v1`
+
+All public routes, including bootstrap, require the configured authenticated
+gateway. JSON is UTF-8. Server timestamps and IDs are
+authoritative. Collection responses use opaque cursors; clients do not infer
+counts from cursor shape. Every request gets a non-secret `requestId` response
+field/header for support correlation.
+
+### 8.1 Account, profile, media, and discovery
+
+| Method and path | Purpose | Capability / authority |
+| --- | --- | --- |
+| `GET /bootstrap` | Effective capabilities plus account-exists state | Verified auth; no auto-provision |
+| `POST /account` | Explicitly create SocialAccount/Profile/AuthBinding | Verified auth without active account; idempotency required |
+| `GET /me` | Own account/profile/settings projection | Self |
+| `PATCH /me/profile` | Change bounded profile fields | Self; `If-Match` required |
+| `PUT /me/discoverability` | Replace all discoverability/attestation selections | Self; naturally idempotent |
+| `POST /me/media` | Create a declared profile-media upload | Self + `profileMedia`; idempotency required |
+| `DELETE /me/media/{mediaId}` | Remove owned media and renditions | Owner; repeated call is success |
+| `GET /profiles/{socialUserId}` | Authorized profile projection | Self/friend or explicit minimal discovery projection; block first |
+| `GET /discover/friend?q={exactHandle}` | Exact-handle friend lookup | Target opted into friend search; no fuzzy/global browse |
+| `GET /discover/nearby?scope=area\|venue` | Partner candidates in caller's stored manual scope | `partnerDiscovery`, adult opt-in, sparse-cohort gate, block first |
+| `DELETE /account` | Start social account deletion | Self + recent auth; retry-safe and subscription-independent |
+| `GET /account/deletion` | Read own deletion-job state | Same verified auth binding; no auto-provision |
+
+`PATCH /me/profile` cannot change identity binding, account status, media kind,
+adult state, or another user's data. `PUT /me/discoverability` rejects latitude,
+longitude, radius, live-presence, address, and history fields.
+
+### 8.2 Friends, Invites, Duels, Crews, and Memberships
+
+| Method and path | Purpose | Capability / authority |
+| --- | --- | --- |
+| `GET /friends` | Accepted friendships | Self |
+| `DELETE /friends/{friendshipId}` | Remove own friendship | Either participant; retry-safe |
+| `GET /invites?box=incoming\|outgoing` | Own active Invite projections | Named participant only |
+| `POST /invites` | Create friend or crew Invite | Friend: inviter; Crew: owner/moderator; idempotency required |
+| `POST /invites/redeem` | Redeem one external token without putting it in a URL | Authenticated target; token redacted; idempotency required |
+| `POST /invites/{inviteId}/accept` | Accept pending target-bound Invite | Invitee only; idempotency required |
+| `POST /invites/{inviteId}/decline` | Decline pending Invite | Invitee only; idempotency required |
+| `DELETE /invites/{inviteId}` | Revoke outgoing pending Invite | Inviter or authorized crew role; retry-safe |
+| `GET /duels` / `GET /duels/{duelId}` | Participant Duel projections | Named participants only |
+| `POST /duels` | Create pending 7-day Duel | Challenger; active friend target; idempotency required |
+| `POST /duels/{duelId}/accept` | Start Duel and freeze metric inputs | Opponent only; idempotency required |
+| `POST /duels/{duelId}/decline` | Decline pending Duel | Opponent only; idempotency required |
+| `DELETE /duels/{duelId}` | Cancel pending/active Duel with no winner | Participant according to state; retry-safe |
+| `GET /friends/{friendshipId}/comparison` | Two-person consistency/improvement projection | Either participant; metric dependency available |
+| `GET /crews` / `GET /crews/{crewId}` | Own crew list/detail | Active member only |
+| `POST /crews` | Create private crew and owner membership | Self; idempotency required |
+| `PATCH /crews/{crewId}` | Change bounded crew fields | Owner; `If-Match` required |
+| `DELETE /crews/{crewId}` | Archive crew | Owner; retry-safe |
+| `GET /crews/{crewId}/members` | Authorized member projection | Active member; block-filtered |
+| `GET /crews/{crewId}/comparison` | Crew consistency/improvement projection | Active member; metric dependency available |
+| `PATCH /crews/{crewId}/members/{membershipId}` | Change moderator/member role or transfer owner | Owner only; `If-Match` required |
+| `DELETE /crews/{crewId}/members/{membershipId}` | Leave or remove member | Self leaves; owner/moderator removes within role limits |
+
+### 8.3 Interest, Match, chat, Block, and Report
+
+| Method and path | Purpose | Capability / authority |
+| --- | --- | --- |
+| `PUT /interests/{targetSocialUserId}` | Create/retain private Interest | Eligible opted-in candidate; naturally idempotent |
+| `DELETE /interests/{targetSocialUserId}` | Withdraw own Interest | Sender; retry-safe |
+| `GET /matches` / `GET /matches/{matchId}` | Own Match projections | Participant only |
+| `DELETE /matches/{matchId}` | Unmatch | Either participant; retry-safe |
+| `GET /matches/{matchId}/messages` | Read Match thread | Active participants + `socialChat`; block first |
+| `POST /matches/{matchId}/messages` | Send v1 text message | Active participants + `socialChat`; idempotency required |
+| `DELETE /matches/{matchId}/messages/{messageId}` | Remove own message from normal participant view | Author; safety retention may remain per disclosed policy |
+| `GET /blocks` | Own private block list | Blocker only |
+| `PUT /blocks/{targetSocialUserId}` | Block and trigger precedence effects | Blocker; naturally idempotent |
+| `DELETE /blocks/{targetSocialUserId}` | Unblock without restoration | Blocker; retry-safe |
+| `POST /reports` | Create safety report and receipt | Authenticated reporter; idempotency required |
+
+Internal report triage, evidence, action, and appeal routes are not exposed under
+the public base path. Crew roles do not grant safety-console access.
+
+### 8.4 Error envelope and stable codes
+
+Errors use:
+
+```json
+{
+  "error": {
+    "code": "social_resource_not_found",
+    "message": "The requested social resource is unavailable.",
+    "requestId": "<opaque-support-id>"
+  }
+}
+```
+
+`message` is safe display copy, not an authorization oracle. Optional `details`
+contains only field names or retry metadata; it never contains `auth_subject`,
+`actor_key`, raw invite token, handle, report/message text, media URL,
+`area_code`, `venue_id`, or the target's eligibility/block state.
+
+| HTTP | Stable code | Meaning |
+| ---: | --- | --- |
+| 400 | `social_invalid_request`, `social_invalid_area`, `social_invalid_media_kind` | Malformed or disallowed fields; strict DTO rejection |
+| 401 | `social_auth_required`, `social_auth_invalid`, `social_auth_expired` | Missing/invalid configured authentication |
+| 403 | `social_permission_denied`, `social_adult_opt_in_required`, `social_recent_auth_required` | Self-scoped denial that does not reveal another person's state |
+| 404 | `social_resource_not_found`, `social_feature_disabled` | Missing, blocked, private, ineligible, or disabled target is masked |
+| 409 | `social_state_conflict`, `social_handle_taken`, `social_version_conflict`, `social_idempotency_conflict`, `social_request_in_progress`, `social_owner_resolution_required` | Current state cannot accept the transition |
+| 410 | `social_invite_expired`, `social_invite_revoked`, `social_account_deleted` | Known caller-owned resource is no longer actionable |
+| 413 | `social_payload_too_large` | Bounded content/media size exceeded |
+| 415 | `social_content_type_unsupported` | Unsupported media type |
+| 422 | `social_moderation_rejected`, `social_policy_acceptance_required` | Syntactically valid content cannot be published |
+| 429 | `social_rate_limited` | Abuse/cost limit; includes `Retry-After` |
+| 503 | `social_unavailable` | Safe server failure; local logging remains usable |
+
+Target privacy, block, opt-out, moderation, or underage suspicion always maps to
+the generic 404 projection for other users. The API never confirms which guard
+failed.
+
+### 8.5 Authentication and authorization matrix
+
+| Resource/action | Allowed actor | Required guards |
+| --- | --- | --- |
+| Create account | Verified auth binding with no active account | Issuer/audience/subject verified; deletion/re-registration policy |
+| Own Profile/Discoverability/Media/account delete | Self | Active account; recent auth for deletion |
+| Other Profile read | Accepted friend, or minimal explicit discovery projection | Profile/surface visibility, moderation, Block first |
+| Friendship remove | Either participant | Active pair |
+| Invite create/revoke | Inviter; owner/moderator for crew | Target visibility, role, rate limit, no Block |
+| Invite accept/decline | Named invitee or authenticated token redeemer | Pending, unexpired, one-time, target match |
+| Duel create | Challenger | Active Friendship, no Block, metric dependency available |
+| Duel accept/decline/result read | Named opponent / either participant | State and participant check; result server-only |
+| Crew read | Active member | Block-filtered projection |
+| Crew role/ownership/archive | Owner | Version check; exactly one owner |
+| Crew invite/remove | Owner/moderator within role limits | Active membership and no privilege escalation |
+| Interest create/withdraw | Sender | Both adult/opted-in/current-scope eligible; no Block |
+| Match create | Server transaction only | Reciprocal active Interests and unique pair |
+| Match read/unmatch | Participant | Active/visible state and Block first |
+| Chat read/write | Active Match participant | `socialChat`, both authorized, no Block |
+| Block/unblock/list | Blocker | Target cannot be self; list is private |
+| Report create | Authenticated reporter | Bounded target/category; allowed after block via receipt |
+| Report triage/action | Internal safety role only | Separate service role and audit; never crew moderator |
+
+Every row is enforced at the controller, domain-service, and repository query
+boundary. Tests must attempt horizontal and vertical IDOR, not only hide UI.
+
+### 8.6 Idempotency and concurrency
+
+- Every state-changing `POST` above requires `Idempotency-Key`. The key is an
+  opaque client-generated value and is scoped to authenticated identity (or
+  `social_user_id` after provisioning), HTTP method, canonical path, and key.
+- The server stores a request fingerprint and complete status/response in the
+  same transaction or atomic outbox boundary as the domain write for a MINIMUM
+  of 24 hours.
+- Same key plus same fingerprint replays the original status/body with no new
+  notification or write. Same key plus different fingerprint returns
+  `409 social_idempotency_conflict`. A concurrent duplicate produces one effect
+  and then replay, or `409 social_request_in_progress` with retry guidance.
+- Clients reuse the same key after timeout, connection loss, 408, 429, or 5xx.
+  They do not rotate keys to force a second effect.
+- `PUT` and `DELETE` are state-idempotent. Repetition returns the current state
+  or success and does not duplicate outbox notifications.
+- `PATCH` requires `If-Match`/entity version. A stale version returns
+  `409 social_version_conflict`; last-write-wins is forbidden for profile,
+  crew, role, and privacy controls.
+- Pair uniqueness, one owner, one Match, one active Interest direction, and
+  one-time token redemption remain database constraints even after the
+  idempotency ledger expires.
+- Social idempotency storage is separate from the subscription Worker's
+  `actor_key`/request ledger and does not reuse its code, key, or deletion path.
+
+## 9. Feature capability contract
+
+The typed, vendor-neutral capability keys are exactly:
+
+```ts
+interface SocialCapabilities {
+  socialCore: boolean;
+  partnerDiscovery: boolean;
+  profileMedia: boolean;
+  socialChat: boolean;
+}
+```
+
+Effective capability is the intersection of build support and a validated
+server response. Missing config, unknown schema version, parse failure, expired
+bootstrap, offline first launch, or server error resolves false. A cached true
+cannot outlive its signed/validated expiry. Client capability controls rendering;
+the server independently enforces the same capability on every route.
+
+Dependencies:
+
+- `socialCore` is the master gate for account, text profile, friends, duels, and
+  crews.
+- `profileMedia` requires `socialCore`.
+- `partnerDiscovery` requires `socialCore`, current 18+ self-attestation,
+  explicit opt-in, manual scope, and every safety release gate.
+- `socialChat` requires `socialCore`, `partnerDiscovery`, an active Match, and
+  approved chat retention/moderation operations.
+
+For the current Version 1.0 release/review track, all four effective values MUST
+remain false or absent. In a later release, `socialCore` may open friends/crews
+while partner discovery, media, and chat remain false. Turning any capability
+off never disables local logging.
+
+## 10. File and lane ownership
+
+The backend paths below are **planned ownership paths**; `server/` does not
+exist at the baseline. Creating its strict-TypeScript NestJS/PostgreSQL scaffold
+or adding dependencies is separate implementation work and is not authorized by
+this document commit. Social code must not be placed in the JavaScript
+subscription Worker as a shortcut.
+
+| Lane | Exclusive paths / responsibility | Shared integration files |
+| --- | --- | --- |
+| Client | `src/app/(tabs)/social.tsx`; `src/features/social/**`; Social API DTO/client/cache; skin-token UI; manual area/venue picker; accessibility | One integration owner edits `src/app/(tabs)/_layout.tsx`, TRAIN/History entry wiring, `settings.tsx`, and `src/i18n/locales/*.json` |
+| Backend core | planned `server/src/social/core/**`, `server/src/social/http/**`, `server/src/social/persistence/**`, `server/test/social/core/**`, and core social migrations | One backend integrator owns module registration, auth adapter, transaction/outbox boundary, and generated API contract |
+| Safety/release | planned `server/src/social/safety/**`, `server/test/social/safety/**`, client block/report/delete/media-provenance controls, moderation operations, privacy/terms/data/support sources | One release owner alone edits `app.json`, `store.config.json`, store listing/checklist, and public policy for the next release |
+
+Additional rules:
+
+- `worker/src/index.js`, `worker/migrations/0001_ai_subscription_quota.sql`,
+  `src/features/subscription/**`, and native StoreKit identity code are outside
+  all social lanes.
+- `docs/social-v1-contract.md` remains the cross-lane source of truth. A schema
+  or API change requires a contract-version change and dual-write rationale.
+- Shared files have one integrator at a time. Parallel lanes do not each patch
+  tab layout, locale JSON, root app config, or module registration.
+- All TypeScript is strict. Product and tooling paths work from clean installs
+  on Windows and macOS; no `/bin/*`, personal file, developer-repo-relative
+  dependency, or bash-only production script is accepted without paired
+  platform support.
+- This contract adds no package dependency. A later dependency proposal must
+  name its clean-install and Windows/macOS route and receive separate approval.
+
+## 11. Analytics events and product metrics
+
+### 11.1 Collection boundary
+
+Current public sources promise no third-party analytics SDK. Social v1 therefore
+uses no third-party analytics dependency. Domain lifecycle metrics are computed
+from first-party server state; optional client UX events require updated,
+approved privacy/store disclosure before collection and default off when config
+is absent.
+
+Allowed event envelope fields are event name/version, UTC time, app/build
+version, platform, effective capability cohort, surface enum, outcome enum,
+HTTP status class/error code, and a bounded latency bucket. The following are
+forbidden in event payloads and event names:
+
+- `auth_subject`, `auth_issuer`, `actor_key`, raw `social_user_id`, target pairs,
+  handle, display name, bio, search text, invite token, or media URL;
+- `area_code`, `venue_id`, coordinate, distance, IP-derived area, or previous
+  manual selection;
+- photo/media bytes, media checksum, message/report text, category free text,
+  health/workout/body values, Combat Power, or `verifiedRatio`.
+
+### 11.2 Frozen event vocabulary
+
+| Event | Allowed dimensions |
+| --- | --- |
+| `social_surface_viewed` | `surface = friends\|nearby\|crew`, capability cohort |
+| `social_profile_completed` | outcome only |
+| `social_friend_invite_created`, `social_friendship_accepted` | channel enum, outcome |
+| `social_duel_started`, `social_duel_completed` | metric version, outcome/tie; no score values |
+| `social_crew_created`, `social_crew_joined`, `social_crew_left` | outcome only |
+| `social_discoverability_changed` | surface enum, enabled boolean; no location value |
+| `social_interest_created`, `social_match_created`, `social_chat_started` | outcome and capability cohort only |
+| `social_block_created`, `social_report_submitted` | surface enum and outcome; no target/category/details |
+| `social_account_delete_requested`, `social_account_delete_completed` | outcome and latency bucket |
+| `social_api_result` | route template, method, status class, stable error code, latency bucket |
+
+Events are emitted after the durable domain transition, never before. Retry and
+replay do not emit a second lifecycle event.
+
+### 11.3 Metric definitions
+
+Targets are `TBD`; no success threshold is fabricated before a baseline. The
+formulas are fixed so later targets are comparable:
+
+- **Profile activation rate:** new active social accounts that complete Profile
+  and one friend/crew action within 7 days / all new active social accounts in
+  the same eligible cohort.
+- **Friend acceptance rate:** accepted friend Invites / delivered, non-revoked
+  friend Invites whose acceptance window ended in the measurement period.
+- **Crew join rate:** accepted crew Invites / delivered, non-revoked crew
+  Invites whose acceptance window ended in the period.
+- **Partner mutual-interest rate:** Matches created / accounts that created at
+  least one Interest, measured only where `partnerDiscovery` was effective.
+- **Match-to-chat rate:** Matches with at least one authorized message / active
+  Matches, measured only where both `partnerDiscovery` and `socialChat` were
+  effective.
+- **Safety action rate:** blocks and reports per active Match and per active
+  social account. These are guardrails and investigation signals, not a goal to
+  maximize or minimize without qualitative review.
+- **Privacy-control completion:** successful privacy/opt-out/block/delete state
+  transitions / valid user attempts, with error code and latency distribution.
+- **Reliability:** API result count by status class, route template, capability
+  cohort, and latency bucket; social failures are paired with a local-log
+  regression check.
+- **Workflow efficiency:** observed steps, elapsed time, abandonment point, and
+  error count for friend invite/accept, crew create/join, manual nearby setup,
+  Interest-to-Match-to-chat, block/report, and account delete.
+
+An operational dashboard must display denominator, window, flag cohort, and
+schema/metric version. A count without those fields is not product evidence.
+
+## 12. Verification contract
+
+### 12.1 Function verification
+
+Implementation is function-verified only when all applicable checks execute:
+
+- strict DTO/schema tests for every entity, enum, forbidden location field, and
+  error envelope;
+- migration up/down or forward/rollback rehearsal on a clean database and an
+  upgrade fixture, including foreign keys and unique pair constraints;
+- every state transition and illegal transition for Invite, Duel, Crew,
+  Membership, Interest, Match, Block, Report, media, and deletion;
+- the complete authorization matrix, including horizontal/vertical IDOR and
+  generic 404 masking;
+- idempotency same-body replay, different-body conflict, concurrent duplicate,
+  notification dedupe, and ledger-expiry invariant tests;
+- reciprocal Interest race creates exactly one Match;
+- block precedence reaches profile, search, nearby, Invite, Friendship, Duel,
+  Crew projection/notification, Match, and chat;
+- all capability dependencies and missing/invalid/offline fail-closed cases on
+  both client and server;
+- partner eligibility is rechecked at discovery, Interest, Match, and chat;
+- denied/unavailable location permission reaches the manual selector without a
+  GPS request or local-log failure;
+- account delete suppresses immediately, retries safely, does not auto-recreate,
+  and does not change subscription quota or local workout rows; and
+- social backend unavailable while TODAY/TRAIN/+LOG still save locally.
+
+### 12.2 Quality verification
+
+Quality is verified separately from function execution:
+
+- TypeScript strict, lint, unit, integration, API-contract, and migration checks
+  pass with no new unapproved dependency;
+- auth/log/analytics scans find zero forbidden identifiers or content fields;
+- media fixtures prove metadata removal and `ai_stylized` label propagation
+  through upload, thumbnail, cache, accessibility, share, and delete;
+- block/report/delete negative-path and abuse/rate-limit tests pass;
+- every visible string is localized and every action is screen-reader and
+  keyboard reachable where the platform supports it;
+- SOCIAL and ME render only through existing skin tokens/primitives, and Release
+  screenshots are visually inspected across supported skins and text sizes;
+- clean install, scripts, tests, and server startup are exercised on both
+  Windows and macOS; an untested platform is named, never implied verified;
+- iOS and Android client behavior is checked separately; and
+- a privacy/safety review resolves the finite retention, sparse cohort, auth,
+  media, chat, and store-declaration gates before the corresponding capability
+  is enabled.
+
+Passing tests alone proves neither visual quality nor product usefulness.
+
+### 12.3 Product/workflow verification
+
+Product/workflow verification requires consenting test users to complete, on a
+release candidate connected to the intended backend:
+
+1. account creation, private profile, exact-handle friend invite, and acceptance;
+2. private crew creation, invite, join, role boundary, leave, and owner handling;
+3. manual area/venue selection from denied/skipped permission state;
+4. 18+ self-attestation and partner opt-in, private Interest, reciprocal Match,
+   and chat when both flags are on;
+5. unmatch, block, report, private-profile change, discoverability opt-out,
+   media deletion, and social account deletion; and
+6. local workout/meal logging throughout social network failure and feature
+   kill-switch changes.
+
+Record steps, elapsed time, errors, capability cohort, and task outcome without
+recording sensitive content or location identifiers. Product success is not
+claimed until the observed metrics have approved targets and the real flows meet
+them. A fixture, simulator-only flow, unit test, or server 200 alone is not
+product/workflow verification.
+
+## 13. Numeric classifications
+
+| Number | Classification | Binding meaning |
+| --- | --- | --- |
+| `18+` | `MIN` | Minimum self-attested age for partner discovery; not identity/age verification |
+| `7 days` | `EXACT` | Duel and metric comparison window (`7 * 24 hours`) |
+| `24-hour bucket` | `EXACT` | Maximum one consistency unit per consecutive bucket in a comparison window |
+| `10,000 basis points` | `EXACT` | Full scale of `consistency_rate_bps` |
+| `24 hours` | `MIN` | Minimum replay retention for a social idempotency record |
+| `7 days` in profile activation | `EXACT` | Measurement window for that metric only |
+| JSON placeholders such as `<opaque-support-id>` | `PLACEHOLDER` | Shape only; never a production value |
+
+No other unresolved limit, retention, rate, SLA, cohort, or target is binding.
+It remains `TBD` until a contract amendment classifies it.
+
+## 14. Release gates, unresolved decisions, and reversal
+
+### 14.1 Gates before `socialCore`
+
+- configured auth issuer/audience and gateway-to-domain claim contract;
+- explicit local `user.id = 'local'` to social-account sync/migration contract;
+- strict-TypeScript backend scaffold and migration/rollback path;
+- account creation/deletion policy and finite retention values;
+- block/report moderation ownership, escalation path, and support operations;
+- privacy, terms, support, and data-deletion sources updated and reviewed;
+- App Store/Play declarations for account, linked user ID, UGC, and safety
+  controls reviewed for the actual implementation; and
+- current Version 1.0 source/review track remains unchanged unless separately
+  approved.
+
+### 14.2 Additional gates by capability
+
+- `profileMedia`: upload/storage bounds, EXIF removal, moderation, original-IP
+  style policy, deletion/backups, photo permission copy, and store disclosure.
+- `partnerDiscovery`: sparse-cohort minimum, 18+ policy approval, manual venue
+  catalog governance, abuse controls, and store age-rating/privacy review.
+- `socialChat`: finite retention, text moderation, report evidence, operations,
+  rate limits, block/unmatch behavior, and messaging/UGC store declarations.
+- Duel/crew comparison: authenticated workout-sync contract and server-derived
+  `consistency_improvement_v1` conformance tests.
+
+The exact authentication provider, claim transport, next marketing version,
+media/storage/moderation implementation, chat transport/retention, safety and
+backup retention periods, deletion SLO, sparse-cohort minimum, rate/content
+limits, store questionnaire answers, and product metric targets are unresolved.
+They are not delegated to individual feature implementers.
+
+### 14.3 Reversal
+
+Before public release, rollback is capability-first: turn the affected server
+capability false, verify routes fail closed, and verify TODAY/TRAIN/+LOG remain
+usable. Database migrations are additive; rollback hides new paths rather than
+dropping user or safety data. Destructive schema rollback requires a separately
+approved retention/deletion plan.
+
+This documentation-only change is reverted with its implementation-contract
+commit and corresponding log commit. It changes no live service, binary,
+payment, TestFlight build, or App Store state.
+
+## 15. Required-scope traceability
+
+| # | Required contract item | Normative section |
+| ---: | --- | --- |
+| 1 | `TODAY / TRAIN / +LOG / SOCIAL / ME` | 2.2 |
+| 2 | `친구 / 주변 / 크루` | 2.3 |
+| 3 | `social_user_id` and `auth_subject` | 3.1 |
+| 4 | Complete separation from subscription `actor_key` | 3.2 |
+| 5 | Profile, Friendship, Invite, Duel, Crew, Membership, Discoverability, Interest, Match, Block, Report | 4.2 |
+| 6 | User photo versus AI-stylized photo | 4.3, 5.1 |
+| 7 | No appearance score/Hot-or-Not; Interest to Match to chat | 5.1, 7.2 |
+| 8 | Partner discovery is 18+ opt-in | 6.1 |
+| 9 | Manual `area_code`/`venue_id` only | 6.2 |
+| 10 | No exact GPS/live route/home storage | 6.2 |
+| 11 | Manual selection after location denial | 6.2 |
+| 12 | Block/report/delete/private/opt-out rights | 7.3 |
+| 13 | Consistency/personal improvement comparison | 5.2 |
+| 14 | Current `verifiedRatio` excluded from real-person rank | 5.2 |
+| 15 | REST/errors/authz/idempotency | 8 |
+| 16 | Four feature flags | 9 |
+| 17 | Current Version 1.0 versus next release | 2.1, 14 |
+| 18 | Backend/client/safety ownership | 10 |
+| 19 | Analytics events and product metrics | 11 |
+| 20 | Function/Quality/Product-workflow verification | 12 |
