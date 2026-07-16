@@ -1,0 +1,126 @@
+---
+title: "Reploom Social 1.1의 경쟁·안전·병렬 구현 경계를 다시 동결했다"
+date: "2026-07-16"
+project: "OverDrive"
+kind: "decision"
+visibility: "public"
+language: "ko"
+summary: "개인 성취와 실제 사람 경쟁을 분리하고, 경쟁 데이터셋·안전 권리·실행 소유권을 구현 가능한 단일 계약으로 정렬했다."
+tags: ["social", "competition", "safety", "privacy", "architecture", "parallel-build"]
+---
+
+## 맥락과 제약
+
+기존 Social `1.0.0` 계약은 친구·크루와 Duel을 `socialCore` 하나에 묶었지만,
+실제 사람 비교에는 아직 없는 workout sync와 server metric이 필요했다. 개인 성취를
+TRAIN에서 볼지 SOCIAL에서 경쟁할지도 화면 책임으로 분리해야 했다. 별도 Phase 0
+제안에는 인증, 명시적 dataset claim, sync, 삭제, moderation, Duel gate가 있었지만
+보존기간·rate·SLO 수치는 법적 또는 운영상 검증된 값이 아니었다.
+
+이번 단위는 문서만 승인됐다. 기능 코드, dependency, migration, 결제, 배포,
+TestFlight, App Store 상태는 변경하지 않았다. 저장소는 여전히 Phase 1이고,
+Phase 2 backend/sync와 Phase 4 Social entry 또는 명시적 roadmap amendment 없이는
+해당 코드 packet을 열 수 없다. TypeScript strict, 새 의존성 금지, skin token,
+오리지널 IP, 로깅 비차단, 그래픽 hero, 반수치심 경계도 유지했다.
+
+## 목표 — 우선순위 순
+
+1. 개인 성취는 `TRAIN/Growth`, 실제 사람 비교·Duel·Crew 비교는 `SOCIAL`에 둔다.
+2. 친구·크루 core와 sync-dependent competition을 서로 독립적으로 kill한다.
+3. 로컬 `user.id = 'local'`, Social identity, subscription `actor_key`를 결합하지 않는다.
+4. block/report/delete/private/opt-out/Appeal과 데이터 철회를 capability보다 앞선
+   권리 경로로 유지한다.
+5. 여러 구현자가 같은 aggregate, route, registry path를 동시에 소유하지 않게 한다.
+
+## 검토한 선택지
+
+1. **아무것도 하지 않는다.** 문서 변경은 없지만 `socialCore`가 준비되지 않은
+   competition까지 포괄하고, TRAIN/SOCIAL 책임과 multi-device 결과 의미가 모호하다.
+2. **기존 네 flag를 유지하고 route마다 metric dependency를 검사한다.** 변경은 작지만
+   client가 competition availability를 일관되게 해석하기 어렵고 friend/Crew 비교의
+   rollback 경계가 흩어진다.
+3. **`duels` flag만 추가한다.** Duel은 닫을 수 있지만 동일 sync/metric을 쓰는 friend와
+   Crew comparison이 다시 별도 예외가 된다.
+4. **`socialCompetition`을 다섯 번째 capability로 둔다.** setup capability와
+   account-level effective readiness를 분리하고, 모든 실제 사람 비교와 active workout
+   transport를 한 경계로 묶는다.
+
+4번을 채택했다. competition-enabled account는 정확히 한 selected competitive
+dataset만 사용한다. 다른 명시적 claim은 v1 competition transport에서 dormant이고,
+content/time 유사성으로 자동 병합하지 않는다. selection switch는 pending/active Duel
+중 금지하지만 opt-out, selected claim revoke, correction tombstone은 권리 우선이다.
+이 전이는 transport를 멈추고 pending/active Duel을 winner 없이 취소한다.
+
+## 함께 고정한 안전·권한 경계
+
+`PolicyAcceptance`, `SafetyAction`, `Appeal`은 core 11개 entity와 구분된 support
+model이다. Sync가 `WorkoutDatasetClaim`과 `CompetitionPreference` command를 단독
+소유하고 Competition은 read-only readiness port만 쓴다. Safety runtime은 policy/action
+adapter와 composite `GET /me`를 소유하고, release owner는 versioned policy config를
+소유한다. 정상 `GET /me`와 kill/suspension의 `rights_only` 응답도 typed union으로
+분리했다.
+
+권리 route 이름만으로 guard를 우회할 수 없게 resulting command도 고정했다.
+Profile은 sole `visibility=private`, Discoverability는 모든 flag false + scope off +
+area/venue clear일 때만 rights-first다. authored/media/노출 확대/새 selection/mixed
+payload는 ordinary guard를 통과하거나 전체 거부하며 partial apply하지 않는다.
+
+## 수용한 trade-off
+
+다섯 번째 capability, 별도 dataset claim/preference, policy/action adapters, opaque
+receipts, domain별 integration subcommit 때문에 계약과 구현 면적은 커졌다. 대신
+두 기기 기록을 추측으로 합쳐 잘못된 winner를 만들지 않고, 사용자는 incident나
+suspension 중에도 비공개·opt-out·철회·신고·삭제·Appeal을 실행할 수 있다. 다른
+기기의 운동이 competition에 포함되지 않는 제한은 제품에서 숨기지 않는다.
+
+## 6개월 뒤 실패했다고 가정한 pre-mortem
+
+1. **권리 lane 우회:** `private + bio edit` 또는 `opt-out + 다른 opt-in` mixed payload가
+   보호 전이로 처리돼 restriction을 우회한다. 방어는 resulting-command classifier,
+   whole-request rejection, controller/domain/repository 동일 fixture다.
+2. **소유권 재충돌:** Sync와 Competition이 preference를 각각 쓰거나 Identity와 Safety가
+   `GET /me`를 중복 bind해 race와 schema drift가 난다. 방어는 단일 command/route owner와
+   ownership manifest, 직렬 integration subcommit이다.
+3. **phase·출시 범위 누수:** 문서 승인을 Phase 2/4 entry나 live release 권한으로 오해해
+   current 1.0, store source, dependency를 함께 바꾼다. 방어는 packet별 phase authority와
+   release packet의 별도 stop gate다.
+
+## 결정을 뒤집는 조건
+
+- 모든 claimed device의 운동이 반드시 competition에 포함돼야 한다면 한-dataset 제한을
+  억지로 풀지 않고 deterministic correlation/dedup 계약 전까지 competition을 false로 둔다.
+- policy registry, moderation owner, finite retention, deletion/restore rehearsal을 승인하지
+  못하면 public Social을 열지 않는다.
+- actual package/topology가 Windows·macOS clean install과 strict TypeScript를 만족하지
+  못하면 기존 Worker에 합치지 않고 foundation 결정을 다시 연다.
+- Phase 순서를 바꾸려면 이 문서를 근거로 추론하지 않고 roadmap과 acceptance order를
+  명시적으로 개정한다.
+
+## 성공 측정
+
+문서 성공은 구현 성공이 아니다. 이 단위는 capability schema, 원 요구사항 20개,
+추가 defect trace, Markdown 구조, packet ID와 staged scope가 서로 맞는지만 확인했다.
+향후 제품 성공은 friend/Crew/Duel, two-device disclosure, rights-only flow,
+Interest→Match→chat을 release candidate에서 관찰하고 별도 승인된 target과 비교해야 한다.
+retention, rate, SLO, cohort, metric target은 계속 `TBD`다.
+
+## 검증과 되돌림
+
+계약 커밋은 `5e11d4e286d0ba1f6a036e9f2feb1ec35d11c0a5`다. 실제 커밋 출력은
+문서 7개, 5,361 insertions, 57 deletions를 기록했다. 사전 검증 출력은 다음과 같았다.
+
+```text
+markdown_structure=ok files=7
+packet_count=34 packet_ids_unique=34
+docs/social-v1-contract.md: trace=1..30
+docs/reploom-vnext/README.md: trace=1..20
+staged_scope=docs_only
+```
+
+`git diff --cached --check`도 exit 0이었다. 이는 문서 Function 검증과 정적 Quality
+검증 일부다. server/client code, build, migration, Windows/macOS clean install,
+moderation 운영, 실제 제품 workflow는 실행하지 않아 미검증이다.
+
+이번 문서 단위를 되돌리려면 계약 커밋과 이 로그 커밋을 함께 revert한다. 향후 runtime
+reversal은 capability-first이며 rights plane과 TODAY/TRAIN/+LOG local save를 유지하고,
+사용자·안전 데이터를 자동 drop하지 않는다.

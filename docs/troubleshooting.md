@@ -735,3 +735,4 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Pattern**: 바이너리 업로드, version-build 관계, 첫 subscription 선택, review submission은 서로 다른 외부 상태다. 각 관계를 독립적으로 readback하고 결제 후 entitlement가 실제로 발급되기 전에는 제출 완료로 합치지 않는다.
 
 <!-- override-trigger: 9bd847a1693cec00566787e24a09415f10274805 docs(social): freeze v1 implementation contract — 비버그 설계 계약이라 CLAUDE.md가 금지한 허위 Symptom을 만들지 않았다. T1 내러티브는 content/logs/OverDrive/2026-07-15-social-v1-implementation-contract.mdx에 기록했다. -->
+<!-- override-trigger: 5e11d4e286d0ba1f6a036e9f2feb1ec35d11c0a5 docs(social): amend v1.1 implementation contract — 비버그 설계 계약이라 허위 Symptom을 만들지 않았다. T1 내러티브는 content/logs/OverDrive/2026-07-16-social-v1-1-contract-amendment.mdx에 기록했다. -->
