@@ -1,0 +1,107 @@
+---
+title: "Reploom 소셜 v1의 신원·안전·출시 경계를 동결했다"
+date: "2026-07-15"
+project: "OverDrive"
+kind: "decision"
+visibility: "public"
+language: "ko"
+summary: "구독 actor와 소셜 신원을 분리하고, 수동 지역·18+ opt-in·상호 관심·차단·신고·단계적 플래그를 구현 정본으로 고정했다."
+tags: ["social", "identity", "privacy", "safety", "feature-flags", "architecture"]
+---
+
+## 맥락과 제약
+
+기준 소스 `1b5ce1ab43f0e3ef6ee1db168d0ed79fd0736612`의 앱은
+`Today / Explore / Log / History / Settings` 탭을 사용하고, 로컬 SQLite의 사용자는
+`LOCAL_USER_ID = 'local'`인 단일 온디바이스 행이다. 현재 정책·스토어 소스는 온라인 계정,
+공개 리더보드, 채팅, 원격 프로필 사진이 없다고 기록하며 `store.config.json`의 chat/UGC 답도
+false다. 실시간 App Store Connect 상태는 이 작업에서 읽지 않았다.
+
+구독 쪽 `actor_key`는 검증된 StoreKit `appAccountToken`을 HMAC해 만든 entitlement/AI quota
+principal이다. 이를 사람의 소셜 신원으로 재사용하면 결제 복원·삭제·키 수명과 프로필·친구·차단
+수명이 결합된다. 현재 `verifiedRatio`도 HealthKit/Health Connect가 corroborate한 세션 비율을
+로컬 Combat Power 보너스에 쓰는 값이지, 실제 사람이나 공정한 순위를 인증하는 값이 아니다.
+
+이번 단위는 문서 작성만 승인됐다. 기능 코드, 새 의존성, 결제, 배포, TestFlight, App Store
+review-state 변경은 범위 밖이었다. §5 오리지널 IP, §6 로깅 비차단, §7 그래픽 히어로,
+§9 반수치심, TypeScript strict, 스킨 토큰, Windows/macOS clean-install 경계도 유지해야 했다.
+
+## 목표 — 우선순위 순
+
+1. 소셜 활동과 결제 principal을 분리한 인증·인가 경계를 만든다.
+2. 친구·주변·크루와 차단·신고·삭제·비공개·opt-out을 같은 계약에 둔다.
+3. 파트너 탐색을 18+ 자기확인, 명시적 opt-in, 수동 area/venue 선택으로 제한한다.
+4. 실제 사람 비교를 꾸준함과 개인 향상으로 한정하고 외모·체형·절대 근력·현재
+   `verifiedRatio`를 배제한다.
+5. 현재 Version 1.0 소스를 건드리지 않고 네 capability를 fail-closed로 단계 출시한다.
+
+## 검토한 선택지
+
+1. **아무것도 하지 않는다.** 현재 로컬 전용 경계와 스토어 문구는 유지되지만 요청한 친구,
+   주변, 크루 흐름과 실제 사용자 안전 권한이 생기지 않는다.
+2. **구독 `actor_key`를 소셜 사용자 ID로 재사용한다.** 새 identifier가 적어 보이지만 결제자와
+   사람을 같은 것으로 가정하고 subscription ledger 삭제·복원·키 수명을 소셜 계정에 결합한다.
+3. **기존 quick-log Worker에 소셜 route와 테이블을 붙인다.** 배포 단위는 적지만 현재
+   JavaScript Worker의 entitlement/AI secret, D1, 장애 반경과 소셜 인증·UGC를 섞는다.
+4. **별도 `social_user_id`와 `(auth_issuer, auth_subject)` binding을 둔 strict-TypeScript
+   소셜 도메인으로 분리한다.** 기능 플래그로 core, partner, media, chat을 각각 닫고,
+   subscription Worker에는 어떤 social FK나 token도 넣지 않는다.
+
+4번을 채택했다. SOCIAL 내부는 친구/주변/크루로 고정하고, 주변은 수동 선택한 현재
+`area_code` 또는 `venue_id`만 쓴다. 정확한 GPS, 실시간 위치, 이동 경로, 집 위치와 위치 기반
+analytics는 금지했다. 한 방향 Interest는 상대에게 노출하지 않고 상호 Interest가 한 Match를
+원자적으로 만든 뒤에만 chat 자격이 생긴다.
+
+## 수용한 trade-off
+
+별도 신원, 서버 도메인, moderation, 삭제 job, 위치 코호트 보호, strict DTO, authz matrix,
+idempotency ledger가 필요해 구현·운영 면적이 커진다. 대신 결제 principal을 사람으로 오인하지
+않고, `socialCore`만 먼저 열어 친구/크루를 검증한 상태에서 `partnerDiscovery`, `profileMedia`,
+`socialChat`을 독립적으로 닫을 수 있다. 현재 quick-log/구독 서비스와 로컬 기록은 소셜 장애와
+같은 transaction이나 deploy에 묶지 않는다.
+
+## 6개월 뒤 실패했다고 가정한 pre-mortem
+
+1. **신원 결합 재발:** 구현 편의를 위해 `actor_key`, `LOCAL_USER_ID`, legacy deletion token 중
+   하나가 소셜 FK나 인증으로 들어가 결제 복원/삭제가 프로필을 잘못 바꾼다. 방어는 금지 컬럼
+   scan, authz/identity contract test, 서비스·DB 분리다.
+2. **수동 위치가 사실상 이동 이력화:** audit, analytics, trace, backup에 `area_code`/`venue_id`
+   값이 남아 이전 선택을 재구성한다. 방어는 payload 금지 scan, current-value overwrite,
+   유한 backup policy와 sparse-cohort gate다.
+3. **성장 플래그가 안전 준비를 앞섬:** 상호 관심/채팅은 켜졌지만 block/report/delete,
+   retention, moderation 운영이 준비되지 않아 피해를 중단하거나 조사할 수 없다. 방어는 서버
+   권위 flag dependency와 capability별 release gate다.
+
+## 결정을 뒤집는 조건
+
+- 구성 가능한 auth issuer/audience와 local-to-account sync 계약을 만들 수 없으면
+  `socialCore` 구현을 시작하지 않는다.
+- sparse cohort, 18+ 정책, finite retention, moderation 운영을 승인하지 못하면 친구/크루만
+  검증하고 `partnerDiscovery`, `profileMedia`, `socialChat`은 계속 false로 둔다.
+- planned `server/` 경계가 clean-install TypeScript strict와 Windows/macOS를 만족하지 못하면
+  quick-log Worker로 합치지 않고, 계약을 개정해 별도 저장소/서비스 경계를 명시한다.
+- 꾸준함/개인 향상을 server-authoritative하게 계산할 sync seam이 없으면 Duel winner와
+  사람 순위를 출시하지 않는다.
+
+## 성공 측정
+
+구현 성공은 API 200이나 unit test 하나가 아니다. 계약은 친구 초대/수락, crew 생성/참가,
+수동 주변 선택, Interest→Match→chat, block/report, opt-out/delete의 Function·Quality·실사용
+검증을 분리했다. 활성화율, 초대 수락률, Interest→Match, Match→chat, 안전 행동률,
+privacy-control completion, workflow steps/time의 분자·분모·window·flag cohort도 고정했다.
+목표 수치는 baseline이 없어 `TBD`이며 이 문서 커밋으로 제품 성공을 주장하지 않는다.
+
+## 검증과 되돌림
+
+구현 계약 커밋은 `9bd847a1693cec00566787e24a09415f10274805`다. 커밋 출력은
+`docs/social-v1-contract.md` 한 파일과 901 insertions를 기록했다. 문서 검사 출력은 code fence
+4개, 요구사항 추적행 20개, 필수 용어 29개 중 누락 0개, 일관된 Markdown 표 열, trailing
+whitespace 없음, dependency manifest 변경 없음이었다.
+
+이는 문서 Function/Quality 일부 검증뿐이다. 소셜 API, DB migration, 앱 UI, iOS/Android,
+Windows, 실제 계정, moderation, product workflow는 아직 실행하지 않아 미검증이다.
+
+출시 전 rollback은 capability를 false로 만들고 social route의 fail-closed와 로컬 로깅 지속을
+확인한다. Migration은 additive로 두고 사용자/안전 데이터를 자동 drop하지 않는다. 이번 문서
+단위만 되돌리려면 구현 계약 커밋과 이 로그 커밋을 함께 revert한다. 라이브 서비스, binary,
+결제, TestFlight, App Store 상태는 이 작업에서 변경하지 않았다.
