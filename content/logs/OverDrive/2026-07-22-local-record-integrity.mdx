@@ -1,0 +1,20 @@
+---
+title: "로컬 기록의 성공 경계를 파생 상태와 분리했다"
+date: "2026-07-22"
+project: "OverDrive"
+kind: "tech-retro"
+visibility: "public"
+language: "ko"
+summary: "첫 QuickLog 입력과 운동·식사 수정·취소를 AI·파생 계산 실패에서 분리하고 HealthKit 수치 단위를 명시했다."
+tags: ["local-first", "quicklog", "healthkit", "data-integrity"]
+---
+
+첫 QuickLog 입력은 화면 focus 시 시작한 catalog load가 끝나기 전에 제출될 수 있었다. 이때 parser는 빈 candidate 배열을 받아 로컬에서 이해할 수 있는 `bench 100 5`도 AI fallback으로 보냈다. 같은 실패 경계가 세트 수정과 식사에도 있었다. SQLite 원장 변경은 끝났는데 이후 session summary나 Combat Power 재계산이 실패하면 UI는 전체 작업을 실패로 표시해 사용자가 같은 수정이나 취소를 다시 누를 수 있었다.
+
+Health snapshot에는 별도의 단위 결함이 있었다. 설치된 `@kingstinct/react-native-healthkit` 14.0.2 소스에서 `getMostRecentQuantitySample(identifier, unit?)`는 unit을 생략하면 HealthKit preferred unit을 사용한다. 앱은 그 결과를 곧바로 `bodyMassKg`에 저장했으므로, preferred unit이 lb인 환경에서는 숫자의 의미가 달라질 수 있었다.
+
+`src/features/quicklog/useQuickLog.ts`는 candidate cache가 비어 있으면 local catalog load를 기다린 뒤 첫 입력을 파싱한다. QuickLog batch undo, `src/features/logging/SetLoggerSheet.tsx`의 세트 수정, `src/features/food/FoodCard.tsx`의 식사·단백질 credit 처리는 durable mutation 성공 뒤 summary와 Combat Power refresh를 best-effort reconciliation으로 분리했다. Health snapshot은 체중 `kg`, 체지방 `%`, VO2 max `ml/(kg*min)`을 요청한다. 새 의존성이나 원격 저장 경로는 추가하지 않았다.
+
+구현 커밋은 `11369fbe467b9ae4eda3da96b56c4fc2083e7df9`다. 수정 전 새 회귀 테스트는 QuickLog·세트 수정·식사 묶음에서 3 suites / 5 failures, Health에서 1 failure를 재현했다. 수정 후 표적 테스트는 각각 15/15와 7/7이 통과했다. 전체 앱 Jest는 66 suites / 465 tests, Worker는 86 tests, catalog validator는 39 tests가 통과했고 strict TypeScript, lint, diff 검사도 종료 코드 0이었다.
+
+iPhone 17 Pro Max simulator용 서명 없는 Release 빌드도 종료 코드 0이었다. 생성된 `ai.daeseon.reploom` 1.0 (15)를 설치하고 PID 265로 실행해 Today 첫 화면이 렌더링된 screenshot을 확인했다. Maestro accessibility hierarchy 조회는 출력 없이 멈춰 중단했으므로, 실제 탭·입력으로 기록하고 취소하는 제품 workflow는 아직 검증하지 않았다. Windows/Android clean install과 실제 iPhone의 HealthKit preferred-unit 동작도 이번 검증 범위 밖이다.

@@ -746,6 +746,21 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Verification**: strict TypeScript와 lint가 종료 코드 0으로 통과했고, 전체 Jest 65 suites / 459 tests, catalog validator 39/39, Worker 86/86이 통과했다. 변경분을 포함한 iPhone arm64 Release 빌드도 종료 코드 0이었으며 `ai.daeseon.reploom` 1.0 (15)를 연결된 iPhone에 설치하고 실행했다. 수정된 단수 문구의 실제 iPhone 화면 확인은 아직 미검증이다.
 - **Pattern**: 수량을 포함하는 UI 문구는 기본 복수 문자열 하나로 고정하지 않고 locale의 plural resolution을 테스트한다.
 
+## 로컬 기록은 저장됐지만 파생 상태 실패가 저장·수정·취소 실패로 표시됐다
+
+- **Symptom**: 수정 전 회귀 테스트에서 앱의 첫 QuickLog 입력이 로컬 운동명을 읽기 전에 원격 AI gate로 빠졌고, 식사 단백질 credit과 운동 수정·취소는 원장 변경 뒤 파생 Combat Power 또는 세션 summary 실패를 최종 작업 실패로 전파했다. Health snapshot은 체중을 단위 없이 요청했다.
+  ```text
+  Test Suites: 3 failed, 3 total
+  Tests:       5 failed, 10 passed, 15 total
+  Test Suites: 1 failed, 1 total
+  Tests:       1 failed, 6 passed, 7 total
+  ```
+- **Cause**: `src/features/quicklog/useQuickLog.ts`는 focus effect의 catalog load가 끝나기 전에도 빈 candidate 배열로 첫 입력을 파싱했다. `src/features/logging/SetLoggerSheet.tsx`와 `src/features/food/FoodCard.tsx`는 durable SQLite mutation 뒤 실행되는 summary·Combat Power refresh를 같은 실패 경계에 두었다. `src/features/health/health.ts`는 `getMostRecentQuantitySample`의 unit override를 생략해 HealthKit preferred unit을 `bodyMassKg`로 해석할 수 있었다.
+- **Fix**: QuickLog은 candidate가 비어 있으면 로컬 catalog load를 기다린 뒤 파싱하고, exact batch delete 뒤 summary 실패에는 현재 session counter만 역연산한다. 세트 수정과 식사 취소는 원장 mutation 성공 뒤 파생 refresh를 best-effort로 분리하며, 단백질 discipline write 직후 실제 ownership을 보존한다. Health snapshot은 체중 `kg`, 체지방 `%`, VO2 max `ml/(kg*min)`을 명시한다. 회귀 테스트는 `src/features/quicklog/useQuickLog.test.tsx`, `src/features/logging/SetLoggerSheet.test.tsx`, `src/features/food/FoodCard.test.tsx`, `src/features/health/health.test.ts`에 추가했다.
+- **Commit**: `11369fbe467b9ae4eda3da96b56c4fc2083e7df9`
+- **Verification**: 표적 회귀는 QuickLog·세트 수정·식사 3 suites / 15 tests와 Health 1 suite / 7 tests가 통과했다. 전체 Jest 66 suites / 465 tests, Worker 86 tests, catalog validator 39 tests, strict TypeScript, lint, `git diff --check`가 종료 코드 0이었다. iPhone 17 Pro Max simulator 대상 서명 없는 Release 빌드는 종료 코드 0이었고 `ai.daeseon.reploom` 1.0 (15)를 설치해 PID 265로 실행했으며 첫 화면 screenshot을 확인했다. 실제 탭·입력 기반 제품 workflow는 Maestro hierarchy가 출력 없이 멈춰 중단했으므로 미검증이다.
+- **Pattern**: 로컬 원장 변경과 다시 계산 가능한 projection은 성공 경계를 공유하지 않는다. 사용자 작업의 결과는 원장 mutation으로 판정하고 파생 상태는 재시도 가능한 reconciliation으로 다룬다.
+
 <!-- override-trigger: 9bd847a1693cec00566787e24a09415f10274805 docs(social): freeze v1 implementation contract — 비버그 설계 계약이라 CLAUDE.md가 금지한 허위 Symptom을 만들지 않았다. T1 내러티브는 content/logs/OverDrive/2026-07-15-social-v1-implementation-contract.mdx에 기록했다. -->
 <!-- override-trigger: 5e11d4e286d0ba1f6a036e9f2feb1ec35d11c0a5 docs(social): amend v1.1 implementation contract — 비버그 설계 계약이라 허위 Symptom을 만들지 않았다. T1 내러티브는 content/logs/OverDrive/2026-07-16-social-v1-1-contract-amendment.mdx에 기록했다. -->
 <!-- override-trigger: 77645fdca9950a1e50e189076489211f91bcc6b2 docs(social): record Phase 0 launch gates — 비버그 출시 게이트 기록이라 허위 Symptom을 만들지 않았다. T1 내러티브는 content/logs/OverDrive/2026-07-16-social-v1-phase0-launch-gates.mdx에 기록했다. -->
