@@ -415,7 +415,8 @@
     "lastSetWeight": "{weight}kg × ",
     "lastSetRir": " (RIR {rir})",
     "firstSet": "First set!",
-    "sessionSetCount": "   ·   {count} sets this session ✓",
+    "sessionSetCount_one": "   ·   {count} set this session ✓",
+    "sessionSetCount_other": "   ·   {count} sets this session ✓",
     "field": {
       "weight": "Weight",
       "repsOrTime": "Reps / sec",
