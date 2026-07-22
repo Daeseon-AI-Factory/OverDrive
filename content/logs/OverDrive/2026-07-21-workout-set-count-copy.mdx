@@ -1,0 +1,16 @@
+---
+title: "첫 운동 세트의 단수 문구를 실제 iPhone 빌드 경계에서 고쳤다"
+date: "2026-07-21"
+project: "OverDrive"
+kind: "tech-retro"
+visibility: "public"
+language: "ko"
+summary: "운동 첫 세트 완료 문구가 1 sets로 표시되던 영어 복수형 결함을 i18n plural key와 회귀 테스트로 수정했다."
+tags: ["i18n", "ios", "workout", "regression-test"]
+---
+
+Release simulator에서 첫 세트를 기록했을 때 확인 문구가 `1 sets this session ✓`로 표시됐다. 기록 자체는 저장됐지만 세트 수와 명사가 일치하지 않아 운동 기록의 즉각적인 피드백 품질이 깨졌다.
+
+원인은 영어 번역의 `logger.sessionSetCount`가 count를 받아도 항상 복수형을 반환하는 단일 문자열이었던 것이다. 이 키를 i18n plural resolution이 사용하는 `_one`과 `_other`로 분리하고, count 1은 `set`, count 2는 `sets`를 반환하는 테스트를 추가했다.
+
+구현 커밋은 `9b78242ae964640c2df4d2c01fbce0b2cf1b3b5b`다. strict TypeScript와 lint가 종료 코드 0으로 통과했고, 전체 Jest 65 suites / 459 tests, catalog validator 39/39, Worker 86/86이 통과했다. 변경분을 포함한 iPhone arm64 Release 빌드도 종료 코드 0이었고 앱 `ai.daeseon.reploom` 1.0 (15)를 연결된 iPhone에 설치한 뒤 실행했다. 수정된 단수 문구를 실제 iPhone 화면에서 다시 보는 제품 검증은 아직 남아 있다.

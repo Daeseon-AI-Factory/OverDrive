@@ -734,6 +734,18 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Follow-up commit**: `c8cd9af365541d66757e4cdd61f97b8af408fa01` — Build 관계 교체 뒤 Version 1.0이 `DEVELOPER_REJECTED`에서 `PREPARE_FOR_SUBMISSION`으로 바뀐 최종 readback을 handoff와 checklist에 반영했다. 이는 제출 성공이 아니라 제출 준비 상태이며 구독과 screenshot 상태는 그대로다.
 - **Pattern**: 바이너리 업로드, version-build 관계, 첫 subscription 선택, review submission은 서로 다른 외부 상태다. 각 관계를 독립적으로 readback하고 결제 후 entitlement가 실제로 발급되기 전에는 제출 완료로 합치지 않는다.
 
+## 첫 운동 세트 완료 문구가 단수에서도 복수형으로 표시됐다
+
+- **Symptom**: 첫 세트를 기록한 뒤 확인 문구가 다음처럼 표시됐다.
+  ```text
+  1 sets this session ✓
+  ```
+- **Cause**: 영어 번역의 `logger.sessionSetCount`가 count와 무관한 단일 복수 문자열로 정의돼 있었다.
+- **Fix**: i18n의 영어 복수형 키를 `_one`과 `_other`로 분리하고 count 1과 2를 직접 번역하는 회귀 테스트를 추가했다.
+- **Commit**: `9b78242ae964640c2df4d2c01fbce0b2cf1b3b5b`
+- **Verification**: strict TypeScript와 lint가 종료 코드 0으로 통과했고, 전체 Jest 65 suites / 459 tests, catalog validator 39/39, Worker 86/86이 통과했다. 변경분을 포함한 iPhone arm64 Release 빌드도 종료 코드 0이었으며 `ai.daeseon.reploom` 1.0 (15)를 연결된 iPhone에 설치하고 실행했다. 수정된 단수 문구의 실제 iPhone 화면 확인은 아직 미검증이다.
+- **Pattern**: 수량을 포함하는 UI 문구는 기본 복수 문자열 하나로 고정하지 않고 locale의 plural resolution을 테스트한다.
+
 <!-- override-trigger: 9bd847a1693cec00566787e24a09415f10274805 docs(social): freeze v1 implementation contract — 비버그 설계 계약이라 CLAUDE.md가 금지한 허위 Symptom을 만들지 않았다. T1 내러티브는 content/logs/OverDrive/2026-07-15-social-v1-implementation-contract.mdx에 기록했다. -->
 <!-- override-trigger: 5e11d4e286d0ba1f6a036e9f2feb1ec35d11c0a5 docs(social): amend v1.1 implementation contract — 비버그 설계 계약이라 허위 Symptom을 만들지 않았다. T1 내러티브는 content/logs/OverDrive/2026-07-16-social-v1-1-contract-amendment.mdx에 기록했다. -->
 <!-- override-trigger: 77645fdca9950a1e50e189076489211f91bcc6b2 docs(social): record Phase 0 launch gates — 비버그 출시 게이트 기록이라 허위 Symptom을 만들지 않았다. T1 내러티브는 content/logs/OverDrive/2026-07-16-social-v1-phase0-launch-gates.mdx에 기록했다. -->
