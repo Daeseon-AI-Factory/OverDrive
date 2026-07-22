@@ -147,10 +147,23 @@ export function SetLoggerSheet({
             reps: r,
             rir: rv,
           });
-          const summary = await getSessionActivitySummary(db, result.row.session_id);
-          useSessionStore.getState().reconcileActivity(result.row.session_id, summary.itemCount, summary.volumeKg);
-          const power = await recomputeAndStore(db);
-          useCombatPowerStore.getState().setSnapshot(power.score, power.grade.key);
+          try {
+            const summary = await getSessionActivitySummary(db, result.row.session_id);
+            useSessionStore.getState().reconcileActivity(result.row.session_id, summary.itemCount, summary.volumeKg);
+          } catch {
+            // The row update is already durable. Preserve the active-session HUD from the exact
+            // before/after rows instead of telling the user the edit failed.
+            useSessionStore.getState().replaceSetVolume(
+              result.previous.weight * result.previous.reps,
+              result.row.weight * result.row.reps,
+            );
+          }
+          try {
+            const power = await recomputeAndStore(db);
+            useCombatPowerStore.getState().setSnapshot(power.score, power.grade.key);
+          } catch {
+            // Derived power refresh is retryable and must not turn a durable correction into an error.
+          }
           close();
         } finally {
           useSessionStore.getState().endLogWrite();

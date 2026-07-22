@@ -125,7 +125,7 @@ export function useQuickLog() {
       },
     ]));
     setCandidates(nextCandidates);
-    const rec = await getRecentExercises(db, 5);
+    const rec = await getRecentExercises(db, 5).catch(() => []);
     setRecents(
       rec.flatMap((x) => {
         const ex = exMap.current.get(x.exerciseId);
@@ -141,6 +141,7 @@ export function useQuickLog() {
         }];
       }),
     );
+    return nextCandidates;
   }, [appLocale, db, t]);
 
   /**
@@ -262,7 +263,12 @@ export function useQuickLog() {
   const submitText = useCallback(
     async (text: string): Promise<QuickSubmitResult> => {
       // 1) On-device rule parser — instant, offline, the common path.
-      const local = parseEntry(text, candidates, unitSystem);
+      const localCandidates = candidates.length > 0
+        ? candidates
+        : candidateMap.current.size > 0
+          ? [...candidateMap.current.values()]
+          : await load().catch(() => []);
+      const local = parseEntry(text, localCandidates, unitSystem);
       if (local.ok) {
         if (local.candidates != null && local.candidates.length > 1) {
           return { ok: false, reason: 'ambiguous', options: local.candidates };
@@ -397,6 +403,7 @@ export function useQuickLog() {
     [
       db,
       candidates,
+      load,
       unitSystem,
       remoteAiAllowed,
       requestAiAccess,
@@ -454,14 +461,28 @@ export function useQuickLog() {
       if (batch.some((item) => item.sessionId !== sessionId)) throw new Error('batch_session_mismatch');
       if (!useSessionStore.getState().tryBeginLogWrite()) throw new Error('session_finishing');
       try {
-        await deleteSets(
+        const uniqueSetCount = new Set(batch.map((item) => item.setId)).size;
+        const deletedCount = await deleteSets(
           db,
           batch.map((item) => item.setId),
         );
-        const summary = await getSessionActivitySummary(db, sessionId);
-        useSessionStore.getState().reconcileActivity(sessionId, summary.itemCount, summary.volumeKg);
-        const result = await recomputeAndStore(db);
-        useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+        if (deletedCount === 0) return;
+        try {
+          const summary = await getSessionActivitySummary(db, sessionId);
+          useSessionStore.getState().reconcileActivity(sessionId, summary.itemCount, summary.volumeKg);
+        } catch {
+          // The delete is already durable. Only apply the optimistic inverse when the complete
+          // quick-log command was removed; a later focus reload repairs any partial legacy case.
+          if (deletedCount === uniqueSetCount) {
+            for (const item of batch) useSessionStore.getState().undoSet(item.volumeKg);
+          }
+        }
+        try {
+          const result = await recomputeAndStore(db);
+          useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
+        } catch {
+          // Combat Power is derived and will be recomputed again; never report a durable undo as failed.
+        }
       } finally {
         useSessionStore.getState().endLogWrite();
       }

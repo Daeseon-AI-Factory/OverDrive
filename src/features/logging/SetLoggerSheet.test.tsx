@@ -143,6 +143,31 @@ describe('SetLoggerSheet edit intent', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('closes after a durable edit when session summary and power refresh fail', async () => {
+    const onClose = jest.fn();
+    mockUpdateSet.mockResolvedValue({
+      previous,
+      row: { ...previous, weight: 102.5, score: 120 },
+      isPr: true,
+    });
+    mockGetSessionSummary.mockRejectedValue(new Error('summary unavailable'));
+    mockRecompute.mockRejectedValue(new Error('power unavailable'));
+    render(<SetLoggerSheet exercise={null} ensureSession={jest.fn()} onClose={onClose} />);
+
+    await screen.findByText('logger.saveChanges');
+    await waitFor(() => expect(screen.getByText('100.0')).toBeTruthy());
+    fireEvent.press(screen.getAllByText('+')[0]);
+    fireEvent.press(screen.getByText('logger.saveChanges'));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(useSessionStore.getState()).toMatchObject({
+      setCount: 1,
+      volumeKg: 512.5,
+      pendingLogWrites: 0,
+    });
+    expect(mockSetSnapshot).not.toHaveBeenCalled();
+  });
+
   it('preserves canonical kg when an imperial edit is saved without touching weight', async () => {
     mockUnitSystem = 'imperial';
     const ensureSession = jest.fn();

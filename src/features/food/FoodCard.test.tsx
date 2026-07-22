@@ -6,6 +6,13 @@ const mockAddFoodItems = jest.fn();
 const mockGetFoodToday = jest.fn();
 const mockGetRecentFoodBatches = jest.fn();
 const mockRequestAiAccess = jest.fn();
+const mockUndoFoodBatch = jest.fn();
+const mockUpdateManualFoodItem = jest.fn();
+const mockGetDisciplineToday = jest.fn();
+const mockSetDisciplineToday = jest.fn();
+const mockRecompute = jest.fn();
+const mockSetSnapshot = jest.fn();
+let mockProteinTargetG: number | null = null;
 
 jest.mock('expo-sqlite', () => ({ useSQLiteContext: () => mockDb }));
 jest.mock('expo-router', () => {
@@ -29,14 +36,16 @@ jest.mock('@/db/repos/foodRepo', () => ({
   addFoodItems: (...args: unknown[]) => mockAddFoodItems(...args),
   getFoodToday: (...args: unknown[]) => mockGetFoodToday(...args),
   getRecentFoodBatches: (...args: unknown[]) => mockGetRecentFoodBatches(...args),
-  undoFoodBatch: jest.fn(),
-  updateManualFoodItem: jest.fn(),
+  undoFoodBatch: (...args: unknown[]) => mockUndoFoodBatch(...args),
+  updateManualFoodItem: (...args: unknown[]) => mockUpdateManualFoodItem(...args),
 }));
 jest.mock('@/db/repos/disciplineRepo', () => ({
-  getDisciplineToday: jest.fn(),
-  setDisciplineToday: jest.fn(),
+  getDisciplineToday: (...args: unknown[]) => mockGetDisciplineToday(...args),
+  setDisciplineToday: (...args: unknown[]) => mockSetDisciplineToday(...args),
 }));
-jest.mock('@/db/repos/combatPowerRepo', () => ({ recomputeAndStore: jest.fn() }));
+jest.mock('@/db/repos/combatPowerRepo', () => ({
+  recomputeAndStore: (...args: unknown[]) => mockRecompute(...args),
+}));
 jest.mock('@/features/juice/classifyEvent', () => ({ classifyEvent: jest.fn() }));
 jest.mock('@/features/juice/JuiceProvider', () => ({ useJuice: () => ({ fire: jest.fn() }) }));
 jest.mock('@/features/quicklog/config', () => ({ QUICKLOG_ENDPOINT: 'https://unused.test' }));
@@ -55,11 +64,11 @@ jest.mock('@/lib/image', () => ({ downscaleForUpload: jest.fn() }));
 jest.mock('@/lib/temporaryFiles', () => ({ deleteAppCacheFile: jest.fn().mockResolvedValue(true) }));
 jest.mock('@/lib/settings', () => ({ hasCurrentRemoteAiConsent: () => false }));
 jest.mock('@/stores/combatPowerStore', () => ({
-  useCombatPowerStore: { getState: () => ({ score: 0, setSnapshot: jest.fn() }) },
+  useCombatPowerStore: { getState: () => ({ score: 0, setSnapshot: mockSetSnapshot }) },
 }));
 jest.mock('@/stores/settingsStore', () => ({
-  useSettingsStore: (selector: (state: { proteinTargetG: null; remoteAiConsent: null }) => unknown) =>
-    selector({ proteinTargetG: null, remoteAiConsent: null }),
+  useSettingsStore: (selector: (state: { proteinTargetG: number | null; remoteAiConsent: null }) => unknown) =>
+    selector({ proteinTargetG: mockProteinTargetG, remoteAiConsent: null }),
 }));
 jest.mock('expo-image-picker', () => ({ launchImageLibraryAsync: jest.fn() }));
 jest.mock('@/ui/RingGauge', () => {
@@ -107,9 +116,14 @@ const savedManualBatch = {
 describe('FoodCard free local path', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockProteinTargetG = null;
     mockGetFoodToday.mockResolvedValue({ kcal: 0, proteinG: 0, entries: 0 });
     mockGetRecentFoodBatches.mockResolvedValue([]);
     mockAddFoodItems.mockResolvedValue(savedManualBatch);
+    mockUndoFoodBatch.mockResolvedValue({ proteinReset: false });
+    mockGetDisciplineToday.mockResolvedValue({ protein: false, rest: false });
+    mockSetDisciplineToday.mockResolvedValue(undefined);
+    mockRecompute.mockResolvedValue({ score: 100, grade: { key: 'fighter' } });
   });
 
   it('saves a fresh manual meal without consent, subscription, quota, or network access', async () => {
@@ -152,6 +166,34 @@ describe('FoodCard free local path', () => {
         'manual',
       ),
     );
+    expect(mockRequestAiAccess).not.toHaveBeenCalled();
+  });
+
+  it('undoes protein credit after the durable food save even when power refresh fails', async () => {
+    mockProteinTargetG = 15;
+    mockGetFoodToday
+      .mockResolvedValueOnce({ kcal: 0, proteinG: 0, entries: 0 })
+      .mockResolvedValueOnce({ kcal: 180, proteinG: 18, entries: 1 })
+      .mockResolvedValue({ kcal: 0, proteinG: 0, entries: 0 });
+    mockRecompute.mockRejectedValue(new Error('power unavailable'));
+    render(<FoodCard />);
+
+    fireEvent.changeText(screen.getByLabelText('food.manual.name'), 'Greek yogurt');
+    fireEvent.changeText(screen.getByLabelText('food.manual.kcal'), '180');
+    fireEvent.changeText(screen.getByLabelText('food.manual.protein'), '17.5');
+    fireEvent.press(screen.getByRole('button', { name: 'food.manual.save' }));
+
+    const undo = await screen.findByRole('button', { name: 'food.undo' });
+    fireEvent.press(undo);
+
+    await waitFor(() =>
+      expect(mockUndoFoodBatch).toHaveBeenCalledWith(
+        mockDb,
+        savedManualBatch,
+        { resetProteinIfBelowG: 15 },
+      ),
+    );
+    expect(await screen.findByText('food.cancelled')).toBeTruthy();
     expect(mockRequestAiAccess).not.toHaveBeenCalled();
   });
 });

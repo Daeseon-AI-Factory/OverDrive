@@ -106,9 +106,11 @@ export async function writeBodyComposition(input: {
   return attempted && savedAll;
 }
 
-async function recent(id: Parameters<typeof getMostRecentQuantitySample>[0]): Promise<number | null> {
+async function recent(
+  read: () => Promise<{quantity: number} | undefined>,
+): Promise<number | null> {
   try {
-    const s = await getMostRecentQuantitySample(id);
+    const s = await read();
     return s?.quantity ?? null;
   } catch {
     return null;
@@ -128,9 +130,21 @@ export async function readHealthSnapshot(): Promise<HealthSnapshot> {
       console.error('[health] workout query failed', e);
     }
     const [bodyMassKg, bodyFatFraction, vo2Max] = await Promise.all([
-      recent('HKQuantityTypeIdentifierBodyMass'),
-      recent('HKQuantityTypeIdentifierBodyFatPercentage'),
-      recent('HKQuantityTypeIdentifierVO2Max'),
+      recent(() =>
+        getMostRecentQuantitySample('HKQuantityTypeIdentifierBodyMass', 'kg'),
+      ),
+      recent(() =>
+        getMostRecentQuantitySample(
+          'HKQuantityTypeIdentifierBodyFatPercentage',
+          '%',
+        ),
+      ),
+      recent(() =>
+        getMostRecentQuantitySample(
+          'HKQuantityTypeIdentifierVO2Max',
+          'ml/(kg*min)',
+        ),
+      ),
     ]);
     return { connected: true, workouts7d, bodyMassKg, bodyFatFraction, vo2Max };
   } catch (e) {

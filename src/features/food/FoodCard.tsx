@@ -150,30 +150,34 @@ export function FoodCard() {
     previouslyAutoCompleted: boolean = false,
   ): Promise<boolean> => {
     if (!proteinTargetG) return previouslyAutoCompleted;
+    let ownsProteinCredit = previouslyAutoCompleted;
     try {
       const disc = await getDisciplineToday(db);
       if (previouslyAutoCompleted && afterProteinG < proteinTargetG) {
         if (disc.protein) {
           await setDisciplineToday(db, { ...disc, protein: false });
+          ownsProteinCredit = false;
           const result = await recomputeAndStore(db);
           useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
         }
-        return false;
+        return ownsProteinCredit;
       }
       if (beforeProteinG < proteinTargetG && afterProteinG >= proteinTargetG && !disc.protein) {
         const prev = useCombatPowerStore.getState().score;
         await setDisciplineToday(db, { ...disc, protein: true });
+        ownsProteinCredit = true;
         const result = await recomputeAndStore(db);
         useCombatPowerStore.getState().setSnapshot(result.score, result.grade.key);
         juice.fire(
           classifyEvent({ kind: 'set', isPr: false, rir: 2, hitTargetReps: true, deltaCp: result.score - prev }),
         );
-        return true;
+        return ownsProteinCredit;
       }
     } catch {
-      // Food is already durable. Keep the prior ownership flag so undo can retry reconciliation.
+      // Food and any completed discipline write are already durable. Preserve their actual
+      // ownership so Undo can reverse the credit even when derived power refresh fails.
     }
-    return previouslyAutoCompleted;
+    return ownsProteinCredit;
   };
 
   /** Shared tail for manual, recent, text, and photo logging: persist first, then derived metrics. */
@@ -375,8 +379,12 @@ export function FoodCard() {
       if (target.autoCompletedProtein) {
         // Source-of-truth food + discipline rows are already atomic. Recompute is idempotent, so a
         // transient failure can be retried without deleting any additional data.
-        const power = await recomputeAndStore(db);
-        useCombatPowerStore.getState().setSnapshot(power.score, power.grade.key);
+        try {
+          const power = await recomputeAndStore(db);
+          useCombatPowerStore.getState().setSnapshot(power.score, power.grade.key);
+        } catch {
+          // The durable undo succeeded; derived power refresh must not invite a duplicate undo.
+        }
       }
       setUndoMeal(null);
       setEditingMeal(null);

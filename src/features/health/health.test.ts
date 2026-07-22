@@ -1,9 +1,11 @@
 import {
+  getMostRecentQuantitySample,
   isHealthDataAvailable,
+  queryWorkoutSamples,
   requestAuthorization,
   saveQuantitySample,
 } from '@kingstinct/react-native-healthkit';
-import { writeBodyComposition } from './health';
+import { readHealthSnapshot, writeBodyComposition } from './health';
 
 jest.mock('@kingstinct/react-native-healthkit', () => ({
   getMostRecentQuantitySample: jest.fn(),
@@ -18,6 +20,8 @@ jest.mock('@kingstinct/react-native-healthkit', () => ({
 const mockAvailable = jest.mocked(isHealthDataAvailable);
 const mockAuthorize = jest.mocked(requestAuthorization);
 const mockSaveQuantity = jest.mocked(saveQuantitySample);
+const mockMostRecent = jest.mocked(getMostRecentQuantitySample);
+const mockQueryWorkouts = jest.mocked(queryWorkoutSamples);
 const savedSample = {} as NonNullable<Awaited<ReturnType<typeof saveQuantitySample>>>;
 
 describe('writeBodyComposition', () => {
@@ -81,5 +85,53 @@ describe('writeBodyComposition', () => {
 
     await expect(writeBodyComposition({ weightKg: 82.5, bodyFatFraction: 0.17 })).resolves.toBe(false);
     expect(mockSaveQuantity).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('readHealthSnapshot canonical units', () => {
+  let consoleError: jest.SpyInstance;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAvailable.mockReturnValue(true);
+    mockQueryWorkouts.mockResolvedValue([]);
+    mockMostRecent.mockImplementation(async (identifier) => ({
+      quantity:
+        identifier === 'HKQuantityTypeIdentifierBodyMass'
+          ? 78.5
+          : identifier === 'HKQuantityTypeIdentifierBodyFatPercentage'
+            ? 0.18
+            : 44.2,
+    }) as never);
+    consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => consoleError.mockRestore());
+
+  it('requests every value in the canonical unit used by the app', async () => {
+    await expect(readHealthSnapshot()).resolves.toMatchObject({
+      connected: true,
+      bodyMassKg: 78.5,
+      bodyFatFraction: 0.18,
+      vo2Max: 44.2,
+    });
+
+    expect(mockMostRecent).toHaveBeenNthCalledWith(1, 'HKQuantityTypeIdentifierBodyMass', 'kg');
+    expect(mockMostRecent).toHaveBeenNthCalledWith(2, 'HKQuantityTypeIdentifierBodyFatPercentage', '%');
+    expect(mockMostRecent).toHaveBeenNthCalledWith(3, 'HKQuantityTypeIdentifierVO2Max', 'ml/(kg*min)');
+  });
+
+  it('keeps the other canonical values when one Health sample fails', async () => {
+    mockMostRecent.mockImplementation(async (identifier) => {
+      if (identifier === 'HKQuantityTypeIdentifierBodyMass') throw new Error('weight unavailable');
+      return { quantity: identifier === 'HKQuantityTypeIdentifierBodyFatPercentage' ? 0.18 : 44.2 } as never;
+    });
+
+    await expect(readHealthSnapshot()).resolves.toMatchObject({
+      connected: true,
+      bodyMassKg: null,
+      bodyFatFraction: 0.18,
+      vo2Max: 44.2,
+    });
   });
 });
