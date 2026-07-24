@@ -761,6 +761,15 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Verification**: 표적 회귀는 QuickLog·세트 수정·식사 3 suites / 15 tests와 Health 1 suite / 7 tests가 통과했다. 전체 Jest 66 suites / 465 tests, Worker 86 tests, catalog validator 39 tests, strict TypeScript, lint, `git diff --check`가 종료 코드 0이었다. iPhone 17 Pro Max simulator 대상 서명 없는 Release 빌드는 종료 코드 0이었고 `ai.daeseon.reploom` 1.0 (15)를 설치해 PID 265로 실행했으며 첫 화면 screenshot을 확인했다. 실제 탭·입력 기반 제품 workflow는 Maestro hierarchy가 출력 없이 멈춰 중단했으므로 미검증이다.
 - **Pattern**: 로컬 원장 변경과 다시 계산 가능한 projection은 성공 경계를 공유하지 않는다. 사용자 작업의 결과는 원장 mutation으로 판정하고 파생 상태는 재시도 가능한 reconciliation으로 다룬다.
 
+## 리젝된 Build 15와 지원하지 않는 Age Assurance 메타데이터가 재제출에서 반복될 수 있었다
+
+- **Symptom**: 재제출 준비 기준선의 `app.json`은 iOS Build 15였고 `store.config.json`은 구현되지 않은 `ageAssurance: true`를 계속 선언했다. 같은 설정으로 native project를 다시 생성하면 리젝된 build identity와 연령 확인 주장이 반복될 수 있었다.
+- **Cause**: 버전·연령 등급 설정은 문서 체크리스트에만 있었고, prebuild가 리젝된 build number나 앱에 없는 In-App Controls 주장을 거부하는 기계적 gate는 없었다. 앱과 Worker의 잠금파일에도 자동 수정 가능한 high-severity advisory가 남아 있었다.
+- **Fix**: iOS build를 16으로 올리고 Age Assurance를 false로 맞췄다. iOS compliance plugin이 Build 15 이하, 앱·스토어 버전 불일치, Age Assurance 또는 Parental Controls 활성화를 prebuild 전에 거부하도록 했고 회귀 테스트를 추가했다. 호환 범위 안의 잠금파일만 갱신해 Worker advisory를 0으로, 앱 high/critical advisory를 0으로 낮췄다.
+- **Commit**: `b1804c7a13dfd962f7b7a004fc4946928846b380`
+- **Verification**: strict TypeScript와 lint가 종료 코드 0으로 통과했고, 전체 Jest 66 suites / 466 tests와 Worker 86 tests가 통과했다. 서명 없는 arm64 Release simulator build는 종료 코드 0이었고 생성된 `.app`은 `ai.daeseon.reploom` 1.0 (16), `ITSAppUsesNonExemptEncryption=false`, bundled StoreKit 파일 byte match를 반환했다. 설치와 실행 뒤 Today 화면을 screenshot으로 확인했다. `npm audit`은 Worker 0, 앱 moderate 11 / high 0 / critical 0이었다. App Store Connect의 Paid Apps Agreement·구독 상품 메타데이터·심사 screenshot·상품 제출과 실기기 Sandbox 구매/복원/서버 entitlement는 아직 검증하지 않았다.
+- **Pattern**: App Store 리젝 복구 설정은 체크리스트만 고치지 않는다. 리젝된 build와 구현되지 않은 metadata claim을 native generation gate로 거부하고, 로컬 StoreKit 실행과 Apple Sandbox·상품 제출은 서로 다른 검증 단계로 남긴다.
+
 <!-- override-trigger: 9bd847a1693cec00566787e24a09415f10274805 docs(social): freeze v1 implementation contract — 비버그 설계 계약이라 CLAUDE.md가 금지한 허위 Symptom을 만들지 않았다. T1 내러티브는 content/logs/OverDrive/2026-07-15-social-v1-implementation-contract.mdx에 기록했다. -->
 <!-- override-trigger: 5e11d4e286d0ba1f6a036e9f2feb1ec35d11c0a5 docs(social): amend v1.1 implementation contract — 비버그 설계 계약이라 허위 Symptom을 만들지 않았다. T1 내러티브는 content/logs/OverDrive/2026-07-16-social-v1-1-contract-amendment.mdx에 기록했다. -->
 <!-- override-trigger: 77645fdca9950a1e50e189076489211f91bcc6b2 docs(social): record Phase 0 launch gates — 비버그 출시 게이트 기록이라 허위 Symptom을 만들지 않았다. T1 내러티브는 content/logs/OverDrive/2026-07-16-social-v1-phase0-launch-gates.mdx에 기록했다. -->

@@ -1,0 +1,22 @@
+---
+title: "유료 재제출 메타데이터를 Build 16 gate로 잠갔다"
+date: "2026-07-24"
+project: "OverDrive"
+kind: "troubleshoot"
+visibility: "private"
+language: "ko"
+summary: "리젝된 Build 15와 구현되지 않은 Age Assurance 주장이 다시 native project에 들어가지 않도록 재제출 gate를 추가했다."
+tags: ["app-store", "subscription", "storekit", "release-safety"]
+---
+
+재제출 준비 기준선은 iOS Build 15를 그대로 사용했고, 별도 store metadata source는 앱에 없는 Age Assurance를 true로 선언했다. 문서에서 값을 바꿔야 한다고 적는 것만으로는 다음 prebuild가 같은 리젝 조건을 다시 만들 수 있었다.
+
+구현 커밋 `b1804c7a13dfd962f7b7a004fc4946928846b380`은 앱 build를 16으로 올리고 Age Assurance를 false로 맞췄다. iOS compliance plugin은 이제 Build 15 이하, 앱과 store version 불일치, Age Assurance 또는 Parental Controls 활성화를 native project 생성 전에 실패시킨다. 회귀 테스트는 현재 설정의 통과뿐 아니라 Build 15와 Age Assurance 재활성화를 각각 거부하는지 확인한다.
+
+의존성은 새 패키지를 추가하지 않고 잠금파일 안에서만 갱신했다. Worker의 audit 결과는 취약점 0이었고 앱은 moderate 11, high 0, critical 0이었다. 앱에서 남은 항목을 `npm audit fix --force`로 없애려면 현재 Expo SDK와 호환되지 않는 메이저 변경 제안이 포함돼 이번 리젝 복구에는 적용하지 않았다.
+
+Function 검증은 strict TypeScript와 lint 종료 코드 0, 전체 Jest 66 suites / 466 tests, Worker 86 tests, 서명 없는 arm64 Release simulator build 종료 코드 0까지다. 생성된 `.app`은 bundle `ai.daeseon.reploom`, version 1.0, build 16, 비면제 암호화 false를 반환했고 StoreKit QA 파일이 source와 byte-for-byte 일치했다. 시뮬레이터 설치·실행 뒤 Today 화면도 screenshot으로 확인했다.
+
+Quality 검증은 회귀 테스트, native artifact readback, `git diff --check`, 의존성 audit까지다. 빌드 출력에는 Expo/React Native 의존성의 Swift·script phase warning이 남아 있어 warning-free build로 기록하지 않는다.
+
+Product/workflow 검증은 아직 완료되지 않았다. App Store Connect의 Paid Apps Agreement, 세금·은행 정보, 구독 상품 metadata와 심사 screenshot, 첫 구독 상품의 build 연계·제출 상태는 이 로컬 커밋으로 확인할 수 없다. 실제 iPhone Sandbox에서 구매, 서버 entitlement session, 유료 quota, 복원, 갱신·취소·환불을 끝까지 통과시키기 전에는 유료 출시 후보가 아니다. RevenueCat은 추가하지 않았으며 현재 custom StoreKit 2와 Worker 경계를 유지했다.
