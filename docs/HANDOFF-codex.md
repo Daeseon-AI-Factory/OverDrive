@@ -1,11 +1,16 @@
-# Reploom (OverDrive) — 세션 핸드오프 (2026-07-15)
+# Reploom (OverDrive) — 세션 핸드오프 (2026-07-24)
 
 다른 에이전트가 결제 플랫폼 연동과 이후 App Store 재제출을 이어받기 위한 현재 상태다.
 추측하지 말고 아래의 local/source/live 경계를 먼저 확인한다.
 
 ## 한 줄 상태
 
-무료 Build 13 심사는 Reploom Pro를 준비하기 위해 철회했다. **코드 후보 `c98e021`의 Build 15는 Apple validation/upload를 통과해 `VALID` / `APP_STORE_ELIGIBLE`이고 내부 TestFlight에서 `IN_BETA_TESTING`이며, 2026-07-15에 Version 1.0의 Build 관계도 Build 13에서 Build 15로 교체해 readback했다. Version 1.0은 교체 후 `PREPARE_FOR_SUBMISSION`이다. production exercise catalog와 Release simulator 실사용 seed QA도 검증됐다.** 그러나 필수 Apple IAP/entitlement Worker secret 5개가 없어 subscription Worker·Cron·production traffic은 여전히 Build 13 세대다. 구독은 `MISSING_METADATA`이고 첫 subscription 선택과 App Review 재제출은 하지 않았다.
+**2026-07-24 live readback에서 Version 1.0은 `REJECTED`, review submission
+`df96aa45-9d43-4ac8-8d2e-de9b8b9fed4f`는 `UNRESOLVED_ISSUES`, 구독은
+`MISSING_METADATA`, subscription review screenshot은 `data:null`이다.** Build 16은
+`codex/paid-release-recovery`에서 local Release simulator build만 통과했고 App Store Connect
+업로드 결과는 0개다. production Worker는 `/entitlements/session`에 404를 반환하며 Apple
+IAP/entitlement secret 5개가 모두 없다. 따라서 현재 상태는 유료 재제출 NO-GO다.
 
 ## 이번 범위와 명시적 비범위
 
@@ -23,10 +28,12 @@
 
 ## 현재 Git / 산출물
 
-- 브랜치: `codex/usability-cockpit`
+- 브랜치: `codex/paid-release-recovery`
 - 원격: `https://github.com/Daeseon-AI-Factory/OverDrive.git`
-- 현재 앱 코드 후보: `c98e021` (`expo.ios.buildNumber=15`). 최종 문서·dual-write log 커밋과
-  원격 push는 `git status --short --branch` 및 `git log`로 다시 확인한다.
+- 현재 앱 코드 후보: `b1804c7a13dfd962f7b7a004fc4946928846b380`
+  (`expo.ios.buildNumber=16`); dual-write log commit과 원격 branch HEAD는
+  `369e9da9a0b7d44c88ae84bcc7e78447a2e189a1`이다. 아직 main 또는 App Store Connect
+  build로 승격되지 않았다.
 - 이 staging 작업의 이전 원격 HEAD: `3e38ca5`; D1 migration 수정: `b0ead93`, `7f4560d`.
 - 인계 시 체크아웃의 `git rev-parse HEAD`와 뒤따르는
   `docs(log): record for <hash> [no-log]`를 정본으로 사용한다.
@@ -51,6 +58,9 @@
 - Build 13 ID: `60e4f17c-e5a9-4cba-93f9-0554a50b543c`
 - Build 14 ID: `ad2c1d7a-74f9-4516-94be-0c3a226e15d6`
 - Build 15 ID: `7123db21-dbc0-4126-8f30-5a7105278602`
+- Build 16: 2026-07-24 API readback 결과 없음
+- Review Submission `df96aa45-9d43-4ac8-8d2e-de9b8b9fed4f`: `UNRESOLVED_ISSUES`,
+  submitted date `2026-07-15T23:25:12.709Z`
 - Review Submission `72f01614-39bb-4b0e-95e7-a3810e5fbb97`: 무료 Build 13으로
   `WAITING_FOR_REVIEW`까지 갔다가 철회; 최종 state `COMPLETE`, item `REMOVED`, version 1.0
   `DEVELOPER_REJECTED`.
@@ -65,9 +75,8 @@
   `hasAccessToAllBuilds=true`이고 Build 15를 포함한다. Build 15는
   `internalBuildState=IN_BETA_TESTING`, `externalBuildState=READY_FOR_BETA_SUBMISSION`, beta App
   Review `data:null`이다. 외부 beta/App Review 제출 증거가 아니며 실제 기기 설치·결제 증거도 아니다.
-- Version 1.0은 Build 15 관계 교체 뒤 `PREPARE_FOR_SUBMISSION`, manual release,
-  `usesIdfa=false`, copyright `2026 Daeseon Yoo`다. 첫 subscription은 아직 선택하지 않았고 새
-  review submission도 없다. 교체 전 철회 상태는 `DEVELOPER_REJECTED`였다.
+- Version 1.0은 2026-07-24 `REJECTED`이고 Build 15 관계를 유지한다. manual release,
+  `usesIdfa=false`, copyright `2026 Daeseon Yoo`다.
 - Category: `HEALTH_AND_FITNESS`; content rights: `USES_THIRD_PARTY_CONTENT`
 - Age rating: global 4+, Health/Wellness yes, Age Assurance yes, Contests no, 나머지 공개 항목 none/no
 - Review contact·notes·demo-account-not-required 입력 및 readback 완료
@@ -88,6 +97,11 @@
   truthful screenshot을 새로 만들기 전에는 review screenshot을 업로드하지 않는다.
 - USA $4.99와 동일한 132개 판매 storefront 가격 row는 earlier ASC readback 완료. 이는 앱/Worker
   결제 연동 또는 제출 완료의 증거가 아니다.
+- Subscription localization은 en-US `Reploom Pro` /
+  `1,000 AI credits/month, including up to 60 meal photos`, state
+  `PREPARE_FOR_SUBMISSION`으로 readback됐다. 미국은 USD 4.99, 한국은 KRW 7,700이다.
+  1개월 상품의 `UPFRONT` plan type은 12개월 약정의 `MONTHLY` installment option과 다른
+  모델이므로 임의 변경하지 않는다.
 - live URL readback:
   - Marketing: `https://reploom.pages.dev/`
   - Support: `https://reploom.pages.dev/support`
@@ -137,10 +151,9 @@
 - 구독 Worker의 필수 secret `APPLE_IAP_ISSUER_ID`, `APPLE_IAP_KEY_ID`,
   `APPLE_IAP_PRIVATE_KEY`, `ENTITLEMENT_IDENTITY_SECRET`, `ENTITLEMENT_SESSION_SECRET`는 모두
   없다. 비밀값 없이 새 Worker를 production으로 올리지 말아야 한다.
-- 맥에 있던 기존 ASC API key 두 개를 private key/JWT 출력 없이 App Store Server API의 존재하지
-  않는 transaction read로 확인했다. Sandbox는 둘 다 authenticated `4040010`을 반환했지만
-  production은 둘 다 HTTP 401이었다. 이 키들을 IAP production key로 간주하거나 Worker에
-  설치하지 않는다.
+- 맥의 기존 ASC API key를 private key/JWT 출력 없이 App Store Server API의 존재하지 않는
+  transaction read로 재확인했다. Sandbox는 authenticated `4040010`을 반환했지만 production은
+  HTTP 401이었다. 이 키를 IAP production key로 간주하거나 Worker에 설치하지 않는다.
 - Wrangler의 만료된 OAuth 자격 증명이 내부 명령 출력에 노출됐고 repo/commit에는 들어가지 않았다. 새 OAuth 로그인으로 교체했으며 이전 Cloudflare authorization은 출시 후 폐기 대상으로 취급한다.
 
 ### Production exercise catalog

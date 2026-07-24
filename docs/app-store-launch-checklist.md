@@ -1,6 +1,6 @@
 # Reploom App Store Launch Checklist
 
-Updated: 2026-07-15. App Store Connect app `6786831176`, bundle `ai.daeseon.reploom`.
+Updated: 2026-07-24. App Store Connect app `6786831176`, bundle `ai.daeseon.reploom`.
 
 The original free Build 13 submission was accepted into the review queue and then deliberately
 withdrawn on 2026-07-13 after the decision to prepare Reploom Pro and server-enforced AI limits.
@@ -9,12 +9,13 @@ and version 1.0 initially `DEVELOPER_REJECTED`. Build 13 remains valid as a bina
 not be resubmitted as the subscription release. Builds 14 and 15 are uploaded and read `VALID` /
 `APP_STORE_ELIGIBLE`; Build 15 is the current code candidate. Version 1.0 was changed from Build 13
 to Build 15 on 2026-07-15 and the relationship read back Build 15. Version 1.0 then read back
-`PREPARE_FOR_SUBMISSION`, but no replacement submission exists.
+`PREPARE_FOR_SUBMISSION`이었으나, 2026-07-24 live readback은 Version 1.0 `REJECTED`,
+review submission `df96aa45-9d43-4ac8-8d2e-de9b8b9fed4f` `UNRESOLVED_ISSUES`다.
+Subscription은 `MISSING_METADATA`, review screenshot은 `data:null`, Build 16 upload는 0개다.
 
 ## Verified before this release candidate
 
-- App Store version `1.0` read `DEVELOPER_REJECTED` after the deliberate withdrawal and now reads
-  `PREPARE_FOR_SUBMISSION` after the Build 15 relationship change.
+- App Store version `1.0` read `REJECTED` on 2026-07-24 and remains associated with Build 15.
 - TestFlight build 12 is `VALID`, but it predates this compliance/usability release candidate and
   must not be selected for App Review.
 - TestFlight build 14 is `VALID` / `APP_STORE_ELIGIBLE`; it is not attached to version 1.0.
@@ -165,8 +166,8 @@ exercise/cache-bridge/localization/alias/equipment/region counts read
 - [x] Record Korea e-Commerce Act compliance as `Active` (App Store Connect readback supplied by the
   Account Holder, last updated 2026-06-16).
 - [ ] Complete App Privacy using the inventory in `docs/launch/app-store-listing.md`.
-- [x] Complete and read back the current age-rating questionnaire: `Health/Wellness = Yes`,
-  `Age Assurance = Yes`, `Contests = No`, and every other disclosed content category is none/no.
+- [ ] Change the live Age Assurance answer to `None` and read it back. The app does not implement
+  parental controls or age assurance; tracked `store.config.json` is now false for both.
 - [ ] Declare `Regulated Medical Device = No` in App Information and read it back; Reploom makes no
   diagnosis, treatment, or medical-device claim.
 - [ ] Complete the required DSA trader/non-trader self-declaration even while every Europe storefront
@@ -221,10 +222,10 @@ at the evidence levels named below.
   remaining disabled.
 - [ ] App Store Server API In-App Purchase key is generated once, stored only as Worker secrets, and
   its Key ID/Issuer/bundle/product environment is verified without printing the private key.
-  Current Worker secret readback is missing all five required Apple IAP/entitlement names; only
-  the older `GROQ_API_KEY` and unused `GEMINI_API_KEY` names exist. Both existing ASC API keys
+  2026-07-24 Worker secret readback is missing all five required Apple IAP/entitlement names; only
+  the older `GROQ_API_KEY` and unused `GEMINI_API_KEY` names exist. The available ASC API key
   authenticated a nonexistent Sandbox transaction as `4040010` but returned HTTP 401 from the
-  production StoreKit server, so neither is accepted as the production IAP key.
+  production StoreKit server, so it is not accepted as the production IAP key.
 - [ ] App Store Connect App Privacy answers include linked Product Interaction for successful-use,
   provider-attempt, request-state, period-reset, and Apple-test daily safety aggregates.
 - [ ] Before App Privacy Publish, confirm whether Cloudflare retains catalog-request platform
@@ -252,6 +253,10 @@ at the evidence levels named below.
   says `Loading the App Store price…` / `Subscription unavailable` must not be submitted. Build 15
   live-product loading was repeated with the realistic seed and still showed the same state after
   15 seconds.
+- [x] Build 16 metadata gate is tracked in `b1804c7`: rejected Build 15 and unsupported
+  Age Assurance/Parental Controls claims fail prebuild, and the generated Release simulator app
+  read bundle `ai.daeseon.reploom`, version 1.0, build 16, encryption false. This is not a signed
+  device build or App Store Connect upload.
 - [x] Historical Build 14 Apple validation and TestFlight upload succeeded; Build 14 resource
   `ad2c1d7a-74f9-4516-94be-0c3a226e15d6` reads `VALID` / `APP_STORE_ELIGIBLE`.
 - [x] Historical Build 14 is available to the one-tester `Internal` group and reads
@@ -288,13 +293,16 @@ Future payment-platform gaps, not completion work for this change:
 - **Function verification:** `npm run typecheck`, `npm run lint`, full app/worker/catalog test
   commands, Release build/archive/export, Apple validation/upload, ASC processing readback, catalog
   HTTP 200/304/404/405, and final Build 15 actual-touch chest flow executed. Build 15 is `VALID` /
-  `APP_STORE_ELIGIBLE` / internal `IN_BETA_TESTING`; no review submission was created.
-- **Quality verification:** strict TypeScript and lint passed; app Jest passed 64 suites / 458 tests,
+  `APP_STORE_ELIGIBLE` / internal `IN_BETA_TESTING`. The Build 16 recovery branch passed strict
+  TypeScript, lint, 66 Jest suites / 466 tests, Worker 86 tests, and an unsigned arm64 Release
+  simulator build. App Store Connect contains no Build 16.
+- **Quality verification:** strict TypeScript and lint passed; current app Jest passed 66 suites / 466 tests,
   catalog validation 39/39, Worker tests 86/86, and `git diff --check` passed. IPA metadata/string/
   privacy-manifest inspection and 11 original-resolution simulator screenshots were reviewed. This
-  is not StoreKit/payment quality evidence.
+  is not StoreKit/payment quality evidence. Current audits read Worker 0 and app moderate 11 /
+  high 0 / critical 0.
 - **Product/workflow verification:** realistic-seed simulator touch flows covered body-region
   recommendations, aliases/search, set logging, trap-bar Quick Log, and manual meal save/edit/undo;
   QA writes were removed and the baseline integrity/counts were re-read. Physical iPhone TestFlight,
   Health paths, purchase/renew/refund/restore, production entitlement/quota, and App Review remain
-  explicitly unverified.
+  explicitly unverified. The live Worker returns 404 for `/entitlements/session`.
