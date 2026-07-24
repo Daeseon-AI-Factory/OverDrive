@@ -1,0 +1,22 @@
+---
+title: "유료 출시를 막는 live gate를 다시 읽었다"
+date: "2026-07-24"
+project: "OverDrive"
+kind: "troubleshoot"
+visibility: "private"
+language: "ko"
+summary: "Build 16 로컬 성공과 App Store·Worker 운영 상태를 분리하고 실제 재제출 차단 요인을 확정했다."
+tags: ["app-store", "subscription", "worker", "release-gate"]
+---
+
+Build 16은 로컬 arm64 Release simulator에서 빌드·설치·실행됐지만, 그 결과만으로 유료 출시를 진행할 수 없었다. App Store Connect API를 다시 읽자 Version 1.0은 `REJECTED`, Build 관계는 여전히 Build 15, Build 16 upload는 0개였다. review submission `df96aa45-9d43-4ac8-8d2e-de9b8b9fed4f`는 `UNRESOLVED_ISSUES`다.
+
+구독 `6790532250`은 `MISSING_METADATA`다. en-US localization과 132개 가격 row는 존재하고 미국은 USD 4.99, 한국은 KRW 7,700이었다. review screenshot 관계는 `data:null`이다. 첫 구독은 앱 binary와 함께 App Store Connect 웹에서 제출해야 하므로 API가 대신 끝낼 수 없다.
+
+production Worker도 결제 준비가 안 됐다. secret readback은 `GEMINI_API_KEY`와 `GROQ_API_KEY`만 반환했고 Apple IAP/entitlement secret 5개는 없었다. live `/entitlements/session`은 HTTP 404와 `{"error":"not found"}`를 반환했다. current production traffic은 2026-07-13의 version `dee65f64-88ee-491f-962f-f9b686bfd561` 100%다.
+
+기존 ASC API key를 App Store Server API에 재검증했다. 형식상 정상인 존재하지 않는 transaction ID에서 Sandbox는 authenticated `4040010 Transaction id not found`, production은 HTTP 401이었다. 현재 Worker는 production의 transaction-not-found에서만 Sandbox로 fallback하므로 이 키를 production IAP key로 설치하지 않는다. 올바른 App Store Server API/In-App Purchase key가 필요하다.
+
+연결된 실제 iPhone은 paired·available 상태였지만 로컬 keychain은 valid code-signing identity 0개였다. 따라서 Build 16을 이 Mac에서 기기용으로 직접 서명·설치하지 못했다. EAS/TestFlight build는 배포 승인 경계 밖에서 직접 실행하지 않았다.
+
+문서 커밋 `d1804caa6b50b89d982f98d21790b27ec1dc2d04`은 handoff와 launch checklist를 이 live 상태로 교체했다. Function 검증은 read-only ASC/Worker/key/device 조회까지다. Quality 검증은 source와 live state를 분리한 gate ledger 및 `git diff --check`까지다. Product/workflow 검증은 실제 Sandbox purchase, Worker session, quota, restore, renewal/cancel/refund가 모두 미완료다. Paid Apps Agreement도 브라우저 연결이 없어 미검증이다.

@@ -770,6 +770,15 @@ Concrete only. Numbers, file paths, commit hashes. No "lessons learned" essays.
 - **Verification**: strict TypeScript와 lint가 종료 코드 0으로 통과했고, 전체 Jest 66 suites / 466 tests와 Worker 86 tests가 통과했다. 서명 없는 arm64 Release simulator build는 종료 코드 0이었고 생성된 `.app`은 `ai.daeseon.reploom` 1.0 (16), `ITSAppUsesNonExemptEncryption=false`, bundled StoreKit 파일 byte match를 반환했다. 설치와 실행 뒤 Today 화면을 screenshot으로 확인했다. `npm audit`은 Worker 0, 앱 moderate 11 / high 0 / critical 0이었다. App Store Connect의 Paid Apps Agreement·구독 상품 메타데이터·심사 screenshot·상품 제출과 실기기 Sandbox 구매/복원/서버 entitlement는 아직 검증하지 않았다.
 - **Pattern**: App Store 리젝 복구 설정은 체크리스트만 고치지 않는다. 리젝된 build와 구현되지 않은 metadata claim을 native generation gate로 거부하고, 로컬 StoreKit 실행과 Apple Sandbox·상품 제출은 서로 다른 검증 단계로 남긴다.
 
+## Build 16 로컬 후보와 실제 유료 출시 상태가 서로 달랐다
+
+- **Symptom**: 로컬 Build 16 Release는 성공했지만 App Store Connect에는 Build 16이 없었다. Version 1.0은 `REJECTED`, 최신 review submission은 `UNRESOLVED_ISSUES`, subscription은 `MISSING_METADATA`, review screenshot은 `data:null`이었다. production Worker의 `/entitlements/session`은 404를 반환했다.
+- **Cause**: native build metadata 수정, signed binary upload, first-subscription review association, subscription review asset, Paid Apps Agreement, App Store Server API key, Worker traffic promotion을 하나의 “출시 준비” 상태로 합쳐 볼 수 없었다. live Worker에는 Apple IAP/entitlement secret 5개가 모두 없고 Build 13 세대 source가 100%였다.
+- **Fix**: handoff와 launch checklist를 2026-07-24 live readback으로 갱신하고 유료 재제출을 NO-GO로 유지했다. 구현되지 않은 Age Assurance는 live에서 None으로 바꿔 readback하도록 열어 두고, Build 16 upload·올바른 IAP key·Worker entitlement·실기기 Sandbox·첫 subscription association을 독립 gate로 명시했다.
+- **Commit**: `d1804caa6b50b89d982f98d21790b27ec1dc2d04`
+- **Verification**: App Store Connect API는 Version 1.0 `REJECTED`, Build 15 관계, subscription `MISSING_METADATA`, screenshot `null`, Build 16 0개, review submission `UNRESOLVED_ISSUES`를 반환했다. subscription localization은 en-US 한 개, price rows는 132개였고 미국 USD 4.99·한국 KRW 7,700이었다. `wrangler secret list`는 `GEMINI_API_KEY`와 `GROQ_API_KEY`만 반환했고 live entitlement POST는 HTTP 404였다. 기존 ASC key로 존재하지 않는 transaction을 조회했을 때 production은 401, Sandbox는 `4040010`이었다. Paid Apps Agreement는 브라우저 연결이 없어 미검증이다.
+- **Pattern**: 유료 출시 ledger는 source, signed build, store product, agreement, entitlement backend, Sandbox purchase, review submission을 각각 live readback한다. 한 단계의 성공으로 다른 단계까지 완료 처리하지 않는다.
+
 <!-- override-trigger: 9bd847a1693cec00566787e24a09415f10274805 docs(social): freeze v1 implementation contract — 비버그 설계 계약이라 CLAUDE.md가 금지한 허위 Symptom을 만들지 않았다. T1 내러티브는 content/logs/OverDrive/2026-07-15-social-v1-implementation-contract.mdx에 기록했다. -->
 <!-- override-trigger: 5e11d4e286d0ba1f6a036e9f2feb1ec35d11c0a5 docs(social): amend v1.1 implementation contract — 비버그 설계 계약이라 허위 Symptom을 만들지 않았다. T1 내러티브는 content/logs/OverDrive/2026-07-16-social-v1-1-contract-amendment.mdx에 기록했다. -->
 <!-- override-trigger: 77645fdca9950a1e50e189076489211f91bcc6b2 docs(social): record Phase 0 launch gates — 비버그 출시 게이트 기록이라 허위 Symptom을 만들지 않았다. T1 내러티브는 content/logs/OverDrive/2026-07-16-social-v1-phase0-launch-gates.mdx에 기록했다. -->
