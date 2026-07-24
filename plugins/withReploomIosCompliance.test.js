@@ -5,6 +5,7 @@ const {
   patchSwiftAppDelegate,
   storeKitQaScheme,
   synchronizeNativeBuildVersion,
+  validateResubmissionMetadata,
   validateStoreKitConfiguration,
 } = require('./withReploomIosCompliance');
 
@@ -56,6 +57,31 @@ describe('withReploomIosCompliance', () => {
     expect(() => validateStoreKitConfiguration(source)).not.toThrow();
     const drifted = source.replace('"P1M"', '"P1Y"');
     expect(() => validateStoreKitConfiguration(drifted)).toThrow(/monthly subscription contract/u);
+  });
+
+  it('keeps the rejected Build 15 and unsupported age-assurance claim out of the resubmission', () => {
+    const app = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '..', 'app.json'), 'utf8'),
+    );
+    const store = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '..', 'store.config.json'), 'utf8'),
+    );
+
+    expect(() => validateResubmissionMetadata(app, store)).not.toThrow();
+    expect(() => validateResubmissionMetadata(
+      { ...app, expo: { ...app.expo, ios: { ...app.expo.ios, buildNumber: '15' } } },
+      store,
+    )).toThrow(/build after 15/u);
+    expect(() => validateResubmissionMetadata(
+      app,
+      {
+        ...store,
+        apple: {
+          ...store.apple,
+          advisory: { ...store.apple.advisory, ageAssurance: true },
+        },
+      },
+    )).toThrow(/Age Assurance/u);
   });
 
   it('keeps the native purchase identity bridge fail-closed with one App Store refresh fallback', () => {

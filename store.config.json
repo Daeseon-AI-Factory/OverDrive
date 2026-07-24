@@ -28,7 +28,7 @@
       "koreaAgeRatingOverride": "NONE",
       "lootBox": false,
       "advertising": false,
-      "ageAssurance": true,
+      "ageAssurance": false,
       "ageRatingOverrideV2": null,
       "developerAgeRatingInfoUrl": null,
       "gunsOrOtherWeapons": "NONE",
