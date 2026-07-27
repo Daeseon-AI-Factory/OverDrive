@@ -1,0 +1,33 @@
+---
+title: "출시 전 repo 최종 정리 — main 단일 라인업으로 수렴"
+date: "2026-07-27"
+project: "OverDrive"
+kind: "update"
+visibility: "public"
+language: "ko"
+summary: "선형 체인 검증 후 main을 504bd81로 fast-forward, 스테일 브랜치 15개(로컬)·6개(원격)와 죽은 worktree 등록 18건 정리, 로컬 산출물 ~615M 회수."
+tags: ["phase-1", "release-prep", "repo-hygiene"]
+---
+
+유료 출시 전 최종 정리. 실행 전 읽기 전용 감사로 브랜치 전수 포함관계를 검증했다.
+
+## 검증된 사전 사실
+
+- 로컬 브랜치 16개는 완전 선형 체인: `main(af57b8c) ⊂ codex/usability-cockpit(1b5ce1a) ⊂ codex/v1-feature-completion(90a58d0) ⊂ codex/paid-release-recovery(504bd81)`. 나머지 브랜치 전부 `git merge-base --is-ancestor` + `git rev-list --count <br> ^codex/paid-release-recovery` 매트릭스에서 고유 커밋 0.
+- 체크아웃돼 있던 `codex/usability-cockpit`은 buildNumber 15 + `ageAssurance:true`인 리젝 조건 스냅샷 — 빌드 기준으로 쓰면 안 되는 상태였다.
+- `origin/main`은 초기 커밋(bdeadf5)에 정체(로컬 main 대비 154커밋 뒤).
+- worktree 등록 18건은 /private/tmp 디렉토리가 전부 소멸한 상태(`test -d` 전수 확인)라 prune 무손실.
+
+## 실행 내역 (전부 실제 출력 확인)
+
+1. `git worktree prune` → `git worktree list` 1건만 잔존.
+2. `git checkout main && git merge --ff-only codex/paid-release-recovery` → main = 504bd81.
+3. 로컬 브랜치 15개 삭제 — 14개는 `-d`(merge 검증), `codex/social-v1-phase0-gate`만 upstream(origin/codex/social-v1-contract) 설정 탓에 `-d` 거부 → `git rev-list --count codex/social-v1-phase0-gate ^main` = `0` 재확인 후 `-D`.
+4. `git push origin main` → `bdeadf5..504bd81` fast-forward. 원격 스테일 브랜치 6개 `--delete` → `git ls-remote --heads origin` = `main` 단일 헤드(504bd81).
+5. 로컬 산출물 삭제: ios/Pods(607M)·ios/build·dist(5.7M)·.expo(1.6M)·빈 `.wrangler` 3곳·빈 `src/features/evolution`. ios/는 608M → 312K.
+6. `.gitignore`에 `.wrangler/` 추가 — `git clean -nd`에서 untracked로 노출되던 갭. 커밋 `3613127`.
+
+## 범위 밖으로 남긴 것
+
+- `docs/artifacts` PNG 29장(13.8M): `store.config.json`(EAS submit 스크린샷)과 릴리스 증거 문서들이 참조 중이라 보존.
+- 결제 체인 재개(Worker 배포·secret 설치·ASC 조치): 별도 승인 게이트로 분리. 현재 라이브 상태는 2026-07-24 기록과 동일함을 이번 세션에 재확인(`/entitlements/session` 404, entitlement secret 0/5, worker 테스트 86/86).
